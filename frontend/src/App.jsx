@@ -1,31 +1,27 @@
 // Heart is here
 
-
-import { useEffect, useState } from 'react'
+//src/App.jsx
 import Layout from './components/Layout';
 
 const App = () => {
-    const [hasLiked, setHasLiked] = useState(false);
-
     return (
-        <div className="member-container">
-            <Member name="Ben" />
-            <Member name="Plub" />
-            <Member name="Heart" />
-        </div>
+        <Layout>
+        </Layout>
     )
 }
 
-const Member = ({ name }) => {
-    return (
-        <div className="member-box">
-        <h2>{name}</h2>
-            <button onClick={() => setHasLiked(true)}>
-                Like
-            </button>
-        </div>
-    )
-}
+export default App;
+
+// const Member = ({ name }) => {
+//     return (
+//         <div className="member-box">
+//         <h2>{name}</h2>
+//             <button onClick={() => setHasLiked(true)}>
+//                 Like
+//             </button>
+//         </div>
+//     )
+// }
 
 /*
 function App() {
@@ -50,4 +46,3 @@ function App() {
 }
 */
 
-export default App
