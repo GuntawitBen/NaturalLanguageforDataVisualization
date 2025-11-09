@@ -2,6 +2,7 @@
 
 
 import { useEffect, useState } from 'react'
+import Layout from './components/Layout';
 
 const App = () => {
     const [hasLiked, setHasLiked] = useState(false);
