@@ -1,13 +1,18 @@
 // Heart is here
 
 //src/App.jsx
+import './App.css'
 import Layout from './components/Layout';
 
-const App = () => {
+function App() {
     return (
-        <Layout>
-        </Layout>
-    )
+        <>
+            <div className="gradient-overlay" />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+                {/* All your routes/pages go here */}
+            </div>
+        </>
+    );
 }
 
 export default App;
