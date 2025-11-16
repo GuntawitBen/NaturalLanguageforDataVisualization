@@ -4,12 +4,18 @@
 import './App.css'
 import Layout from './components/Layout';
 
+
 function App() {
     return (
         <>
+            {/* Background */}
             <div className="gradient-overlay" />
+
+            {/* Main app UI on top */}
             <div style={{ position: 'relative', zIndex: 1 }}>
-                {/* All your routes/pages go here */}
+                <Layout>
+                    {/* Your pages will be rendered here */}
+                </Layout>
             </div>
         </>
     );
