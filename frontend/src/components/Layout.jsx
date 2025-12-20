@@ -1,14 +1,23 @@
-// src/components/Layout.jsx
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 
-export default function Layout({ children }) {
+
+export default function Layout() {
+
+    const userEmail = sessionStorage.getItem('userEmail');
+    if (!userEmail) {
+        return <Navigate to="/signin" replace />;
+    }
+
     return (
-        <div className="flex h-screen gap-4 items-end">
+        <div className="layout-container">
             <Sidebar />
-            <div className="flex-1 bg-white/40 backdrop-blur-3xl rounded-3xl border border-white/30 shadow-1xl mr-5 mb-5"
-                 style={{ height: '75vh' }}>
-                {children}
-            </div>
+            <main className="main-content">
+                <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                  
+                </Routes>
+            </main>
         </div>
     );
 }

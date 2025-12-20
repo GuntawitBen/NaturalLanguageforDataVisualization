@@ -89,4 +89,19 @@ body {
         transform: translate(2%, 2%) rotate(4deg) scale(1.01);
     }
 }
+
+.auth-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  /* Your existing dashboard styles */
+  flex: 1;
+  padding: 20px;
+}
+
 /*END BACKGROUND*/
