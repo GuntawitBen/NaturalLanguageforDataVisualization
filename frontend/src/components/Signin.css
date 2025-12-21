@@ -87,7 +87,7 @@ input[type="password"]:focus {
 }
 
 .forgot-password {
-    text-align: right;
+    text-align: left;
     margin-top: 8px;
 }
 
@@ -163,7 +163,7 @@ input[type="password"]:focus {
 }
 
 .signup-link {
-    text-align: center;
+    text-align: left;
     margin-top: 25px;
     color: #666;
     font-size: 14px;
