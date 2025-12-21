@@ -24,7 +24,7 @@
 
 .login-right {
     flex: 1;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -46,7 +46,7 @@
 }
 
 .logo h1 {
-    color: #667eea;
+    color: #000000;
     font-size: 32px;
     font-weight: 700;
     margin-bottom: 8px;
@@ -82,8 +82,8 @@ input[type="password"] {
 input[type="email"]:focus,
 input[type="password"]:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #000000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
 .forgot-password {
@@ -92,7 +92,7 @@ input[type="password"]:focus {
 }
 
 .forgot-password a {
-    color: #667eea;
+    color: #000000;
     font-size: 13px;
     text-decoration: none;
 }
@@ -114,13 +114,13 @@ input[type="password"]:focus {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     color: white;
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
 .btn-google {
@@ -135,7 +135,7 @@ input[type="password"]:focus {
 
 .btn-google:hover {
     background: #f8f9fa;
-    border-color: #667eea;
+    border-color: #000000;
 }
 
 .google-icon {
@@ -170,7 +170,7 @@ input[type="password"]:focus {
 }
 
 .signup-link a {
-    color: #667eea;
+    color: #000000;
     font-weight: 600;
     text-decoration: none;
 }

@@ -39,7 +39,7 @@
     margin-bottom: 20px;
 }
 .logo h1 {
-    color: #667eea;
+    color: #000000;
     font-size: 28px;
     font-weight: 700;
     margin-bottom: 5px;
@@ -78,8 +78,8 @@ input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #000000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 .password-strength {
     height: 4px;
@@ -126,7 +126,7 @@ input[type="password"]:focus {
     cursor: pointer;
 }
 .checkbox-group label a {
-    color: #667eea;
+    color: #000000;
     text-decoration: none;
     font-weight: 600;
 }
@@ -145,7 +145,7 @@ input[type="password"]:focus {
     margin-top: 10px;
 }
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     color: white;
 }
 .btn-primary:hover:not(:disabled) {
@@ -167,7 +167,7 @@ input[type="password"]:focus {
 }
 .btn-google:hover {
     background: #f8f9fa;
-    border-color: #667eea;
+    border-color: #000000;
 }
 .google-icon {
     width: 20px;
@@ -196,7 +196,7 @@ input[type="password"]:focus {
     font-size: 14px;
 }
 .login-link a {
-    color: #667eea;
+    color: #000000;
     font-weight: 600;
     text-decoration: none;
 }
