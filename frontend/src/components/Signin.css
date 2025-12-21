@@ -26,11 +26,24 @@
 
 .login-right {
     flex: 1;
-    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+    0%, 100% {
+        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    }
+    33% {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    66% {
+        background: linear-gradient(135deg, #2c003e 0%, #1b1b2f 50%, #162447 100%);
+    }
 }
 
 .login-right::before {
@@ -43,8 +56,11 @@
 }
 
 .logo {
+    width: 100%;
     text-align: left;
     margin-bottom: 40px;
+    padding-left: 0;
+    margin-left: 0;
 }
 
 .logo h1 {
@@ -52,12 +68,16 @@
     font-size: 32px;
     font-weight: 700;
     margin-bottom: 8px;
+    margin-left: 0;
+    padding-left: 0;
     text-align: left;
 }
 
 .logo p {
     color: #666;
     font-size: 15px;
+    margin-left: 0;
+    padding-left: 0;
 }
 
 .form-group {
@@ -66,10 +86,6 @@
 }
 
 form {
-    width: 100%;
-}
-
-.logo {
     width: 100%;
 }
 
@@ -219,4 +235,382 @@ input[type="password"]:focus {
     border-radius: 8px;
     font-size: 14px;
     margin-bottom: 20px;
+}
+
+/* Animation Container */
+.animation-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.welcome-title {
+    font-size: 48px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 20px;
+    animation: fadeInDown 1s ease-out;
+}
+
+.welcome-subtitle {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 60px;
+    animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+/* Charts Scene */
+.charts-scene {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    height: 300px;
+}
+
+/* Bar Chart Animation */
+.chart-bars {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    height: 120px;
+}
+
+.bar {
+    width: 30px;
+    background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+    border-radius: 6px 6px 0 0;
+    animation: growBar 2s ease-out infinite;
+    box-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
+}
+
+.bar-1 {
+    height: 60px;
+    animation-delay: 0s;
+}
+
+.bar-2 {
+    height: 90px;
+    animation-delay: 0.2s;
+}
+
+.bar-3 {
+    height: 45px;
+    animation-delay: 0.4s;
+}
+
+.bar-4 {
+    height: 75px;
+    animation-delay: 0.6s;
+}
+
+/* Pie Chart Animation */
+.pie-chart {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 100px;
+    height: 100px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.pie-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.pie-segment-1 {
+    fill: none;
+    stroke: #ff6b6b;
+    stroke-width: 20;
+    stroke-dasharray: 126 126;
+    animation: drawPie1 2s ease-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.6));
+}
+
+.pie-segment-2 {
+    fill: none;
+    stroke: #4ecdc4;
+    stroke-width: 20;
+    stroke-dasharray: 63 189;
+    stroke-dashoffset: -126;
+    animation: drawPie2 2s ease-out 0.5s infinite;
+    filter: drop-shadow(0 0 10px rgba(78, 205, 196, 0.6));
+}
+
+/* Line Chart Animation */
+.line-chart {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 100px;
+}
+
+.chart-line {
+    fill: none;
+    stroke: #ffd93d;
+    stroke-width: 3;
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: drawLine 3s ease-out infinite;
+    filter: drop-shadow(0 0 8px rgba(255, 217, 61, 0.6));
+}
+
+.data-point {
+    fill: white;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.data-point:nth-child(2) { animation-delay: 0.2s; }
+.data-point:nth-child(3) { animation-delay: 0.4s; }
+.data-point:nth-child(4) { animation-delay: 0.6s; }
+.data-point:nth-child(5) { animation-delay: 0.8s; }
+
+/* Floating Particles */
+.particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: floatParticle 4s ease-in-out infinite;
+}
+
+.particle-1 {
+    top: 10%;
+    left: 20%;
+    animation-delay: 0s;
+    animation-duration: 3s;
+}
+
+.particle-2 {
+    top: 30%;
+    left: 80%;
+    animation-delay: 0.5s;
+    animation-duration: 4s;
+}
+
+.particle-3 {
+    top: 50%;
+    left: 15%;
+    animation-delay: 1s;
+    animation-duration: 3.5s;
+}
+
+.particle-4 {
+    top: 70%;
+    left: 70%;
+    animation-delay: 1.5s;
+    animation-duration: 4.5s;
+}
+
+.particle-5 {
+    top: 80%;
+    left: 40%;
+    animation-delay: 2s;
+    animation-duration: 3.8s;
+}
+
+.particle-6 {
+    top: 20%;
+    left: 50%;
+    animation-delay: 2.5s;
+    animation-duration: 4.2s;
+}
+
+/* Robot Character */
+.robot-character {
+    position: absolute;
+    bottom: 50px;
+    right: 60px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.robot-head {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.robot-eye {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    top: 20px;
+    animation: blink 3s ease-in-out infinite;
+}
+
+.robot-eye-left {
+    left: 12px;
+}
+
+.robot-eye-right {
+    right: 12px;
+}
+
+.robot-antenna {
+    position: absolute;
+    width: 4px;
+    height: 20px;
+    background: #764ba2;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 2px;
+}
+
+.robot-antenna::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #ffd93d;
+    border-radius: 50%;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 15px #ffd93d;
+}
+
+.robot-body {
+    width: 50px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    margin-top: 5px;
+    margin-left: 5px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Keyframe Animations */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes growBar {
+    0%, 100% {
+        transform: scaleY(1);
+    }
+    50% {
+        transform: scaleY(1.2);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(180deg);
+    }
+}
+
+@keyframes drawPie1 {
+    0% {
+        stroke-dasharray: 0 252;
+    }
+    100% {
+        stroke-dasharray: 126 126;
+    }
+}
+
+@keyframes drawPie2 {
+    0% {
+        stroke-dasharray: 0 252;
+    }
+    100% {
+        stroke-dasharray: 63 189;
+    }
+}
+
+@keyframes drawLine {
+    0% {
+        stroke-dashoffset: 400;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.3);
+    }
+}
+
+@keyframes floatParticle {
+    0%, 100% {
+        transform: translate(0, 0);
+        opacity: 0.3;
+    }
+    50% {
+        transform: translate(20px, -30px);
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes blink {
+    0%, 90%, 100% {
+        transform: scaleY(1);
+    }
+    95% {
+        transform: scaleY(0.1);
+    }
 }

@@ -125,11 +125,8 @@ export default function Signup() {
             <div className="register-container">
                 <div className="logo">
                     <h1>Phebe</h1>
-                    <p>Create your account to get started</p>
+                    <h1>Create your account</h1>
                 </div>
-
-                {error && <div className="error-message">{error}</div>}
-                {success && <div className="success-message">{success}</div>}
 
                 {/* Google Sign Up */}
                 <button className="btn btn-google" onClick={handleGoogleSignup}>
@@ -145,6 +142,11 @@ export default function Signup() {
                 <div className="divider">
                     <span>OR</span>
                 </div>
+
+                {error && <div className="error-message">{error}</div>}
+                {success && <div className="success-message">{success}</div>}
+
+
 
                 {/* Registration Form */}
                 <form onSubmit={handleSubmit}>
@@ -174,6 +176,8 @@ export default function Signup() {
                             />
                         </div>
                     </div>
+
+
 
                     <div className="form-group">
                         <label htmlFor="email">Email Address</label>
@@ -220,6 +224,8 @@ export default function Signup() {
                         />
                     </div>
 
+
+
                     <div className="checkbox-group">
                         <input
                             type="checkbox"
@@ -242,6 +248,55 @@ export default function Signup() {
 
                 <div className="login-link">
                     Already have an account? <a href="/signin">Sign in</a>
+                </div>
+            </div>
+
+            {/* Right side with gradient and animations */}
+            <div className="register-right">
+                <div className="animation-container">
+                    {/* Animated Charts Scene */}
+                    <div className="charts-scene">
+                        {/* Floating Bar Chart */}
+                        <div className="chart-bars">
+                            <div className="bar bar-1"></div>
+                            <div className="bar bar-2"></div>
+                            <div className="bar bar-3"></div>
+                            <div className="bar bar-4"></div>
+                        </div>
+
+                        {/* Animated Pie Chart */}
+                        <div className="pie-chart">
+                            <svg viewBox="0 0 100 100" className="pie-svg">
+                                <circle className="pie-segment-1" cx="50" cy="50" r="40" />
+                                <circle className="pie-segment-2" cx="50" cy="50" r="40" />
+                            </svg>
+                        </div>
+
+                        {/* Line Chart */}
+                        <svg className="line-chart" viewBox="0 0 200 100">
+                            <polyline className="chart-line" points="0,80 50,60 100,40 150,20 200,10" />
+                        </svg>
+
+                        {/* Floating Data Particles */}
+                        <div className="particles">
+                            <div className="particle particle-1"></div>
+                            <div className="particle particle-2"></div>
+                            <div className="particle particle-3"></div>
+                            <div className="particle particle-4"></div>
+                            <div className="particle particle-5"></div>
+                            <div className="particle particle-6"></div>
+                        </div>
+
+                        {/* Cute Robot Character */}
+                        <div className="robot-character">
+                            <div className="robot-head">
+                                <div className="robot-eye robot-eye-left"></div>
+                                <div className="robot-eye robot-eye-right"></div>
+                                <div className="robot-antenna"></div>
+                            </div>
+                            <div className="robot-body"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
