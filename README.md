@@ -1,4 +1,4 @@
-# Natural Language for Data Visualization
+# Phebe
 
 A full-stack application that enables natural language interaction for data visualization using React and FastAPI.
 

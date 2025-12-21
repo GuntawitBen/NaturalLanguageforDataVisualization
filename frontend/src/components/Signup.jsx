@@ -124,7 +124,7 @@ export default function Signup() {
         <div className="register-page">
             <div className="register-container">
                 <div className="logo">
-                    <h1>📊 Code Diart</h1>
+                    <h1>Phebe</h1>
                     <p>Create your account to get started</p>
                 </div>
 

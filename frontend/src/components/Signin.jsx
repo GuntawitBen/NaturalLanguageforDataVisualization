@@ -56,12 +56,11 @@ export default function Signin() {
         <div className="login-page">
             <div className="login-container">
                 <div className="logo">
-                    <h1>Code Diart</h1>
-                    <p>Welcome back! Please login to your account.</p>
+                    <h1>Phebe</h1>
+                    <p>Log in to your account</p>
                 </div>
 
-                {error && <div className="error-message">{error}</div>}
-                {success && <div className="success-message">{success}</div>}
+
 
                 {/* Google Login */}
                 <button className="btn btn-google" onClick={handleGoogleLogin}>
@@ -71,12 +70,15 @@ export default function Signin() {
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Continue with Google
+                    Google
                 </button>
 
                 <div className="divider">
                     <span>OR</span>
                 </div>
+
+                {error && <div className="error-message">{error}</div>}
+                {success && <div className="success-message">{success}</div>}
 
                 {/* Custom Login Form */}
                 <form onSubmit={handleCustomLogin}>
@@ -120,7 +122,7 @@ export default function Signin() {
             <div className="login-right">
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', color: 'white' }}>
                     <h2 style={{ fontSize: '48px', fontWeight: '700', marginBottom: '20px' }}>
-                        Welcome to Code Diart
+                        Welcome to Phebe
                     </h2>
                     <p style={{ fontSize: '18px', opacity: 0.9 }}>
                         Transform your data into beautiful visualizations using natural language
