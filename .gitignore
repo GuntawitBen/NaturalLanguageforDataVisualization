@@ -37,6 +37,11 @@ ENV/
 .env.local
 .env.*.local
 
+# Firebase
+firebase-credentials.json
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+
 # Logs
 *.log
 logs/

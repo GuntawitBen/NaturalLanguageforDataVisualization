@@ -11,6 +11,10 @@ load_dotenv()
 
 router = APIRouter(prefix="/auth", tags=["Sign In"])
 
+# Environment variables
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
 # Google OAuth setup with code_challenge_method
 oauth = OAuth()
 oauth.register(
@@ -28,7 +32,7 @@ oauth.register(
 @router.get("/google/login")
 async def google_login(request: Request):
     """Redirect user to Google login page"""
-    redirect_uri = "http://localhost:8000/auth/google/callback"
+    redirect_uri = f"{BACKEND_URL}/auth/google/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 # Handle Google OAuth callback
@@ -47,18 +51,18 @@ async def google_callback(request: Request):
             # Save user to Firebase
             save_user_to_firebase(email, name, picture)
             
-            print(f"✅ User logged in: {name} ({email})")
-            
+            print(f"User logged in: {name} ({email})")
+
             # Redirect to main dashboard
             return RedirectResponse(
-                url=f"http://localhost:5173/?email={email}&name={name}"
+                url=f"{FRONTEND_URL}/?email={email}&name={name}"
             )
         else:
             raise HTTPException(status_code=400, detail="Failed to get user info from Google")
     except Exception as e:
-        print(f"❌ Error during Google OAuth: {e}")
+        print(f"Error during Google OAuth: {e}")
         return RedirectResponse(
-            url="http://localhost:5173/login/?error=auth_failed"
+            url=f"{FRONTEND_URL}/login/?error=auth_failed"
         )
     
 @router.get("/user/{email}")

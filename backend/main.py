@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 print("=" * 50)
-print("🔍 Environment Variables Check:")
-print(f"SECRET_KEY: {'✅ Loaded' if os.getenv('SECRET_KEY') else '❌ NOT FOUND'}")
-print(f"GOOGLE_CLIENT_ID: {'✅ Loaded' if os.getenv('GOOGLE_CLIENT_ID') else '❌ NOT FOUND'}")
-print(f"GOOGLE_CLIENT_SECRET: {'✅ Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else '❌ NOT FOUND'}")
+print("Environment Variables Check:")
+print(f"SECRET_KEY: {'Loaded' if os.getenv('SECRET_KEY') else 'NOT FOUND'}")
+print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT FOUND'}")
+print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
 print("=" * 50)
 
 app = FastAPI()
@@ -27,10 +27,11 @@ app.add_middleware(
 )
 
 # CORS SECOND
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        FRONTEND_URL
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],

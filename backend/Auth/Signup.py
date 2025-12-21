@@ -50,7 +50,7 @@ async def register(req: RegisterRequest):
             'last_login': firestore.SERVER_TIMESTAMP
         })
         
-        print(f"✅ User registered: {req.name} ({req.email})")
+        print(f"User registered: {req.name} ({req.email})")
         
         return {
             "message": "User registered successfully",
@@ -61,5 +61,5 @@ async def register(req: RegisterRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Registration error: {e}")
+        print(f"Registration error: {e}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")

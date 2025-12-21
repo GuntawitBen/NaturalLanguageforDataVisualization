@@ -66,10 +66,10 @@ def save_file_to_firebase(user_email: str, file_name: str, table_name: str, row_
             'row_count': row_count,
             'column_count': column_count
         })
-        print(f"✅ File metadata saved to Firebase: {file_name}")
+        print(f"File metadata saved to Firebase: {file_name}")
         return True
     except Exception as e:
-        print(f"❌ Error saving file to Firebase: {e}")
+        print(f"Error saving file to Firebase: {e}")
         return False
 
 def get_user_files_from_firebase(email: str):
