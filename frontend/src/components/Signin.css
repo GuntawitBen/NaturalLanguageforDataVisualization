@@ -20,6 +20,8 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: flex-start;
+    text-align: left;
 }
 
 .login-right {
@@ -59,6 +61,27 @@
 
 .form-group {
     margin-bottom: 20px;
+    width: 100%;
+}
+
+form {
+    width: 100%;
+}
+
+.logo {
+    width: 100%;
+}
+
+.btn {
+    width: 100%;
+}
+
+.divider {
+    width: 100%;
+}
+
+.signup-link {
+    width: 100%;
 }
 
 label {
