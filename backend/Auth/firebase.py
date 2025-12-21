@@ -14,10 +14,10 @@ def init_firebase():
         cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "./firebase-credentials.json")
         cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
-        print("✅ Firebase initialized successfully")
+        print("Firebase initialized successfully")
         return firestore.client()
     except Exception as e:
-        print(f"❌ Firebase initialization failed: {e}")
+        print(f"Firebase initialization failed: {e}")
         return None
 
 # Initialize Firebase
@@ -35,10 +35,10 @@ def save_user_to_firebase(email: str, name: str, picture: str = None,auth_provid
             'created_at': firestore.SERVER_TIMESTAMP,
             'last_login': firestore.SERVER_TIMESTAMP
         }, merge=True)
-        print(f"✅ User saved to Firebase: {email}")
+        print(f"User saved to Firebase: {email}")
         return True
     except Exception as e:
-        print(f"❌ Error saving user to Firebase: {e}")
+        print(f"Error saving user to Firebase: {e}")
         return False
 
 def get_user_from_firebase(email: str):
@@ -50,7 +50,7 @@ def get_user_from_firebase(email: str):
             return user.to_dict()
         return None
     except Exception as e:
-        print(f"❌ Error getting user from Firebase: {e}")
+        print(f"Error getting user from Firebase: {e}")
         return None
 
 
@@ -86,5 +86,5 @@ def get_user_files_from_firebase(email: str):
         
         return result
     except Exception as e:
-        print(f"❌ Error getting user files from Firebase: {e}")
+        print(f"Error getting user files from Firebase: {e}")
         return []
