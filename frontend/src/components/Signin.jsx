@@ -115,6 +115,18 @@ export default function Signin() {
                     Don't have an account? <a href="/signup">Sign up</a>
                 </div>
             </div>
+
+            {/* Right side with gradient */}
+            <div className="login-right">
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', color: 'white' }}>
+                    <h2 style={{ fontSize: '48px', fontWeight: '700', marginBottom: '20px' }}>
+                        Welcome to Code Diart
+                    </h2>
+                    <p style={{ fontSize: '18px', opacity: 0.9 }}>
+                        Transform your data into beautiful visualizations using natural language
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }
