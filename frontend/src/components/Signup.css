@@ -9,7 +9,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 40px 20px;
+    padding: 40px 20px 80px 20px;
 }
 
 .register-container {
@@ -19,7 +19,7 @@
     width: 100%;
     max-width: 480px;
     padding: 40px;
-    margin: auto;
+    margin: 0 auto 40px auto;
     animation: slideIn 0.5s ease-out;
 }
 @keyframes slideIn {
