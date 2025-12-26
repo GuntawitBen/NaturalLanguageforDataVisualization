@@ -50,15 +50,18 @@ print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT F
 print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
 print("=" * 50)
 
-# Initialize database on startup
-# NOTE: Commented out to prevent database file locking issues
-# The database will be initialized on first use instead
-# print("\n[INFO] Initializing database...")
-# try:
-#     init_database()
-#     print("[OK] Database initialized successfully\n")
-# except Exception as e:
-#     print(f"[ERROR] Database initialization failed: {e}\n")
+# Initialize database on startup (only if it doesn't exist)
+from pathlib import Path
+DB_PATH = Path(__file__).parent / "database" / "nlp_viz.duckdb"
+if not DB_PATH.exists():
+    print("\n[INFO] Database not found. Initializing for first time...")
+    try:
+        init_database()
+        print("[OK] Database initialized successfully\n")
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {e}\n")
+else:
+    print("\n[INFO] Database already exists. Skipping initialization.\n")
 
 app = FastAPI(
     title="Natural Language Data Visualization API",
