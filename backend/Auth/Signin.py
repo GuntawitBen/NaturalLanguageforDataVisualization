@@ -4,8 +4,9 @@ from authlib.integrations.starlette_client import OAuth
 import os
 from dotenv import load_dotenv
 from Auth.firebase import db, save_user_to_firebase, get_user_from_firebase, get_user_files_from_firebase
-from Auth.Auth_utils import verify_password, generate_session_token
+from Auth.Auth_utils import verify_password, generate_session_token, save_session_token, get_current_user, get_current_user_and_token, delete_session_token
 from pydantic import BaseModel
+from fastapi import Depends
 
 load_dotenv()
 
@@ -83,14 +84,32 @@ async def get_all_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
 
+@router.get("/me")
+async def get_current_user_profile(current_user: str = Depends(get_current_user)):
+    """Get current user's profile (Protected route)"""
+    user = get_user_from_firebase(current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
 @router.post("/logout")
-async def logout(email: str):
-    """Logout user"""
-    return {"message": "Logged out successfully"}
+async def logout(user_data: dict = Depends(get_current_user_and_token)):
+    """Logout user (Protected route)"""
+    email = user_data["email"]
+    token = user_data["token"]
+
+    # Delete session token from Firebase
+    delete_session_token(db, token)
+
+    return {"message": "Logged out successfully", "email": email}
 
 @router.get("/user/{email}/files")
-async def get_user_files(email: str):
-    """Get user's uploaded files"""
+async def get_user_files(email: str, current_user: str = Depends(get_current_user)):
+    """Get user's uploaded files (Protected route)"""
+    # Verify the user is requesting their own files
+    if current_user != email:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     files = get_user_files_from_firebase(email)
     return {"files": files, "count": len(files)}
 
@@ -130,6 +149,7 @@ async def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     session_token = generate_session_token()
+    save_session_token(db, req.email, session_token)
 
     return {
         "message": "Login successful",

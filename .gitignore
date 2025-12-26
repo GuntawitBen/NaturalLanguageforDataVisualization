@@ -53,3 +53,7 @@ logs/
 
 # OS
 Thumbs.db
+*.duckdb
+backend/uploads/
+backend/nul
+nul

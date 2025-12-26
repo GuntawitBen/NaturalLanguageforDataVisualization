@@ -1,0 +1,151 @@
+.app-header {
+  width: 100%;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.header-container {
+  max-width: 1400px;
+  max-height: 90px;
+  margin: 0 auto;
+  padding: 0.2rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #000;
+    margin-top: 2.25rem;
+  padding: 0;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #4a5568;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-link svg {
+  flex-shrink: 0;
+}
+
+.nav-link:hover {
+  background: #f7fafc;
+  color: #000;
+}
+
+.nav-link.active {
+  background: #000;
+  color: white;
+}
+
+/* Header Actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-button,
+.logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #f7fafc;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-button:hover {
+  background: #e2e8f0;
+  color: #000;
+}
+
+.logout-button {
+  background: #fff5f5;
+  color: #e53e3e;
+}
+
+.logout-button:hover {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0.2rem 1rem;
+  }
+
+  .header-right {
+    gap: 1rem;
+  }
+
+  .logo h1 {
+    font-size: 1.125rem;
+  }
+
+  .nav-link span {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 0.5rem;
+  }
+
+  .header-nav {
+    gap: 0.375rem;
+  }
+
+  .user-button,
+  .logout-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .user-button svg,
+  .logout-button svg {
+    width: 18px;
+    height: 18px;
+  }
+}

@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { API_ENDPOINTS } from '../config';
 import './Signup.css';
-
-const API_BASE_URL = "http://localhost:8000";
 
 export default function Signup() {
     const [formData, setFormData] = useState({
@@ -16,6 +17,12 @@ export default function Signup() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const { isAuthenticated, loading: authLoading } = useAuth();
+
+    // Redirect if already logged in
+    if (!authLoading && isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -47,7 +54,7 @@ export default function Signup() {
 
     const handleGoogleSignup = () => {
         setSuccess('Redirecting to Google sign up...');
-        window.location.href = `${API_BASE_URL}/auth/google/login`;
+        window.location.href = API_ENDPOINTS.AUTH.GOOGLE_LOGIN;
     };
 
     const handleSubmit = async (e) => {
@@ -79,7 +86,7 @@ export default function Signup() {
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            const response = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

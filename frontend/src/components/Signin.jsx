@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { API_ENDPOINTS } from '../config';
 import './Signin.css';
-
-const API_BASE_URL = "http://localhost:8000";
 
 export default function Signin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const { login, isAuthenticated, loading } = useAuth();
+    const navigate = useNavigate();
+
+    // Redirect if already logged in
+    if (!loading && isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
 
     const handleGoogleLogin = () => {
         setSuccess('Redirecting to Google login...');
-        window.location.href = `${API_BASE_URL}/auth/google/login`;
+        window.location.href = API_ENDPOINTS.AUTH.GOOGLE_LOGIN;
     };
 
     const handleCustomLogin = async (e) => {
@@ -20,7 +28,7 @@ export default function Signin() {
         setSuccess('');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            const response = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -32,11 +40,10 @@ export default function Signin() {
 
             if (response.ok) {
                 setSuccess('Login successful! Redirecting...');
-                sessionStorage.setItem('userEmail', email);
-                sessionStorage.setItem('userName', data.name);
-                
+                login(data.email, data.name, data.session_token);
+
                 setTimeout(() => {
-                    window.location.href = `/?email=${email}&name=${data.name}`;
+                    navigate('/');
                 }, 1000);
             } else {
                 setError(data.detail || 'Login failed. Please check your credentials.');

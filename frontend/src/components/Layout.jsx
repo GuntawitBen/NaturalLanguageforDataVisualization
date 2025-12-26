@@ -1,22 +1,28 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import Dashboard from './Dashboard';
+import { useAuth } from '../contexts/AuthContext';
+import Header from './Header';
+import Home from '../pages/Home';
+import Upload from '../pages/Upload';
 
 
 export default function Layout() {
+    const { isAuthenticated, loading } = useAuth();
 
-    const userEmail = sessionStorage.getItem('userEmail');
-    if (!userEmail) {
+    if (loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (!isAuthenticated) {
         return <Navigate to="/signin" replace />;
     }
 
     return (
         <div className="layout-container">
-            <Sidebar />
+            <Header />
             <main className="main-content">
                 <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                  
+                    <Route path="/" element={<Home />} />
+                    <Route path="/upload" element={<Upload />} />
                 </Routes>
             </main>
         </div>
