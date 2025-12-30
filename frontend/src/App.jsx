@@ -14,16 +14,14 @@ function App() {
                 <div className="gradient-overlay" />
 
                 {/* Main app UI on top */}
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                    <Routes>
-                        {/* Auth routes WITHOUT Layout */}
-                        <Route path="/signin" element={<Signin />} />
-                        <Route path="/signup" element={<Signup />} />
+                <Routes>
+                    {/* Auth routes WITHOUT Layout */}
+                    <Route path="/signin" element={<Signin />} />
+                    <Route path="/signup" element={<Signup />} />
 
-                        {/* Protected routes WITH Layout */}
-                        <Route path="/*" element={<Layout />} />
-                    </Routes>
-                </div>
+                    {/* Protected routes WITH Layout */}
+                    <Route path="/*" element={<Layout />} />
+                </Routes>
             </BrowserRouter>
         </AuthProvider>
     );

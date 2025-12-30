@@ -51,9 +51,16 @@ logs/
 *.sqlite
 *.sqlite3
 
+# DuckDB files
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp
+backend/database/*.duckdb
+backend/database/*.duckdb.wal
+backend/database/*.duckdb.tmp
+
 # OS
 Thumbs.db
-*.duckdb
 backend/uploads/
 backend/nul
 nul

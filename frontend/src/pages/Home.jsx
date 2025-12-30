@@ -20,6 +20,46 @@ export default function Home() {
   const [datasets, setDatasets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [greeting, setGreeting] = useState('');
+
+  // Get randomized greeting
+  useEffect(() => {
+    const getGreeting = () => {
+      const hour = new Date().getHours();
+
+      // Time-based greetings
+      const timeBasedGreetings = [];
+      if (hour < 12) {
+        timeBasedGreetings.push('Good morning', 'Morning', 'Rise and shine');
+      } else if (hour < 17) {
+        timeBasedGreetings.push('Good afternoon', 'Good day', 'Afternoon');
+      } else {
+        timeBasedGreetings.push('Good evening', 'Evening');
+      }
+
+      // General greetings (available anytime)
+      const generalGreetings = [
+        'Welcome back',
+        'Hello',
+        'Hi there',
+        'Hey',
+        'Greetings',
+        'Nice to see you',
+        'Great to have you back',
+        'Welcome',
+        'Happy to see you',
+      ];
+
+      // Combine all greetings
+      const allGreetings = [...timeBasedGreetings, ...generalGreetings];
+
+      // Pick random greeting
+      const randomGreeting = allGreetings[Math.floor(Math.random() * allGreetings.length)];
+      return randomGreeting;
+    };
+
+    setGreeting(getGreeting());
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -118,7 +158,7 @@ export default function Home() {
       {/* Header with Welcome */}
       <div className="home-header">
         <div>
-          <h1>Welcome back, {user?.name || 'User'}!</h1>
+          <h1>{greeting}, {user?.name || 'User'}!</h1>
           <p className="subtitle">Manage your datasets and visualizations</p>
         </div>
       </div>
@@ -164,103 +204,6 @@ export default function Home() {
             <p className="stat-value">{user?.email}</p>
           </div>
         </div>
-      </div>
-
-      {/* Datasets Section */}
-      <div className="datasets-section">
-        <div className="section-header">
-          <div>
-            <h2>My Datasets</h2>
-            <p className="section-subtitle">
-              {datasets.length} {datasets.length === 1 ? 'dataset' : 'datasets'} available
-            </p>
-          </div>
-          <button
-            className="upload-button"
-            onClick={() => navigate('/upload')}
-          >
-            <Upload size={20} />
-            Upload Dataset
-          </button>
-        </div>
-
-        {error && (
-          <div className="error-container">
-            <p className="error-message">Error: {error}</p>
-            <button onClick={fetchDatasets} className="retry-button">
-              Retry
-            </button>
-          </div>
-        )}
-
-        {datasets.length === 0 ? (
-          <div className="empty-state">
-            <Database size={64} className="empty-icon" />
-            <h3>No datasets yet</h3>
-            <p>Upload your first CSV file to get started with data visualization</p>
-            <button
-              className="upload-button-large"
-              onClick={() => navigate('/upload')}
-            >
-              <Upload size={20} />
-              Upload Your First Dataset
-            </button>
-          </div>
-        ) : (
-          <div className="datasets-grid">
-            {datasets.map((dataset) => (
-              <div key={dataset.dataset_id} className="dataset-card">
-                <div className="dataset-card-header">
-                  <div className="dataset-icon">
-                    <FileText size={24} />
-                  </div>
-                  <div className="dataset-info">
-                    <h3>{dataset.dataset_name}</h3>
-                    <p className="dataset-filename">{dataset.original_filename}</p>
-                  </div>
-                </div>
-
-                <div className="dataset-stats">
-                  <div className="stat">
-                    <BarChart3 size={16} />
-                    <span>{dataset.row_count.toLocaleString()} rows</span>
-                  </div>
-                  <div className="stat">
-                    <Database size={16} />
-                    <span>{dataset.column_count} columns</span>
-                  </div>
-                  <div className="stat">
-                    <Calendar size={16} />
-                    <span>{formatDate(dataset.upload_date)}</span>
-                  </div>
-                  <div className="stat">
-                    <FileText size={16} />
-                    <span>{formatFileSize(dataset.file_size_bytes)}</span>
-                  </div>
-                </div>
-
-                <div className="dataset-actions">
-                  <button
-                    className="action-button view"
-                    onClick={() => navigate(`/datasets/${dataset.dataset_id}`)}
-                    title="View details"
-                  >
-                    <Eye size={18} />
-                    View
-                  </button>
-                  <button
-                    className="action-button delete"
-                    onClick={() => handleDelete(dataset.dataset_id, dataset.dataset_name)}
-                    title="Delete dataset"
-                  >
-                    <Trash2 size={18} />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

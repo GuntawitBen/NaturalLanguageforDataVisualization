@@ -42,7 +42,7 @@ export default function Header() {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/datasets', icon: Database, label: 'Datasets' },
-    { path: '/history', icon: Clock, label: 'History' },
+    { path: '/history', icon: Clock, label: 'Recents' },
   ];
 
   const handleLogout = () => {

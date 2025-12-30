@@ -39,7 +39,15 @@ class ValidationConfig:
     ]
 
     # Character encoding
-    ALLOWED_ENCODINGS = ['utf-8', 'ascii', 'iso-8859-1', 'windows-1252']
+    ALLOWED_ENCODINGS = [
+        'utf-8', 'utf-8-sig',  # UTF-8 with and without BOM
+        'utf-16', 'utf-16-le', 'utf-16-be',  # UTF-16 variants
+        'utf-32', 'utf-32-le', 'utf-32-be',  # UTF-32 variants
+        'ascii',  # ASCII
+        'iso-8859-1', 'latin-1',  # Latin-1
+        'windows-1252', 'cp1252',  # Windows encoding
+        'iso-8859-15', 'latin-9',  # Western European
+    ]
 
     # CSV format
     ALLOWED_DELIMITERS = [',', ';', '\t', '|']
@@ -103,15 +111,50 @@ def validate_file_size(file_path: str, config: ValidationConfig = None) -> Tuple
 
 def detect_encoding(file_path: str) -> str:
     """
-    Detect file encoding
+    Detect file encoding, with special handling for BOM markers
 
     Returns:
         str: Detected encoding
     """
     with open(file_path, 'rb') as f:
         raw_data = f.read(10000)  # Read first 10KB
+
+        # Check for BOM (Byte Order Mark) first
+        if raw_data.startswith(b'\xef\xbb\xbf'):
+            return 'utf-8-sig'  # UTF-8 with BOM
+        elif raw_data.startswith(b'\xff\xfe\x00\x00'):
+            return 'utf-32-le'
+        elif raw_data.startswith(b'\x00\x00\xfe\xff'):
+            return 'utf-32-be'
+        elif raw_data.startswith(b'\xff\xfe'):
+            return 'utf-16-le'
+        elif raw_data.startswith(b'\xfe\xff'):
+            return 'utf-16-be'
+
+        # Use chardet for other encodings
         result = chardet.detect(raw_data)
-        return result['encoding']
+        encoding = result['encoding']
+
+        # Normalize encoding name
+        if encoding:
+            encoding = encoding.lower()
+
+            # Handle common aliases and normalize names
+            if encoding == 'ascii':
+                return 'utf-8'  # ASCII is a subset of UTF-8
+
+            # Normalize UTF-16 and UTF-32 encoding names (chardet returns without hyphen)
+            encoding_map = {
+                'utf16': 'utf-16',
+                'utf16le': 'utf-16-le',
+                'utf16be': 'utf-16-be',
+                'utf32': 'utf-32',
+                'utf32le': 'utf-32-le',
+                'utf32be': 'utf-32-be',
+            }
+            encoding = encoding_map.get(encoding.replace('-', ''), encoding)
+
+        return encoding or 'utf-8'  # Default to UTF-8 if detection fails
 
 
 def validate_encoding(file_path: str, config: ValidationConfig = None) -> Tuple[bool, Optional[str], Optional[str]]:
@@ -126,7 +169,11 @@ def validate_encoding(file_path: str, config: ValidationConfig = None) -> Tuple[
     try:
         detected_encoding = detect_encoding(file_path)
 
-        if detected_encoding.lower() not in [enc.lower() for enc in config.ALLOWED_ENCODINGS]:
+        # Normalize allowed encodings for comparison
+        allowed_encodings_lower = [enc.lower() for enc in config.ALLOWED_ENCODINGS]
+
+        # Check if detected encoding is allowed (case-insensitive)
+        if detected_encoding and detected_encoding.lower() not in allowed_encodings_lower:
             return False, f"Unsupported encoding: {detected_encoding}. Allowed: {', '.join(config.ALLOWED_ENCODINGS)}", detected_encoding
 
         return True, None, detected_encoding

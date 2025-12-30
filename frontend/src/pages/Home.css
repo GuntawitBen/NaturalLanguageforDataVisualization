@@ -38,7 +38,7 @@
   gap: 1rem;
   padding: 1.5rem;
   background: white;
-  border: 1px solid #e2e8f0;
+  /*border: 1px solid #e2e8f0;*/
   border-radius: 12px;
   transition: all 0.2s ease;
 }
@@ -232,7 +232,7 @@
 /* Dataset Card */
 .dataset-card {
   background: white;
-  border: 1px solid #e2e8f0;
+  /*border: 1px solid #e2e8f0;*/
   border-radius: 12px;
   padding: 1.5rem;
   transition: all 0.2s ease;
