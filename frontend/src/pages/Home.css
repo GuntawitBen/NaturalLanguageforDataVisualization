@@ -8,7 +8,7 @@
 
 /* Header */
 .home-header {
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .home-header h1 {
@@ -24,12 +24,100 @@
   margin: 0;
 }
 
-/* Statistics Grid */
+/* Avatar with Floating Stats Container */
+.avatar-stats-container {
+  position: relative;
+  width: 100%;
+  min-height: 450px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 3rem 0;
+}
+
+/* Avatar Section */
+.avatar-section {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.avatar-placeholder {
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+/* Floating Statistics Cards */
+.floating-stat {
+  position: absolute;
+  width: 280px;
+   animation: float 6s ease-in-out infinite;
+  transform-origin: center center;
+  transform: rotate(0deg) !important;
+}
+
+.floating-stat.top-left {
+  top: 15px;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.floating-stat.top-right {
+  top: 40px;
+  right: 10%;
+  animation-delay: 1.5s;
+}
+
+.floating-stat.bottom-left {
+  bottom: 40px;
+  left: 7%;
+  animation-delay: 3s;
+}
+
+.floating-stat.bottom-right {
+  bottom: 20px;
+  right: 10%;
+  animation-delay: 4.5s;
+}
+
+/* Prevent any rotation on floating stats */
+.floating-stat,
+.floating-stat * {
+  will-change: transform;
+}
+
+.floating-stat > * {
+  transform: rotate(0deg) !important;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-15px) rotate(0deg) scale(1);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+}
+
+/* Statistics Grid (hidden, using floating layout now) */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
+  display: none;
 }
 
 .stat-card {
@@ -46,6 +134,61 @@
 .stat-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+/* Disable hover transform on floating stats to prevent conflicts */
+.floating-stat.stat-card:hover {
+  transform: none;
+}
+
+/* Upload Card Styling */
+.upload-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.upload-card-icon {
+  width: 56px;
+  height: 56px;
+  background: #f7fafc;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+}
+
+.upload-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #718096;
+  margin: 0;
+  text-align: center;
+}
+
+.upload-card-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+}
+
+.upload-card-button:hover {
+  background: #2d3748;
+  transform: translateY(-1px);
 }
 
 .stat-icon {
@@ -143,10 +286,10 @@
   border: 4px solid #e2e8f0;
   border-top-color: #000;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spinner-spin 0.8s linear infinite;
 }
 
-@keyframes spin {
+@keyframes spinner-spin {
   to { transform: rotate(360deg); }
 }
 
@@ -354,6 +497,29 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+  /* Adjust floating positions for medium screens */
+  .floating-stat.top-left {
+    left: 5%;
+  }
+
+  .floating-stat.top-right {
+    right: 5%;
+  }
+
+  .floating-stat.bottom-left {
+    left: 5%;
+  }
+
+  .floating-stat.bottom-right {
+    right: 5%;
+  }
+
+  .floating-stat {
+    width: 240px;
+  }
+}
+
 @media (max-width: 768px) {
   .home-page {
     padding: 1rem;
@@ -363,10 +529,35 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+    margin-bottom: 2rem;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
+  /* Stack layout for mobile */
+  .avatar-stats-container {
+    min-height: auto;
+    flex-direction: column;
+    margin: 2rem 0;
+  }
+
+  .avatar-section {
+    margin-bottom: 2rem;
+  }
+
+  .avatar-placeholder {
+    width: 150px;
+    height: 150px;
+  }
+
+  /* Stack floating cards vertically on mobile */
+  .floating-stat {
+    position: relative;
+    width: 100%;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    margin-bottom: 1rem;
+    animation: none;
   }
 
   .section-header {

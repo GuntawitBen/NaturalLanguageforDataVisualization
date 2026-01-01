@@ -12,6 +12,7 @@ import {
   Upload,
   TrendingUp
 } from 'lucide-react';
+import avatarImage from '../assets/avatar.png';
 import './Home.css';
 
 export default function Home() {
@@ -153,6 +154,18 @@ export default function Home() {
     );
   }
 
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.name) return 'U';
+    const nameParts = user.name.trim().split(' ');
+    if (nameParts.length === 1) {
+      return nameParts[0].charAt(0).toUpperCase();
+    }
+    const firstInitial = nameParts[0].charAt(0).toUpperCase();
+    const lastInitial = nameParts[nameParts.length - 1].charAt(0).toUpperCase();
+    return firstInitial + lastInitial;
+  };
+
   return (
     <div className="home-page">
       {/* Header with Welcome */}
@@ -163,9 +176,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
+      {/* Avatar with Floating Stats */}
+      <div className="avatar-stats-container">
+        {/* Avatar in center */}
+        <div className="avatar-section">
+          <div className="avatar-placeholder">
+            <img src={avatarImage} alt="User Avatar" className="avatar" />
+          </div>
+        </div>
+
+        {/* Floating Statistics Cards */}
+        <div className="stat-card floating-stat top-left">
           <div className="stat-icon">
             <Database size={24} />
           </div>
@@ -175,17 +196,20 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">
-            <BarChart3 size={24} />
+        <div className="stat-card floating-stat top-right upload-card">
+            <div className="stat-icon">
+              <Upload size={24} />
+            </div>
+            {/*<h3 className="stat-label">Upload New Dataset</h3>*/}
+            <button
+              className="upload-card-button"
+              onClick={() => navigate('/upload')}
+            >
+              Upload Dataset
+            </button>
           </div>
-          <div className="stat-content">
-            <p className="stat-label">Total Rows</p>
-            <p className="stat-value">{totalRows.toLocaleString()}</p>
-          </div>
-        </div>
 
-        <div className="stat-card">
+        <div className="stat-card floating-stat bottom-right">
           <div className="stat-icon">
             <FileText size={24} />
           </div>
@@ -195,14 +219,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon">
-            <TrendingUp size={24} />
-          </div>
-          <div className="stat-content">
-            <p className="stat-label">Account</p>
-            <p className="stat-value">{user?.email}</p>
-          </div>
+        <div className="stat-card floating-stat bottom-left">
+            <div className="stat-icon">
+                <Upload size={24} />
+            </div>
+            {/*<h3 className="stat-label">Upload New Dataset</h3>*/}
+            <button
+                className="upload-card-button"
+                onClick={() => navigate('/recents')}
+            >
+                View Recents
+            </button>
         </div>
       </div>
     </div>
