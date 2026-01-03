@@ -214,6 +214,146 @@ async def list_datasets(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# NOTE: Specific routes must come BEFORE path parameter routes like /{dataset_id}
+# Otherwise FastAPI will match the path parameter first
+
+@router.get("/test-endpoint")
+async def test_endpoint():
+    """Simple test endpoint"""
+    return {"message": "Test endpoint works!"}
+
+@router.post("/test-post")
+async def test_post_endpoint():
+    """Simple POST test endpoint"""
+    return {"message": "POST works!"}
+
+@router.post("/upload-temp")
+async def upload_csv_temp(
+    file: UploadFile = File(...),
+    dataset_name: Optional[str] = Form(None),
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Upload and validate a CSV file temporarily without storing in database.
+    Returns file info and temp file ID for later processing.
+    """
+    # Validate file
+    if not validate_upload_file(file):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file. Please upload a CSV file."
+        )
+
+    # Use filename as dataset name if not provided
+    if not dataset_name:
+        dataset_name = file.filename.replace('.csv', '')
+
+    file_path = None
+    try:
+        # Save uploaded file
+        file_path = save_uploaded_file(file)
+
+        # Validate CSV file structure
+        validation_result = validate_csv_structure(file_path)
+
+        if not validation_result["valid"]:
+            # Clean up file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+            # Return validation errors
+            error_message = "CSV validation failed:\n" + "\n".join(validation_result["errors"])
+            raise HTTPException(status_code=400, detail=error_message)
+
+        # Get file size
+        file_size = os.path.getsize(file_path)
+
+        # Return temp file info without creating dataset
+        return {
+            "success": True,
+            "temp_file_path": file_path,
+            "dataset_name": dataset_name,
+            "original_filename": file.filename,
+            "file_size_bytes": file_size,
+            "validation": validation_result,
+            "message": "File uploaded and validated successfully. Complete the cleaning process to finalize."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Clean up file on error
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/finalize", response_model=DatasetResponse)
+async def finalize_dataset(
+    temp_file_path: str = Form(...),
+    dataset_name: str = Form(...),
+    original_filename: str = Form(...),
+    description: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Finalize dataset creation after cleaning process is complete.
+    Takes the temp file and creates the dataset in the database.
+    """
+    # Verify temp file exists
+    if not os.path.exists(temp_file_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Temporary file not found. Please upload the file again."
+        )
+
+    # Parse tags
+    tag_list = [tag.strip() for tag in tags.split(',')] if tags else []
+
+    try:
+        # Create dataset in database
+        dataset_id = create_dataset(
+            user_id=current_user_email,
+            dataset_name=dataset_name,
+            original_filename=original_filename,
+            file_path=temp_file_path,
+            description=description,
+            tags=tag_list
+        )
+
+        if not dataset_id:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create dataset. Please check the CSV file format."
+            )
+
+        # Get dataset metadata
+        dataset = get_dataset(dataset_id)
+
+        # Clean up temp file (data is now in DuckDB)
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+        return DatasetResponse(
+            dataset_id=dataset['dataset_id'],
+            dataset_name=dataset['dataset_name'],
+            original_filename=dataset['original_filename'],
+            row_count=dataset['row_count'],
+            column_count=dataset['column_count'],
+            columns_info=dataset['columns_info'],
+            upload_date=dataset['upload_date'].isoformat() if dataset['upload_date'] else None,
+            file_size_bytes=dataset['file_size_bytes'],
+            table_name=dataset['table_name']
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Clean up file on error
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{dataset_id}", response_model=DatasetResponse)
 async def get_dataset_info(
     dataset_id: str,

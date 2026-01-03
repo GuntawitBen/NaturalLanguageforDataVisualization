@@ -8,14 +8,17 @@ export default function Upload() {
   const navigate = useNavigate();
   const [recentUploads, setRecentUploads] = useState([]);
 
-  const handleUploadSuccess = (dataset) => {
-    console.log('Upload successful:', dataset);
+  const handleUploadSuccess = (tempData) => {
+    console.log('Temp upload successful:', tempData);
 
-    // Add to recent uploads
-    setRecentUploads(prev => [dataset, ...prev].slice(0, 5));
-
-    // Show notification (optional - you could use a toast library)
-    // toast.success(`Dataset "${dataset.dataset_name}" uploaded successfully!`);
+    // Navigate to Data Cleaning page with temp file info
+    const params = new URLSearchParams({
+      tempFilePath: tempData.temp_file_path,
+      datasetName: tempData.dataset_name,
+      originalFilename: tempData.original_filename,
+      fileSize: tempData.file_size_bytes
+    });
+    navigate(`/data-cleaning?${params.toString()}`);
   };
 
   const handleUploadError = (error) => {
@@ -32,18 +35,15 @@ export default function Upload() {
         <button
           onClick={() => navigate('/')}
           className="back-button"
-          aria-label="Go back to dashboard"
+          aria-label="Go back to Home"
         >
           <ArrowLeft size={20} />
-          Back to Dashboard
+          Back to Home
         </button>
 
         <div className="header-content">
-          <div className="header-icon">
-            <Database size={32} />
-          </div>
           <div>
-            <h1>Upload Dataset</h1>
+            <h1>Upload New Dataset</h1>
             <p>Upload CSV files to create datasets for analysis and visualization</p>
           </div>
         </div>

@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
   // Datasets
   DATASETS: {
     UPLOAD: `${API_BASE_URL}/datasets/upload`,
+    UPLOAD_TEMP: `${API_BASE_URL}/datasets/upload-temp`,
+    FINALIZE: `${API_BASE_URL}/datasets/finalize`,
     LIST: `${API_BASE_URL}/datasets/`,
     GET: (id) => `${API_BASE_URL}/datasets/${id}`,
     QUERY: (id) => `${API_BASE_URL}/datasets/${id}/query`,

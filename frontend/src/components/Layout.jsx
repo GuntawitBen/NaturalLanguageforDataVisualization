@@ -5,6 +5,7 @@ import Home from '../pages/Home';
 import Upload from '../pages/Upload';
 import Datasets from '../pages/Datasets';
 import DatasetDetails from '../pages/DatasetDetails';
+import DataCleaning from '../pages/DataCleaning';
 
 
 export default function Layout() {
@@ -27,6 +28,7 @@ export default function Layout() {
                     <Route path="/datasets" element={<Datasets />} />
                     <Route path="/datasets/:datasetId" element={<DatasetDetails />} />
                     <Route path="/upload" element={<Upload />} />
+                    <Route path="/data-cleaning" element={<DataCleaning />} />
                 </Routes>
             </main>
         </div>

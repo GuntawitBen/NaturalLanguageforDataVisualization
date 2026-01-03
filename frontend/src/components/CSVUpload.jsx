@@ -189,15 +189,10 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
           setUploadStatus('success');
           setUploadedDataset(response);
 
-          // Call success callback
+          // Call success callback (will navigate to DataCleaning page)
           if (onUploadSuccess) {
             onUploadSuccess(response);
           }
-
-          // Reset form after short delay
-          setTimeout(() => {
-            handleReset();
-          }, 3000);
         } else {
           const error = JSON.parse(xhr.responseText);
           const errorMsg = error.detail || 'Upload failed';
@@ -234,8 +229,8 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
         }
       });
 
-      // Send request
-      xhr.open('POST', API_ENDPOINTS.DATASETS.UPLOAD);
+      // Send request to temp upload endpoint
+      xhr.open('POST', API_ENDPOINTS.DATASETS.UPLOAD_TEMP);
       xhr.setRequestHeader('Authorization', `Bearer ${sessionToken}`);
       xhr.timeout = 300000; // 5 minutes timeout
       xhr.send(formData);
