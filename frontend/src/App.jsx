@@ -2,7 +2,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import Layout from './components/Layout';
+import AppRoutes from './components/Routes';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
 
@@ -15,12 +15,12 @@ function App() {
 
                 {/* Main app UI on top */}
                 <Routes>
-                    {/* Auth routes WITHOUT Layout */}
+                    {/* Auth routes */}
                     <Route path="/signin" element={<Signin />} />
                     <Route path="/signup" element={<Signup />} />
 
-                    {/* Protected routes WITH Layout */}
-                    <Route path="/*" element={<Layout />} />
+                    {/* Protected routes */}
+                    <Route path="/*" element={<AppRoutes />} />
                 </Routes>
             </BrowserRouter>
         </AuthProvider>

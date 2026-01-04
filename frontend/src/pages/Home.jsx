@@ -203,7 +203,7 @@ export default function Home() {
             {/*<h3 className="stat-label">Upload New Dataset</h3>*/}
             <button
               className="upload-card-button"
-              onClick={() => navigate('/upload')}
+              onClick={() => navigate('/data-cleaning')}
             >
               Upload Dataset
             </button>

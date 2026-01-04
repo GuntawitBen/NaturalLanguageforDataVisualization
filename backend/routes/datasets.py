@@ -287,6 +287,39 @@ async def upload_csv_temp(
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/cleanup-temp")
+async def cleanup_temp_file(
+    temp_file_path: str = Form(...),
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Delete a temporary uploaded file.
+    Used when user leaves the upload/cleaning page without finalizing.
+    """
+    try:
+        # Verify file exists and is in uploads directory
+        if not temp_file_path or not temp_file_path.startswith("./uploads"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path"
+            )
+
+        # Delete file if it exists
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+            return {
+                "success": True,
+                "message": "Temporary file deleted successfully"
+            }
+        else:
+            return {
+                "success": True,
+                "message": "File already deleted or does not exist"
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting temp file: {str(e)}")
+
 @router.post("/finalize", response_model=DatasetResponse)
 async def finalize_dataset(
     temp_file_path: str = Form(...),

@@ -128,7 +128,7 @@ export default function Datasets() {
         </div>
         <button
           className="upload-button"
-          onClick={() => navigate('/upload')}
+          onClick={() => navigate('/data-cleaning')}
         >
           <Database size={20} />
           Upload Dataset
@@ -142,7 +142,7 @@ export default function Datasets() {
           <p>Upload your first CSV file to get started with data visualization</p>
           <button
             className="upload-button-large"
-            onClick={() => navigate('/upload')}
+            onClick={() => navigate('/data-cleaning')}
           >
             Upload Your First Dataset
           </button>

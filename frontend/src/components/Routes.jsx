@@ -2,13 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Header from './Header';
 import Home from '../pages/Home';
-import Upload from '../pages/Upload';
 import Datasets from '../pages/Datasets';
 import DatasetDetails from '../pages/DatasetDetails';
 import DataCleaning from '../pages/DataCleaning';
 
 
-export default function Layout() {
+export default function AppRoutes() {
     const { isAuthenticated, loading } = useAuth();
 
     if (loading) {
@@ -27,7 +26,8 @@ export default function Layout() {
                     <Route path="/" element={<Home />} />
                     <Route path="/datasets" element={<Datasets />} />
                     <Route path="/datasets/:datasetId" element={<DatasetDetails />} />
-                    <Route path="/upload" element={<Upload />} />
+                    {/* Redirect /upload to /data-cleaning for unified workflow */}
+                    <Route path="/upload" element={<Navigate to="/data-cleaning" replace />} />
                     <Route path="/data-cleaning" element={<DataCleaning />} />
                 </Routes>
             </main>

@@ -7,7 +7,7 @@ function Sidebar() {
 
     const navItems = [
         { path: '/', icon: Home, label: 'Home' },
-        { path: '/upload', icon: Upload, label: 'Upload Dataset' },
+        { path: '/data-cleaning', icon: Upload, label: 'Upload Dataset' },
         { path: '/settings', icon: Settings, label: 'Settings' },
     ];
 

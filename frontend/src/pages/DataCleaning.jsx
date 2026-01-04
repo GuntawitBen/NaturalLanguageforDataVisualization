@@ -1,45 +1,96 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
-import { CheckCircle2, Circle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import CSVUpload from '../components/CSVUpload';
 import './DataCleaning.css';
 
 export default function DataCleaning() {
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
-  const [searchParams] = useSearchParams();
 
-  // Get temp file info from URL params
-  const tempFilePath = searchParams.get('tempFilePath');
-  const datasetName = searchParams.get('datasetName');
-  const originalFilename = searchParams.get('originalFilename');
-  const fileSize = searchParams.get('fileSize');
+  // State for uploaded file info
+  const [tempFilePath, setTempFilePath] = useState(null);
+  const [datasetName, setDatasetName] = useState('');
+  const [originalFilename, setOriginalFilename] = useState('');
+  const [fileSize, setFileSize] = useState(0);
 
   const [currentStage, setCurrentStage] = useState(1);
   const [finalizing, setFinalizing] = useState(false);
+  const [finalized, setFinalized] = useState(false);
   const [error, setError] = useState(null);
 
   const stages = [
-    { id: 1, name: 'Data Inspection', description: 'Review and validate your data' },
-    { id: 2, name: 'Data Processing', description: 'Clean and transform your data' }
+    { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
+    { id: 2, name: 'Data Inspection', description: 'Review and validate your data' },
+    { id: 3, name: 'Data Processing', description: 'Clean and transform your data' }
   ];
 
+  // Handle successful upload from CSVUpload component
+  const handleUploadSuccess = (tempData) => {
+    console.log('Temp upload successful:', tempData);
+
+    // Store temp file info
+    setTempFilePath(tempData.temp_file_path);
+    setDatasetName(tempData.dataset_name);
+    setOriginalFilename(tempData.original_filename);
+    setFileSize(tempData.file_size_bytes);
+
+    // Move to next stage
+    setCurrentStage(2);
+  };
+
+  const handleUploadError = (error) => {
+    console.error('Upload error:', error);
+    setError(error);
+  };
+
+  // Cleanup temp file when component unmounts (if not finalized)
   useEffect(() => {
-    if (!tempFilePath || !datasetName) {
-      navigate('/upload');
-    }
-  }, [tempFilePath, datasetName]);
+    return () => {
+      // Only cleanup if we have a temp file and it wasn't finalized
+      if (tempFilePath && !finalized) {
+        const cleanupTempFile = async () => {
+          try {
+            const formData = new FormData();
+            formData.append('temp_file_path', tempFilePath);
+
+            await fetch(API_ENDPOINTS.DATASETS.CLEANUP_TEMP, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${sessionToken}`,
+              },
+              body: formData,
+            });
+          } catch (err) {
+            // Silently fail - cleanup is best effort
+            console.warn('Failed to cleanup temp file:', err);
+          }
+        };
+
+        cleanupTempFile();
+      }
+    };
+  }, [tempFilePath, sessionToken, finalized]);
 
   const handleNext = () => {
+    // Stage 1: Upload - can't go next without uploading
+    if (currentStage === 1 && !tempFilePath) {
+      setError('Please upload a file first');
+      return;
+    }
+
     if (currentStage < stages.length) {
       setCurrentStage(currentStage + 1);
+      setError(null);
     }
   };
 
   const handleBack = () => {
     if (currentStage > 1) {
       setCurrentStage(currentStage - 1);
+      setError(null);
     }
   };
 
@@ -69,6 +120,9 @@ export default function DataCleaning() {
 
       const dataset = await response.json();
 
+      // Mark as finalized so cleanup doesn't happen
+      setFinalized(true);
+
       // Navigate to dataset details page
       navigate(`/datasets/${dataset.dataset_id}`);
     } catch (err) {
@@ -86,9 +140,9 @@ export default function DataCleaning() {
           <ArrowLeft size={20} />
           Back to Datasets
         </button>
-        <h1>Data Cleaning</h1>
+        <h1>Upload & Clean Dataset</h1>
         <p className="subtitle">
-          Prepare your dataset: <strong>{datasetName}</strong>
+          {datasetName ? `Preparing: ${datasetName}` : 'Upload and prepare your dataset for analysis'}
         </p>
       </div>
 
@@ -96,9 +150,6 @@ export default function DataCleaning() {
       {error && (
         <div className="error-banner">
           <p className="error-message">{error}</p>
-          <button onClick={() => navigate('/upload')} className="retry-button">
-            Back to Upload
-          </button>
         </div>
       )}
 
@@ -130,10 +181,27 @@ export default function DataCleaning() {
 
       {/* Stage Content */}
       <div className="stage-content">
+        {/* Stage 1: Upload */}
         {currentStage === 1 && (
           <div className="stage-panel">
             <div className="stage-header">
-              <h2>Stage 1: Data Inspection</h2>
+              <h2>Stage 1: Upload Dataset</h2>
+              <p>Upload your CSV file to begin the data cleaning process</p>
+            </div>
+            <div className="stage-body">
+              <CSVUpload
+                onUploadSuccess={handleUploadSuccess}
+                onUploadError={handleUploadError}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Stage 2: Inspection */}
+        {currentStage === 2 && (
+          <div className="stage-panel">
+            <div className="stage-header">
+              <h2>Stage 2: Data Inspection</h2>
               <p>Review your uploaded data and check for any issues</p>
             </div>
             <div className="stage-body">
@@ -157,10 +225,11 @@ export default function DataCleaning() {
           </div>
         )}
 
-        {currentStage === 2 && (
+        {/* Stage 3: Processing */}
+        {currentStage === 3 && (
           <div className="stage-panel">
             <div className="stage-header">
-              <h2>Stage 2: Data Processing</h2>
+              <h2>Stage 3: Data Processing</h2>
               <p>Apply transformations and prepare your data for analysis</p>
             </div>
             <div className="stage-body">
@@ -192,7 +261,11 @@ export default function DataCleaning() {
         </button>
 
         {currentStage < stages.length ? (
-          <button onClick={handleNext} className="nav-button primary" disabled={finalizing}>
+          <button
+            onClick={handleNext}
+            className="nav-button primary"
+            disabled={finalizing || (currentStage === 1 && !tempFilePath)}
+          >
             Next
             <ArrowRight size={20} />
           </button>

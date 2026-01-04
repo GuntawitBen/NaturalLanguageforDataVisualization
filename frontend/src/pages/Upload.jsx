@@ -8,7 +8,7 @@ export default function Upload() {
   const navigate = useNavigate();
   const [recentUploads, setRecentUploads] = useState([]);
 
-  const handleUploadSuccess = (tempData) => {
+  const lethandleUploadSuccess = (tempData) => {
     console.log('Temp upload successful:', tempData);
 
     // Navigate to Data Cleaning page with temp file info
