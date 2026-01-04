@@ -79,12 +79,12 @@
 }
 
 .upload-dropzone:hover {
-  border-color: #4299e1;
+  border-color: #000;
   background-color: #edf2f7;
 }
 
 .upload-dropzone.dragging {
-  border-color: #4299e1;
+  border-color: #000;
   background-color: #bee3f8;
   transform: scale(1.02);
 }
@@ -109,7 +109,7 @@
 }
 
 .dropzone-icon {
-  color: #4299e1;
+  color: #000;
   margin-bottom: 0.5rem;
 }
 
