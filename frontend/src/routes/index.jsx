@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Header from './Header';
+import Header from '../components/Header';
 import Home from '../pages/Home';
 import Datasets from '../pages/Datasets';
 import DatasetDetails from '../pages/DatasetDetails';

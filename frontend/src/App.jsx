@@ -1,8 +1,8 @@
 //src/App.jsx
 import './App.css';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import AppRoutes from './components/Routes';
+import AppRoutes from './routes';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
 
