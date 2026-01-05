@@ -35,6 +35,12 @@ export const API_ENDPOINTS = {
     VALIDATION_CONFIG: `${API_BASE_URL}/datasets/validation/config`,
   },
 
+  // EDA Agent
+  EDA: {
+    ANALYZE: `${API_BASE_URL}/agents/eda/analyze`,
+    HEALTH: `${API_BASE_URL}/agents/eda/health`,
+  },
+
   // Health check
   HELLO: `${API_BASE_URL}/api/hello`,
 };

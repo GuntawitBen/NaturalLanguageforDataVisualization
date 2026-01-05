@@ -176,19 +176,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Avatar with Floating Stats */}
-      <div className="avatar-stats-container">
-        {/* Avatar in center */}
-        <div className="avatar-section">
-          <div className="avatar-placeholder">
-            <img src={avatarImage} alt="User Avatar" className="avatar" />
-          </div>
-        </div>
-
-        {/* Floating Statistics Cards */}
-        <div className="stat-card floating-stat top-left">
+      {/* Statistics Section */}
+      <div className="stats-grid">
+        {/* Total Datasets Card */}
+        <div className="stat-card">
           <div className="stat-icon">
-            <Database size={24} />
+            <Database size={28} />
           </div>
           <div className="stat-content">
             <p className="stat-label">Total Datasets</p>
@@ -196,41 +189,116 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="stat-card floating-stat top-right upload-card">
-            <div className="stat-icon">
-              <Upload size={24} />
-            </div>
-            {/*<h3 className="stat-label">Upload New Dataset</h3>*/}
-            <button
-              className="upload-card-button"
-              onClick={() => navigate('/data-cleaning')}
-            >
-              Upload Dataset
-            </button>
-          </div>
-
-        <div className="stat-card floating-stat bottom-right">
+        {/* Total Rows Card */}
+        <div className="stat-card">
           <div className="stat-icon">
-            <FileText size={24} />
+            <BarChart3 size={28} />
+          </div>
+          <div className="stat-content">
+            <p className="stat-label">Total Rows</p>
+            <p className="stat-value">{totalRows.toLocaleString()}</p>
+          </div>
+        </div>
+
+        {/* Total Storage Card */}
+        <div className="stat-card">
+          <div className="stat-icon">
+            <FileText size={28} />
           </div>
           <div className="stat-content">
             <p className="stat-label">Total Storage</p>
             <p className="stat-value">{formatFileSize(totalSize)}</p>
           </div>
         </div>
+      </div>
 
-        <div className="stat-card floating-stat bottom-left">
-            <div className="stat-icon">
-                <Upload size={24} />
-            </div>
-            {/*<h3 className="stat-label">Upload New Dataset</h3>*/}
-            <button
-                className="upload-card-button"
-                onClick={() => navigate('/recents')}
-            >
-                View Recents
-            </button>
+      {/* Recent Datasets Section */}
+      <div className="datasets-section">
+        <div className="section-header">
+          <div>
+            <h2>Recent Datasets</h2>
+            <p className="section-subtitle">
+              {datasets.length === 0 ? 'No datasets yet' : `Showing ${Math.min(6, datasets.length)} of ${datasets.length}`}
+            </p>
+          </div>
+          <button
+            className="upload-button"
+            onClick={() => navigate('/data-cleaning')}
+          >
+            <Upload size={20} />
+            Upload Dataset
+          </button>
         </div>
+
+        {datasets.length === 0 ? (
+          <div className="empty-state">
+            <Database size={64} className="empty-icon" />
+            <h3>No datasets yet</h3>
+            <p>Upload your first CSV file to get started with data visualization</p>
+            <button
+              className="upload-button-large"
+              onClick={() => navigate('/data-cleaning')}
+            >
+              <Upload size={20} />
+              Upload Your First Dataset
+            </button>
+          </div>
+        ) : (
+          <div className="datasets-grid">
+            {datasets.slice(0, 6).map((dataset) => (
+              <div key={dataset.dataset_id} className="dataset-card">
+                {/* Card Header */}
+                <div className="dataset-card-header">
+                  <div className="dataset-icon">
+                    <FileText size={24} />
+                  </div>
+                  <div className="dataset-info">
+                    <h3>{dataset.dataset_name}</h3>
+                    <p className="dataset-filename">{dataset.original_filename}</p>
+                  </div>
+                </div>
+
+                {/* Card Stats */}
+                <div className="dataset-stats">
+                  <div className="stat">
+                    <BarChart3 size={16} />
+                    {dataset.row_count.toLocaleString()} rows
+                  </div>
+                  <div className="stat">
+                    <Database size={16} />
+                    {dataset.column_count} cols
+                  </div>
+                  <div className="stat">
+                    <Calendar size={16} />
+                    {formatDate(dataset.upload_date)}
+                  </div>
+                  <div className="stat">
+                    <FileText size={16} />
+                    {formatFileSize(dataset.file_size_bytes)}
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div className="dataset-actions">
+                  <button
+                    className="action-button view"
+                    onClick={() => navigate(`/datasets/${dataset.dataset_id}`)}
+                  >
+                    <Eye size={16} />
+                    View
+                  </button>
+                  <button
+                    className="action-button delete"
+                    onClick={() => handleDelete(dataset.dataset_id, dataset.dataset_name)}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

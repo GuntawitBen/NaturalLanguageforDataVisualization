@@ -37,6 +37,15 @@ except Exception as e:
     ownership_router = None
 
 try:
+    from routes.eda import router as eda_router
+    print("[OK] EDA router imported successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to import EDA router: {e}")
+    import traceback
+    traceback.print_exc()
+    eda_router = None
+
+try:
     from database import init_database
     print("[OK] Database module imported successfully")
 except Exception as e:
@@ -129,3 +138,9 @@ if ownership_router is not None:
     print("[OK] Ownership router included")
 else:
     print("[WARNING] Ownership router not included (import failed)")
+
+if eda_router is not None:
+    app.include_router(eda_router)
+    print("[OK] EDA router included")
+else:
+    print("[WARNING] EDA router not included (import failed)")
