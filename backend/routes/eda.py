@@ -1,5 +1,5 @@
 """
-EDA Agent API Routes
+Inspection Agent API Routes (formerly EDA Agent)
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from Auth.Auth_utils import get_current_user
-from Agents.eda_agent import EDAAnalyzer, EDARequest, EDAReport, EDAErrorResponse
+from Agents.inspection_agent import InspectionAnalyzer, InspectionRequest, InspectionReport, InspectionErrorResponse
 
 router = APIRouter(prefix="/agents/eda", tags=["EDA Agent"])
 
@@ -15,24 +15,24 @@ router = APIRouter(prefix="/agents/eda", tags=["EDA Agent"])
 # API Endpoints
 # ============================================================================
 
-@router.post("/analyze", response_model=EDAReport)
+@router.post("/analyze", response_model=InspectionReport)
 async def analyze_dataset(
-    request: EDARequest,
+    request: InspectionRequest,
     current_user_email: str = Depends(get_current_user)
 ):
     """
-    Analyze a temporary CSV file for data quality issues
+    Analyze a temporary CSV file for data quality issues using Inspection Agent
 
     This endpoint is called during Stage 2 of the data cleaning workflow.
     It analyzes the uploaded CSV file and returns a comprehensive report
     of data quality issues, statistics, and recommendations.
 
     Args:
-        request: EDARequest with temp_file_path
+        request: InspectionRequest with temp_file_path
         current_user_email: Authenticated user email
 
     Returns:
-        EDAReport with comprehensive analysis
+        InspectionReport with comprehensive analysis
     """
     try:
         # Validate temp file path
@@ -53,7 +53,7 @@ async def analyze_dataset(
             )
 
         # Initialize analyzer
-        analyzer = EDAAnalyzer()
+        analyzer = InspectionAnalyzer()
 
         # Perform analysis
         report = analyzer.analyze_csv(
@@ -71,12 +71,12 @@ async def analyze_dataset(
         # OpenAI API key not configured
         raise HTTPException(
             status_code=500,
-            detail=f"EDA service configuration error: {str(e)}"
+            detail=f"Inspection service configuration error: {str(e)}"
         )
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] EDA analysis failed: {str(e)}")
+        print(f"[ERROR] Inspection analysis failed: {str(e)}")
         import traceback
         traceback.print_exc()
 
@@ -88,7 +88,7 @@ async def analyze_dataset(
 @router.get("/health")
 async def health_check():
     """
-    Health check endpoint for EDA service
+    Health check endpoint for Inspection Agent service
     Verifies OpenAI API key is configured
     """
     import os
@@ -96,7 +96,7 @@ async def health_check():
     api_key_configured = bool(os.getenv("OPENAI_API_KEY"))
 
     return {
-        "service": "EDA Agent",
+        "service": "Inspection Agent",
         "status": "healthy" if api_key_configured else "degraded",
         "openai_configured": api_key_configured,
         "message": "Ready for analysis" if api_key_configured else "OpenAI API key not configured"

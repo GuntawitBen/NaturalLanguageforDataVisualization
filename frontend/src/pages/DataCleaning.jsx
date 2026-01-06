@@ -21,6 +21,16 @@ export default function DataCleaning() {
   const [finalized, setFinalized] = useState(false);
   const [error, setError] = useState(null);
 
+  // EDA Analysis state
+  const [edaReport, setEdaReport] = useState(null);
+  const [edaLoading, setEdaLoading] = useState(false);
+  const [edaError, setEdaError] = useState(null);
+  const [edaCompleted, setEdaCompleted] = useState(false);
+
+  // Chat interface state
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+
   const stages = [
     { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
     { id: 2, name: 'Data Inspection', description: 'Review and validate your data' },
@@ -93,6 +103,180 @@ export default function DataCleaning() {
       setError(null);
     }
   };
+
+  // Trigger EDA analysis when entering Stage 2
+  const runEDAAnalysis = async () => {
+    if (!tempFilePath) {
+      setEdaError('No file uploaded for analysis');
+      return;
+    }
+
+    setEdaLoading(true);
+    setEdaError(null);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.EDA.ANALYZE, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temp_file_path: tempFilePath,
+          include_sample_rows: true,
+          max_sample_rows: 20
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'EDA analysis failed');
+      }
+
+      const report = await response.json();
+      setEdaReport(report);
+      setEdaCompleted(true);
+
+      // Build and display chat messages progressively
+      buildChatMessages(report);
+    } catch (err) {
+      console.error('EDA analysis error:', err);
+      setEdaError(err.message);
+    } finally {
+      setEdaLoading(false);
+    }
+  };
+
+  // Build chat messages from EDA report
+  const buildChatMessages = async (report) => {
+    const messages = [];
+
+    // 1. Greeting message
+    messages.push({
+      id: 'greeting',
+      type: 'assistant',
+      content: `Hi! I've finished analyzing your dataset "${datasetName}". Let me walk you through what I found.`
+    });
+
+    // 2. Summary message
+    const summaryContent = `📊 **Dataset Overview**\n\n` +
+      `• **${report.dataset_summary.row_count.toLocaleString()} rows** and **${report.dataset_summary.column_count} columns**\n` +
+      `• Data completeness: **${report.dataset_summary.overall_completeness.toFixed(1)}%**\n` +
+      `• Duplicate rows: **${report.dataset_summary.duplicate_row_count}**\n\n` +
+      report.gpt_summary;
+
+    messages.push({
+      id: 'summary',
+      type: 'assistant',
+      content: summaryContent
+    });
+
+    // 3. Critical issues
+    const criticalIssues = report.issues.filter(issue => issue.severity === 'critical');
+    if (criticalIssues.length > 0) {
+      messages.push({
+        id: 'critical-intro',
+        type: 'assistant',
+        content: `🚨 I found **${criticalIssues.length} critical issue${criticalIssues.length > 1 ? 's' : ''}** that need your attention:`
+      });
+
+      criticalIssues.forEach((issue, idx) => {
+        messages.push({
+          id: `critical-${idx}`,
+          type: 'assistant',
+          severity: 'critical',
+          content: `**${issue.title}**\n\n${issue.description}\n\n` +
+            (issue.affected_columns.length > 0 ? `📍 Affected columns: ${issue.affected_columns.join(', ')}\n\n` : '') +
+            `📊 **Impact on Visualization:** ${issue.visualization_impact}`
+        });
+      });
+    }
+
+    // 4. Warnings
+    const warnings = report.issues.filter(issue => issue.severity === 'warning');
+    if (warnings.length > 0) {
+      messages.push({
+        id: 'warning-intro',
+        type: 'assistant',
+        content: `⚠️ I also noticed **${warnings.length} warning${warnings.length > 1 ? 's' : ''}**:`
+      });
+
+      warnings.forEach((issue, idx) => {
+        messages.push({
+          id: `warning-${idx}`,
+          type: 'assistant',
+          severity: 'warning',
+          content: `**${issue.title}**\n\n${issue.description}\n\n` +
+            (issue.affected_columns.length > 0 ? `📍 Affected columns: ${issue.affected_columns.join(', ')}\n\n` : '') +
+            `📊 **Impact on Visualization:** ${issue.visualization_impact}`
+        });
+      });
+    }
+
+    // 5. Info items (grouped)
+    const infoIssues = report.issues.filter(issue => issue.severity === 'info');
+    if (infoIssues.length > 0) {
+      let infoContent = `ℹ️ Here are **${infoIssues.length} additional observation${infoIssues.length > 1 ? 's' : ''}** about your data:\n\n`;
+      infoIssues.forEach((issue, idx) => {
+        infoContent += `**${idx + 1}. ${issue.title}**\n${issue.description}\n`;
+        if (issue.affected_columns.length > 0) {
+          infoContent += `Affected: ${issue.affected_columns.join(', ')}\n`;
+        }
+        infoContent += `\n`;
+      });
+
+      messages.push({
+        id: 'info-group',
+        type: 'assistant',
+        severity: 'info',
+        content: infoContent
+      });
+    }
+
+    // 6. Visualization concerns
+    if (report.visualization_concerns.length > 0) {
+      let vizContent = `📈 **Visualization Concerns:**\n\n`;
+      report.visualization_concerns.forEach((concern, idx) => {
+        vizContent += `${idx + 1}. ${concern}\n`;
+      });
+
+      messages.push({
+        id: 'viz-concerns',
+        type: 'assistant',
+        content: vizContent
+      });
+    }
+
+    // 7. Final advice
+    const finalAdvice = report.issues.length === 0
+      ? `✅ Great news! Your dataset looks clean and ready for visualization. You can proceed to the next stage with confidence.`
+      : report.critical_issues_count > 0
+        ? `⚠️ I recommend addressing the critical issues before proceeding. These could significantly impact your visualizations.`
+        : `✅ Your dataset is in good shape! The warnings are optional to fix, but addressing them will improve your visualizations.`;
+
+    messages.push({
+      id: 'final-advice',
+      type: 'assistant',
+      content: finalAdvice
+    });
+
+    // Display messages progressively
+    setChatMessages([]);
+    for (let i = 0; i < messages.length; i++) {
+      setIsTyping(true);
+      await new Promise(resolve => setTimeout(resolve, 800)); // Delay between messages
+      setChatMessages(prev => [...prev, messages[i]]);
+      setIsTyping(false);
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause after message appears
+    }
+  };
+
+  // Auto-trigger EDA when entering Stage 2
+  useEffect(() => {
+    if (currentStage === 2 && tempFilePath && !edaCompleted && !edaLoading) {
+      runEDAAnalysis();
+    }
+  }, [currentStage, tempFilePath]);
 
   const handleComplete = async () => {
     setFinalizing(true);
@@ -197,30 +381,145 @@ export default function DataCleaning() {
           </div>
         )}
 
-        {/* Stage 2: Inspection */}
+        {/* Stage 2: AI Data Quality Analysis */}
         {currentStage === 2 && (
           <div className="stage-panel">
             <div className="stage-header">
-              <h2>Stage 2: Data Inspection</h2>
-              <p>Review your uploaded data and check for any issues</p>
+              <h2>Stage 2: AI Data Quality Analysis</h2>
+              <p>AI-powered analysis of your dataset for potential issues</p>
             </div>
             <div className="stage-body">
-              <div className="dataset-summary">
-                <div className="summary-card">
-                  <h4>Dataset Information</h4>
-                  <ul>
-                    <li><span>Name:</span> {datasetName}</li>
-                    <li><span>File:</span> {originalFilename}</li>
-                    <li><span>Size:</span> {(fileSize / 1024).toFixed(2)} KB</li>
-                    <li><span>Status:</span> Pending Processing</li>
-                  </ul>
-                </div>
+              {/* Loading State - Chat Interface */}
+              {edaLoading && (
+                <div className="chat-container">
+                  <div className="chat-messages">
+                    {/* Greeting message */}
+                    <div className="chat-message">
+                      <div className="message-avatar">
+                        <div className="avatar-icon">AI</div>
+                      </div>
+                      <div className="message-content">
+                        <div className="message-text">
+                          <strong>Hi there! 👋</strong>
+                          <br /><br />
+                          I'm your data quality assistant. Let me take a look at your dataset and check for any issues that might affect your visualizations.
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="info-card">
-                  <h4>What happens in this stage?</h4>
-                  <p>Review your data structure, check column types, and identify any missing values or anomalies.</p>
+                    {/* Analyzing message with typing indicator */}
+                    <div className="chat-message">
+                      <div className="message-avatar">
+                        <div className="avatar-icon">AI</div>
+                      </div>
+                      <div className="message-content">
+                        <div className="message-text">
+                          <strong>Analyzing your dataset...</strong>
+                          <br /><br />
+                          I'm checking for:
+                          <br />
+                          <div className="bullet-item">• Missing values and data completeness</div>
+                          <div className="bullet-item">• Outliers and anomalies</div>
+                          <div className="bullet-item">• Data type consistency</div>
+                          <div className="bullet-item">• Visualization concerns</div>
+                        </div>
+                        <div className="typing-indicator" style={{ marginTop: '1rem' }}>
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Error State - Chat Interface */}
+              {edaError && !edaLoading && (
+                <div className="chat-container">
+                  <div className="chat-messages">
+                    <div className="chat-message">
+                      <div className="message-avatar">
+                        <div className="avatar-icon">AI</div>
+                      </div>
+                      <div className="message-content error-message">
+                        <div className="message-text">
+                          <strong>Oops! Something went wrong 😔</strong>
+                          <br /><br />
+                          I encountered an error while analyzing your dataset:
+                          <br /><br />
+                          <em>{edaError}</em>
+                          <br /><br />
+                          Would you like me to try again?
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="chat-actions">
+                    <button onClick={runEDAAnalysis} className="secondary-button">
+                      Yes, Retry Analysis
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Chat Interface Results */}
+              {edaReport && !edaLoading && (
+                <div className="chat-container">
+                  <div className="chat-messages">
+                    {chatMessages.map((message) => (
+                      <div key={message.id} className={`chat-message ${message.severity || ''}`}>
+                        <div className="message-avatar">
+                          <div className="avatar-icon">AI</div>
+                        </div>
+                        <div className="message-content">
+                          <div className="message-text">
+                            {message.content.split('\n').map((line, idx) => {
+                              // Simple markdown-like rendering
+                              let processedLine = line;
+
+                              // Bold **text**
+                              processedLine = processedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                              // Bullets •
+                              if (processedLine.trim().startsWith('•')) {
+                                processedLine = `<div class="bullet-item">${processedLine}</div>`;
+                              }
+
+                              return (
+                                <div key={idx} dangerouslySetInnerHTML={{ __html: processedLine || '<br/>' }} />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Typing indicator */}
+                    {isTyping && (
+                      <div className="chat-message">
+                        <div className="message-avatar">
+                          <div className="avatar-icon">AI</div>
+                        </div>
+                        <div className="message-content">
+                          <div className="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action button */}
+                  <div className="chat-actions">
+                    <button onClick={runEDAAnalysis} className="secondary-button">
+                      Re-analyze Dataset
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

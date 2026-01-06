@@ -125,3 +125,53 @@ def build_fallback_summary(detected_issues_count: int) -> str:
         return f"Automated analysis detected {detected_issues_count} data quality issues that should be addressed before visualization."
     else:
         return f"Automated analysis detected {detected_issues_count} data quality issues. Review each issue carefully before proceeding with visualization."
+
+def build_visualization_impact_prompt(
+    issue_title: str,
+    issue_type: str,
+    issue_description: str,
+    affected_columns: List[str],
+    column_details: Dict[str, Any],
+    sample_values: List[Any] = None
+) -> str:
+    """
+    Build prompt for generating dynamic visualization impact explanation
+
+    Args:
+        issue_title: Title of the issue
+        issue_type: Type of issue (missing_values, outliers, etc.)
+        issue_description: Detailed description
+        affected_columns: List of affected columns
+        column_details: Statistics and details about affected columns
+        sample_values: Optional sample values showing the issue
+    """
+    prompt = f"""You are a data visualization expert. Generate a clear, educational explanation of how this specific data quality issue will affect data visualizations.
+
+**Issue Details:**
+- Title: {issue_title}
+- Type: {issue_type}
+- Description: {issue_description}
+- Affected Columns: {', '.join(affected_columns) if affected_columns else 'N/A'}
+
+**Column Context:**
+{json.dumps(column_details, indent=2)}
+"""
+
+    if sample_values:
+        prompt += f"""
+**Sample Values Showing Issue:**
+{json.dumps(sample_values[:10], indent=2)}
+"""
+
+    prompt += """
+**Task:**
+Generate a 2-3 sentence explanation that:
+1. Explains what this issue is in simple terms
+2. Describes the SPECIFIC impact on visualizations (charts, graphs, plots)
+3. Uses concrete examples relevant to this data
+
+Focus on the visualization impact, not recommendations. Be educational and specific to this situation.
+
+Return ONLY the explanation text, no JSON, no extra formatting."""
+
+    return prompt

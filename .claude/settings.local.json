@@ -13,7 +13,9 @@
       "Bash(powershell:*)",
       "Bash(python -m uvicorn:*)",
       "Bash(ping:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(timeout /t 3 /nobreak)"
     ]
   }
 }

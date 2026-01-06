@@ -1,5 +1,5 @@
 """
-Pydantic models for EDA Agent API
+Pydantic models for Inspection Agent API
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -9,8 +9,8 @@ from datetime import datetime
 # REQUEST MODELS
 # ============================================================================
 
-class EDARequest(BaseModel):
-    """Request model for EDA analysis endpoint"""
+class InspectionRequest(BaseModel):
+    """Request model for inspection analysis endpoint"""
     temp_file_path: str = Field(..., description="Path to temporary CSV file")
     include_sample_rows: bool = Field(default=True, description="Include sample rows in analysis")
     max_sample_rows: int = Field(default=20, description="Maximum number of sample rows")
@@ -49,6 +49,7 @@ class ColumnStatistics(BaseModel):
     kurtosis: Optional[float] = None
     has_outliers: Optional[bool] = None
     outlier_count: Optional[int] = None
+    outlier_method: Optional[str] = None  # "iqr", "zscore", or "isolation_forest"
 
     # Categorical columns
     top_values: Optional[List[Dict[str, Any]]] = None
@@ -67,11 +68,12 @@ class DatasetSummary(BaseModel):
     file_size_bytes: int
     duplicate_row_count: int
     duplicate_row_percentage: float
+    duplicate_column_count: int = 0  # New: duplicate columns
     overall_completeness: float  # Percentage of non-null cells
     memory_usage_mb: Optional[float] = None
 
-class EDAReport(BaseModel):
-    """Complete EDA analysis report"""
+class InspectionReport(BaseModel):
+    """Complete inspection analysis report"""
     success: bool = True
     analysis_timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
@@ -92,7 +94,7 @@ class EDAReport(BaseModel):
     # Performance
     analysis_duration_seconds: Optional[float] = None
 
-class EDAErrorResponse(BaseModel):
+class InspectionErrorResponse(BaseModel):
     """Error response model"""
     success: bool = False
     error: str

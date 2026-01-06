@@ -113,6 +113,7 @@ class EDAAnalyzer:
                     description=f"Column '{col_stat.column_name}' has {col_stat.null_count} missing values ({col_stat.null_percentage:.1f}% of total rows).",
                     affected_columns=[col_stat.column_name],
                     recommendation=self._get_missing_value_recommendation(col_stat.null_percentage),
+                    visualization_impact=self._get_visualization_impact(IssueType.MISSING_VALUES),
                     metadata={
                         "null_count": col_stat.null_count,
                         "null_percentage": col_stat.null_percentage
@@ -132,6 +133,7 @@ class EDAAnalyzer:
                     description=f"Column '{col_stat.column_name}' contains {col_stat.outlier_count} outlier values that may skew visualizations.",
                     affected_columns=[col_stat.column_name],
                     recommendation="Review outliers and consider: (1) removing them if they're errors, (2) capping extreme values, or (3) using log scale for visualization.",
+                    visualization_impact=self._get_visualization_impact(IssueType.OUTLIERS),
                     metadata={
                         "outlier_count": col_stat.outlier_count,
                         "min": col_stat.min,
@@ -153,6 +155,7 @@ class EDAAnalyzer:
                     description=f"Column '{col_stat.column_name}' has {col_stat.unique_count} unique values, which may cause performance issues or cluttered visualizations.",
                     affected_columns=[col_stat.column_name],
                     recommendation="Consider: (1) grouping values into categories, (2) filtering to top N values, or (3) avoiding this column for categorical charts.",
+                    visualization_impact=self._get_visualization_impact(IssueType.HIGH_CARDINALITY),
                     metadata={
                         "unique_count": col_stat.unique_count
                     }
@@ -170,6 +173,7 @@ class EDAAnalyzer:
                 description=f"Found {dataset_summary.duplicate_row_count} duplicate rows ({dataset_summary.duplicate_row_percentage:.1f}% of dataset).",
                 affected_columns=[],
                 recommendation="Review duplicates to determine if they're intentional. Consider removing duplicates if they represent data entry errors.",
+                visualization_impact=self._get_visualization_impact(IssueType.DUPLICATE_ROWS),
                 metadata={
                     "duplicate_count": dataset_summary.duplicate_row_count,
                     "duplicate_percentage": dataset_summary.duplicate_row_percentage
@@ -187,6 +191,7 @@ class EDAAnalyzer:
                     description=f"Column '{col_stat.column_name}' has a skewness of {col_stat.skewness:.2f}, indicating {'right' if col_stat.skewness > 0 else 'left'}-skewed data.",
                     affected_columns=[col_stat.column_name],
                     recommendation="Consider: (1) log transformation for right-skewed data, (2) using median instead of mean for summaries, or (3) box plots instead of histograms for visualization.",
+                    visualization_impact=self._get_visualization_impact(IssueType.SKEWED_DISTRIBUTION),
                     metadata={
                         "skewness": col_stat.skewness,
                         "direction": "right" if col_stat.skewness > 0 else "left"
@@ -204,6 +209,7 @@ class EDAAnalyzer:
                     description=f"Column '{col_stat.column_name}' has kurtosis of {col_stat.kurtosis:.2f}, indicating heavy tails with potential extreme values.",
                     affected_columns=[col_stat.column_name],
                     recommendation="Consider: (1) checking for data quality issues, (2) using robust statistics (median, IQR), or (3) trimming extreme values for visualization.",
+                    visualization_impact=self._get_visualization_impact(IssueType.HEAVY_TAILS),
                     metadata={
                         "kurtosis": col_stat.kurtosis
                     }
@@ -219,6 +225,7 @@ class EDAAnalyzer:
                 description=f"Dataset has {dataset_summary.row_count:,} rows. Visualizations may be slow or cluttered.",
                 affected_columns=[],
                 recommendation=f"Consider: (1) sampling to ~{VISUALIZATION_SAMPLE_SIZE:,} rows for interactive visualizations, (2) using aggregation (binning, grouping), or (3) using specialized visualization techniques (heatmaps, density plots).",
+                visualization_impact=self._get_visualization_impact(IssueType.LARGE_DATASET),
                 metadata={
                     "row_count": dataset_summary.row_count,
                     "recommended_sample_size": VISUALIZATION_SAMPLE_SIZE
@@ -256,6 +263,7 @@ class EDAAnalyzer:
                     description=issue_data.get('description', ''),
                     affected_columns=issue_data.get('affected_columns', []),
                     recommendation=issue_data.get('recommendation', ''),
+                    visualization_impact=issue_data.get('visualization_impact', 'This issue may affect the quality and accuracy of your data visualizations.'),
                     metadata=issue_data.get('metadata')
                 ))
         else:
@@ -295,3 +303,23 @@ class EDAAnalyzer:
             return "Moderate missing values. Consider: (1) imputation with mean/median/mode, (2) forward/backward fill for time series, or (3) excluding rows with missing values if acceptable."
         else:
             return "Low percentage of missing values. Can likely be handled by: (1) removing affected rows, (2) simple imputation, or (3) marking as 'Unknown' category."
+
+    def _get_visualization_impact(self, issue_type: str) -> str:
+        """Generate visualization impact explanation for each issue type"""
+        impacts = {
+            IssueType.MISSING_VALUES: "Missing values create gaps in your visualizations. Charts may show incomplete trends, averages will be calculated on partial data, and bar charts might have inconsistent heights. This can lead to misleading conclusions and skewed insights.",
+
+            IssueType.OUTLIERS: "Outliers are extreme values that lie far from the rest of your data. They can compress the scale of your visualizations, making it hard to see patterns in the majority of your data. For example, one extremely high value can make all other bars in a chart appear tiny and indistinguishable.",
+
+            IssueType.HIGH_CARDINALITY: "High cardinality means a column has many unique values. When visualized, this creates overcrowded charts with too many categories—imagine a bar chart with 100+ bars or a legend with dozens of colors. The visualization becomes cluttered and unreadable, defeating its purpose.",
+
+            IssueType.SKEWED_DISTRIBUTION: "Skewed data means most values cluster on one side with a long tail on the other. In visualizations, this can result in most data points being crammed into one corner of the chart, wasting space and making it difficult to see patterns. Histograms may show all bars on one side, and scatter plots may appear bunched up.",
+
+            IssueType.DUPLICATE_ROWS: "Duplicate rows artificially inflate counts and frequencies in your visualizations. Bar charts will show inflated heights, pie charts will have exaggerated slices, and trend lines may show false spikes. This leads to incorrect conclusions about your data patterns.",
+
+            IssueType.HEAVY_TAILS: "Heavy-tailed distributions have extreme values that extend far beyond the typical range. In visualizations, this causes most data to be compressed into a small area while empty space dominates the chart. Box plots may have very long whiskers, and histograms can be difficult to interpret.",
+
+            IssueType.LARGE_DATASET: "Large datasets with many rows can cause performance issues and overcrowded visualizations. Scatter plots become dense clouds of overlapping points, line charts may appear as solid blocks, and interactive features can become sluggish. Sampling or aggregation is often necessary for effective visualization."
+        }
+
+        return impacts.get(issue_type, "This issue may affect the quality and accuracy of your data visualizations.")
