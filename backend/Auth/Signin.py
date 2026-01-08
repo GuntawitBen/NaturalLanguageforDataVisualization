@@ -43,27 +43,31 @@ async def google_callback(request: Request):
     try:
         token = await oauth.google.authorize_access_token(request)
         user_info = token.get('userinfo')
-        
+
         if user_info:
             email = user_info.get('email')
             name = user_info.get('name')
             picture = user_info.get('picture')
-            
+
             # Save user to Firebase
             save_user_to_firebase(email, name, picture)
-            
+
+            # Generate session token for Google OAuth users
+            session_token = generate_session_token()
+            save_session_token(db, email, session_token)
+
             print(f"User logged in: {name} ({email})")
 
-            # Redirect to main dashboard
+            # Redirect to main dashboard with session token
             return RedirectResponse(
-                url=f"{FRONTEND_URL}/?email={email}&name={name}"
+                url=f"{FRONTEND_URL}/?email={email}&name={name}&session_token={session_token}"
             )
         else:
             raise HTTPException(status_code=400, detail="Failed to get user info from Google")
     except Exception as e:
         print(f"Error during Google OAuth: {e}")
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login/?error=auth_failed"
+            url=f"{FRONTEND_URL}/signin/?error=auth_failed"
         )
     
 @router.get("/user/{email}")
