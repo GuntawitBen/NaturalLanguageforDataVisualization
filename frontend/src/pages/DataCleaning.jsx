@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
@@ -27,9 +27,17 @@ export default function DataCleaning() {
   const [edaError, setEdaError] = useState(null);
   const [edaCompleted, setEdaCompleted] = useState(false);
 
+  // Progress tracking state
+  const [progressStage, setProgressStage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
+  const [enrichmentProgress, setEnrichmentProgress] = useState({ current: 0, total: 0, issue: '' });
+
   // Chat interface state
   const [chatMessages, setChatMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Ref for EventSource to cancel streaming analysis
+  const eventSourceRef = useRef(null);
 
   const stages = [
     { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
@@ -59,6 +67,12 @@ export default function DataCleaning() {
   // Cleanup temp file when component unmounts (if not finalized)
   useEffect(() => {
     return () => {
+      // Cancel ongoing analysis on unmount
+      if (eventSourceRef.current) {
+        console.log('Component unmounting, canceling analysis...');
+        eventSourceRef.current.close();
+      }
+
       // Only cleanup if we have a temp file and it wasn't finalized
       if (tempFilePath && !finalized) {
         const cleanupTempFile = async () => {
@@ -84,11 +98,36 @@ export default function DataCleaning() {
     };
   }, [tempFilePath, sessionToken, finalized]);
 
+  // Cancel ongoing analysis
+  const cancelAnalysis = () => {
+    if (eventSourceRef.current) {
+      console.log('Canceling analysis...');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+      setEdaLoading(false);
+      setIsTyping(false);
+      setProgressStage('');
+      setProgressMessage('');
+      setEnrichmentProgress({ current: 0, total: 0, issue: '' });
+    }
+  };
+
   const handleNext = () => {
     // Stage 1: Upload - can't go next without uploading
     if (currentStage === 1 && !tempFilePath) {
       setError('Please upload a file first');
       return;
+    }
+
+    // Stage 2: If analysis is in progress, show confirmation
+    if (currentStage === 2 && edaLoading) {
+      const confirmLeave = window.confirm(
+        'Data analysis is still in progress. Are you sure you want to leave? The analysis will be canceled.'
+      );
+      if (!confirmLeave) {
+        return;
+      }
+      cancelAnalysis();
     }
 
     if (currentStage < stages.length) {
@@ -98,14 +137,25 @@ export default function DataCleaning() {
   };
 
   const handleBack = () => {
+    // If analysis is in progress on Stage 2, show confirmation
+    if (currentStage === 2 && edaLoading) {
+      const confirmLeave = window.confirm(
+        'Data analysis is still in progress. Are you sure you want to go back? The analysis will be canceled.'
+      );
+      if (!confirmLeave) {
+        return;
+      }
+      cancelAnalysis();
+    }
+
     if (currentStage > 1) {
       setCurrentStage(currentStage - 1);
       setError(null);
     }
   };
 
-  // Trigger EDA analysis when entering Stage 2
-  const runEDAAnalysis = async () => {
+  // Trigger EDA analysis with streaming when entering Stage 2
+  const runEDAAnalysis = () => {
     if (!tempFilePath) {
       setEdaError('No file uploaded for analysis');
       return;
@@ -113,38 +163,111 @@ export default function DataCleaning() {
 
     setEdaLoading(true);
     setEdaError(null);
+    setProgressStage('initializing');
+    setProgressMessage('Starting analysis...');
+    setEnrichmentProgress({ current: 0, total: 0, issue: '' });
 
-    try {
-      const response = await fetch(API_ENDPOINTS.EDA.ANALYZE, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          temp_file_path: tempFilePath,
-          include_sample_rows: true,
-          max_sample_rows: 20
-        }),
-      });
+    // Build EventSource URL with query params and auth header
+    // Note: EventSource doesn't support POST or custom headers, so we need to use a workaround
+    // We'll send the request body as query parameters
+    const requestBody = {
+      temp_file_path: tempFilePath,
+      include_sample_rows: true,
+      max_sample_rows: 20
+    };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'EDA analysis failed');
+    // Create a POST request to get the streaming response
+    const startStreamingAnalysis = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.EDA.ANALYZE_STREAM, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to start streaming analysis');
+        }
+
+        // Read the stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              const eventType = line.substring(6).trim();
+              continue;
+            }
+
+            if (line.startsWith('data:')) {
+              const data = JSON.parse(line.substring(5).trim());
+
+              // Handle different event types
+              if (data.stage) {
+                setProgressStage(data.stage);
+                setProgressMessage(data.message || '');
+
+                // If enrichment stage, initialize progress
+                if (data.stage === 'enrichment' && data.total) {
+                  setEnrichmentProgress({ current: 0, total: data.total, issue: '' });
+                }
+              }
+
+              if (data.current !== undefined && data.total !== undefined) {
+                // Progress update
+                setEnrichmentProgress({
+                  current: data.current,
+                  total: data.total,
+                  issue: data.issue_title || ''
+                });
+              }
+
+              if (data.error) {
+                setEdaError(data.error);
+                setEdaLoading(false);
+                return;
+              }
+
+              if (data.success !== undefined) {
+                // Complete event with full report
+                setEdaReport(data);
+                setEdaCompleted(true);
+                setEdaLoading(false);
+                setProgressStage('complete');
+                setProgressMessage('Analysis complete!');
+
+                // Build and display chat messages progressively
+                buildChatMessages(data);
+                return;
+              }
+            }
+          }
+        }
+
+      } catch (err) {
+        console.error('Streaming analysis error:', err);
+        setEdaError(err.message);
+        setEdaLoading(false);
       }
+    };
 
-      const report = await response.json();
-      setEdaReport(report);
-      setEdaCompleted(true);
-
-      // Build and display chat messages progressively
-      buildChatMessages(report);
-    } catch (err) {
-      console.error('EDA analysis error:', err);
-      setEdaError(err.message);
-    } finally {
-      setEdaLoading(false);
-    }
+    startStreamingAnalysis();
   };
 
   // Build chat messages from EDA report
@@ -385,11 +508,11 @@ export default function DataCleaning() {
         {currentStage === 2 && (
           <div className="stage-panel">
             <div className="stage-header">
-              <h2>Stage 2: AI Data Quality Analysis</h2>
-              <p>AI-powered analysis of your dataset for potential issues</p>
+              <h2>Stage 2: Data Inspection</h2>
+              <p>AI-powered Inspection Agent analyzing your dataset for potential issues</p>
             </div>
             <div className="stage-body">
-              {/* Loading State - Chat Interface */}
+              {/* Loading State - Chat Interface with Progress */}
               {edaLoading && (
                 <div className="chat-container">
                   <div className="chat-messages">
@@ -402,26 +525,93 @@ export default function DataCleaning() {
                         <div className="message-text">
                           <strong>Hi there! 👋</strong>
                           <br /><br />
-                          I'm your data quality assistant. Let me take a look at your dataset and check for any issues that might affect your visualizations.
+                          I'm your data inspection assistant. Let me take a look at your dataset and check for any issues that might affect your visualizations.
                         </div>
                       </div>
                     </div>
 
-                    {/* Analyzing message with typing indicator */}
+                    {/* Progress message */}
                     <div className="chat-message">
                       <div className="message-avatar">
                         <div className="avatar-icon">AI</div>
                       </div>
                       <div className="message-content">
                         <div className="message-text">
-                          <strong>Analyzing your dataset...</strong>
-                          <br /><br />
-                          I'm checking for:
-                          <br />
-                          <div className="bullet-item">• Missing values and data completeness</div>
-                          <div className="bullet-item">• Outliers and anomalies</div>
-                          <div className="bullet-item">• Data type consistency</div>
-                          <div className="bullet-item">• Visualization concerns</div>
+                          <strong>
+                            {progressStage === 'loading' && '📂 Loading dataset...'}
+                            {progressStage === 'summary' && '📊 Calculating summary statistics...'}
+                            {progressStage === 'statistics' && '📈 Analyzing column statistics...'}
+                            {progressStage === 'detection' && '🔍 Detecting data quality issues...'}
+                            {progressStage === 'enrichment' && '✨ Generating AI insights...'}
+                            {progressStage === 'summary' && '📝 Creating final summary...'}
+                            {!progressStage && 'Analyzing your dataset...'}
+                          </strong>
+                          {progressMessage && (
+                            <>
+                              <br /><br />
+                              {progressMessage}
+                            </>
+                          )}
+
+                          {/* Enrichment progress bar */}
+                          {progressStage === 'enrichment' && enrichmentProgress.total > 0 && (
+                            <>
+                              <br /><br />
+                              <div style={{ marginTop: '1rem' }}>
+                                <div style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '0.5rem',
+                                  fontSize: '0.9rem',
+                                  color: '#666'
+                                }}>
+                                  <span>
+                                    {enrichmentProgress.current > 0 && enrichmentProgress.issue &&
+                                      `Analyzing: ${enrichmentProgress.issue.substring(0, 50)}...`
+                                    }
+                                  </span>
+                                  <span>
+                                    <strong>{enrichmentProgress.current}</strong> / {enrichmentProgress.total}
+                                  </span>
+                                </div>
+                                <div style={{
+                                  width: '100%',
+                                  height: '8px',
+                                  backgroundColor: '#e0e0e0',
+                                  borderRadius: '4px',
+                                  overflow: 'hidden'
+                                }}>
+                                  <div style={{
+                                    width: `${(enrichmentProgress.current / enrichmentProgress.total) * 100}%`,
+                                    height: '100%',
+                                    backgroundColor: '#4CAF50',
+                                    transition: 'width 0.3s ease'
+                                  }}></div>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* General progress items */}
+                          {progressStage !== 'enrichment' && (
+                            <>
+                              <br /><br />
+                              I'm checking for:
+                              <br />
+                              <div className="bullet-item" style={{ opacity: progressStage === 'loading' ? 1 : 0.5 }}>
+                                {progressStage === 'loading' ? '🔄' : '✓'} Missing values and data completeness
+                              </div>
+                              <div className="bullet-item" style={{ opacity: progressStage === 'detection' ? 1 : 0.5 }}>
+                                {progressStage === 'detection' ? '🔄' : '✓'} Outliers and anomalies
+                              </div>
+                              <div className="bullet-item" style={{ opacity: progressStage === 'statistics' ? 1 : 0.5 }}>
+                                {progressStage === 'statistics' ? '🔄' : '✓'} Data type consistency
+                              </div>
+                              <div className="bullet-item" style={{ opacity: progressStage === 'enrichment' ? 1 : 0.5 }}>
+                                {progressStage === 'enrichment' ? '🔄' : '✓'} Visualization concerns
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="typing-indicator" style={{ marginTop: '1rem' }}>
                           <span></span>
@@ -553,7 +743,8 @@ export default function DataCleaning() {
         <button
           onClick={handleBack}
           className="nav-button secondary"
-          disabled={currentStage === 1}
+          disabled={currentStage === 1 || edaLoading}
+          title={edaLoading ? 'Please wait for analysis to complete' : ''}
         >
           <ArrowLeft size={20} />
           Previous
@@ -563,9 +754,10 @@ export default function DataCleaning() {
           <button
             onClick={handleNext}
             className="nav-button primary"
-            disabled={finalizing || (currentStage === 1 && !tempFilePath)}
+            disabled={finalizing || (currentStage === 1 && !tempFilePath) || (currentStage === 2 && edaLoading)}
+            title={edaLoading ? 'Please wait for analysis to complete' : ''}
           >
-            Next
+            {currentStage === 2 && edaLoading ? 'Analyzing...' : 'Next'}
             <ArrowRight size={20} />
           </button>
         ) : (

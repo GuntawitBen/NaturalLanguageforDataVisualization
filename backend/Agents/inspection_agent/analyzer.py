@@ -4,7 +4,7 @@ Core Inspection Analyzer
 import pandas as pd
 import time
 import uuid
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 from pathlib import Path
 
 from .data_quality_checks import (
@@ -34,6 +34,7 @@ from .config import (
     DUPLICATE_ROW_WARNING_THRESHOLD,
     LARGE_DATASET_THRESHOLD,
     VISUALIZATION_SAMPLE_SIZE,
+    OPENAI_RATE_LIMIT_DELAY,
     Severity,
     IssueType
 )
@@ -77,37 +78,11 @@ class InspectionAnalyzer:
         print(f"[INFO] Enriching {len(issues)} issues with GPT-4 visualization impacts...")
         issues = self._enrich_issues_with_impacts(df, issues, column_stats_list)
 
-        # Step 4: Get sample rows for GPT-4
-        sample_rows = []
-        if include_sample_rows:
-            sample_rows = self._get_sample_rows(df, max_sample_rows)
+        # Step 4: Generate GPT-based summary (no additional issue detection)
+        print(f"[INFO] Generating analysis summary...")
+        gpt_summary, visualization_concerns = self._generate_summary(dataset_summary, issues)
 
-        # Step 5: GPT-4 analysis
-        gpt_result = self._get_gpt_analysis(
-            dataset_summary=dataset_summary.dict(),
-            column_statistics=[col.dict() for col in column_stats_list],
-            sample_rows=sample_rows,
-            detected_issues_summary=self._get_issues_summary(issues)
-        )
-
-        gpt_summary = gpt_result.get('summary', 'Analysis completed.')
-        visualization_concerns = gpt_result.get('visualization_concerns', [])
-
-        # Add GPT-4 detected issues
-        if gpt_result.get('success') and gpt_result.get('additional_issues'):
-            for issue_data in gpt_result['additional_issues']:
-                issues.append(self._create_data_issue(
-                    issue_type=issue_data.get('type', IssueType.VISUALIZATION_CONCERN),
-                    severity=issue_data.get('severity', Severity.INFO),
-                    title=issue_data.get('title', 'GPT-4 Detected Issue'),
-                    description=issue_data.get('description', ''),
-                    affected_columns=issue_data.get('affected_columns', []),
-                    recommendation=issue_data.get('recommendation', ''),
-                    visualization_impact=issue_data.get('visualization_impact', 'This issue may affect visualization quality.'),
-                    metadata=issue_data.get('metadata')
-                ))
-
-        # Step 6: Count issues by severity
+        # Step 5: Count issues by severity
         critical_count = sum(1 for issue in issues if issue.severity == Severity.CRITICAL)
         warning_count = sum(1 for issue in issues if issue.severity == Severity.WARNING)
         info_count = sum(1 for issue in issues if issue.severity == Severity.INFO)
@@ -473,21 +448,28 @@ class InspectionAnalyzer:
         """
         enriched_issues = []
 
-        for issue in issues:
+        for idx, issue in enumerate(issues):
             try:
-                # Get column details for affected columns
+                print(f"  [{idx+1}/{len(issues)}] Generating impact for: {issue.title}")
+
+                # Get minimal column details for context (only essential fields)
                 column_details = {}
                 for col_name in issue.affected_columns:
                     col_stat = next((c for c in column_stats_list if c.column_name == col_name), None)
                     if col_stat:
-                        column_details[col_name] = col_stat.dict()
+                        # Send only essential fields to reduce tokens
+                        column_details[col_name] = {
+                            'data_type': col_stat.data_type,
+                            'null_percentage': col_stat.null_percentage,
+                            'unique_count': col_stat.unique_count
+                        }
 
-                # Get sample values if applicable
+                # Get sample values if applicable (only 3 for token efficiency)
                 sample_values = None
                 if issue.affected_columns and len(issue.affected_columns) > 0:
                     col_name = issue.affected_columns[0]
                     if col_name in df.columns:
-                        sample_values = df[col_name].dropna().head(10).tolist()
+                        sample_values = df[col_name].dropna().head(3).tolist()
 
                 # Generate dynamic visualization impact
                 visualization_impact = self.openai_client.generate_visualization_impact(
@@ -503,12 +485,26 @@ class InspectionAnalyzer:
                 issue.visualization_impact = visualization_impact
                 enriched_issues.append(issue)
 
-                print(f"  ✓ Generated impact for: {issue.title}")
+                print(f"  ✓ Success: {issue.title[:50]}...")
+
+                # Add delay between API calls to avoid rate limiting
+                if idx < len(issues) - 1:  # Don't delay after last issue
+                    print(f"  [INFO] Waiting {OPENAI_RATE_LIMIT_DELAY}s before next request (rate limit protection)...")
+                    time.sleep(OPENAI_RATE_LIMIT_DELAY)
 
             except Exception as e:
-                # If GPT-4 fails, keep the original issue
-                print(f"  ✗ Failed to generate impact for {issue.title}: {str(e)}")
+                # If GPT-4 fails, keep the original issue with placeholder
+                error_type = type(e).__name__
+                print(f"  ✗ Failed: {issue.title}")
+                print(f"     Error: {error_type}: {str(e)}")
                 enriched_issues.append(issue)
+
+                # Add delay even on error to avoid hammering API
+                if idx < len(issues) - 1:
+                    print(f"  [INFO] Waiting {OPENAI_RATE_LIMIT_DELAY}s before next request (rate limit protection)...")
+                    time.sleep(OPENAI_RATE_LIMIT_DELAY)
+
+        print(f"[INFO] Enrichment complete: {len([i for i in enriched_issues if '[GPT-4' not in i.visualization_impact])}/{len(issues)} successful")
 
         return enriched_issues
 
@@ -526,37 +522,39 @@ class InspectionAnalyzer:
         sample_df = df.head(n)
         return sample_df.to_dict('records')
 
-    def _get_issues_summary(self, issues: List[DataIssue]) -> Dict[str, int]:
-        """Get summary of detected issues"""
-        return {
-            'missing_values_count': sum(1 for i in issues if i.type == IssueType.MISSING_VALUES),
-            'outliers_count': sum(1 for i in issues if 'outlier' in i.type.lower()),
-            'duplicate_rows': sum(1 for i in issues if i.type == IssueType.DUPLICATE_ROWS),
-            'duplicate_columns': sum(1 for i in issues if i.type == IssueType.DUPLICATE_COLUMNS),
-            'mixed_types_count': sum(1 for i in issues if i.type == IssueType.MIXED_DATA_TYPES),
-            'total_issues': len(issues)
-        }
-
-    def _get_gpt_analysis(
+    def _generate_summary(
         self,
-        dataset_summary: Dict[str, Any],
-        column_statistics: List[Dict[str, Any]],
-        sample_rows: List[Dict[str, Any]],
-        detected_issues_summary: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Get GPT-4 analysis"""
+        dataset_summary: DatasetSummary,
+        issues: List[DataIssue]
+    ) -> Tuple[str, List[str]]:
+        """
+        Generate summary and visualization concerns from detected issues
+
+        Returns:
+            Tuple of (summary_text, visualization_concerns_list)
+        """
         try:
-            return self.openai_client.analyze_dataset(
-                dataset_summary=dataset_summary,
-                column_statistics=column_statistics,
-                sample_rows=sample_rows,
-                detected_issues_summary=detected_issues_summary
+            # Convert issues to dict format for GPT
+            issues_dict = [
+                {
+                    'severity': issue.severity,
+                    'type': issue.type,
+                    'title': issue.title,
+                    'description': issue.description
+                }
+                for issue in issues
+            ]
+
+            return self.openai_client.generate_summary(
+                dataset_summary=dataset_summary.dict(),
+                issues=issues_dict
             )
         except Exception as e:
-            print(f"[WARNING] GPT-4 analysis failed: {str(e)}")
-            return {
-                'success': False,
-                'summary': 'Analysis completed with automated checks only.',
-                'visualization_concerns': [],
-                'additional_issues': []
-            }
+            print(f"[WARNING] Summary generation failed: {str(e)}")
+            # Fallback
+            if len(issues) == 0:
+                return "Your dataset appears clean with no major quality issues detected.", []
+            else:
+                critical = sum(1 for i in issues if i.severity == Severity.CRITICAL)
+                warning = sum(1 for i in issues if i.severity == Severity.WARNING)
+                return f"Analysis complete. Found {len(issues)} issue(s): {critical} critical, {warning} warnings.", []

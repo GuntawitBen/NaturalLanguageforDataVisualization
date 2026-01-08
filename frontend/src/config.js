@@ -38,6 +38,7 @@ export const API_ENDPOINTS = {
   // EDA Agent
   EDA: {
     ANALYZE: `${API_BASE_URL}/agents/eda/analyze`,
+    ANALYZE_STREAM: `${API_BASE_URL}/agents/eda/analyze-stream`,
     HEALTH: `${API_BASE_URL}/agents/eda/health`,
   },
 

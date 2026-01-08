@@ -1,26 +1,24 @@
 """
-OpenAI API client for EDA analysis
+OpenAI API client for summary and visualization impact generation
 """
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 import json
-from typing import Dict, List, Any, Optional
-from .config import (
-    OPENAI_API_KEY,
-    OPENAI_MODEL,
-    OPENAI_TEMPERATURE,
-    OPENAI_MAX_TOKENS
-)
-from .prompts import build_system_prompt, build_user_prompt, build_fallback_summary, build_visualization_impact_prompt
+import time
+import re
+from typing import Dict, List, Any, Optional, Tuple
+from .config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_MAX_RETRIES
+from .prompts import build_visualization_impact_prompt, build_summary_prompt
 
 class OpenAIClient:
     """Client for OpenAI API interactions"""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, max_retries: Optional[int] = None):
         """
         Initialize OpenAI client
 
         Args:
             api_key: OpenAI API key (defaults to config)
+            max_retries: Maximum number of retries for rate limit errors (defaults to config)
         """
         self.api_key = api_key or OPENAI_API_KEY
 
@@ -28,85 +26,138 @@ class OpenAIClient:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
 
         self.client = OpenAI(api_key=self.api_key)
+        self.max_retries = max_retries if max_retries is not None else OPENAI_MAX_RETRIES
 
-    def analyze_dataset(
-        self,
-        dataset_summary: Dict[str, Any],
-        column_statistics: List[Dict[str, Any]],
-        sample_rows: List[Dict[str, Any]],
-        detected_issues_summary: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _parse_retry_after(self, error_message: str) -> float:
         """
-        Send dataset information to GPT-4 for analysis
+        Parse retry_after time from rate limit error message
+
+        Args:
+            error_message: Error message from OpenAI
 
         Returns:
-            Dictionary with 'summary', 'visualization_concerns', and 'additional_issues'
+            Retry after time in seconds (default 20s)
+        """
+        # Try to parse "Please try again in Xs" or "Please try again in Xm"
+        match = re.search(r'try again in (\d+)s', error_message)
+        if match:
+            return float(match.group(1))
+
+        match = re.search(r'try again in (\d+)m', error_message)
+        if match:
+            return float(match.group(1)) * 60
+
+        # Default to 20 seconds
+        return 20.0
+
+    def _call_with_retry(self, func, *args, max_retries: Optional[int] = None, **kwargs):
+        """
+        Call OpenAI API with exponential backoff retry logic
+
+        Args:
+            func: Function to call (e.g., self.client.chat.completions.create)
+            max_retries: Override default max_retries
+            *args, **kwargs: Arguments to pass to func
+
+        Returns:
+            API response
+
+        Raises:
+            RateLimitError: If retries exhausted
+        """
+        retries = max_retries if max_retries is not None else self.max_retries
+        last_error = None
+
+        for attempt in range(retries + 1):
+            try:
+                return func(*args, **kwargs)
+
+            except RateLimitError as e:
+                last_error = e
+                error_msg = str(e)
+
+                # If this is the last attempt, raise the error
+                if attempt >= retries:
+                    print(f"[WARNING] Rate limit exceeded after {retries} retries. Skipping.")
+                    raise
+
+                # Parse retry_after from error message
+                retry_after = self._parse_retry_after(error_msg)
+
+                # Add exponential backoff (but respect the API's suggested time)
+                backoff = min(retry_after, 2 ** attempt)
+
+                print(f"[WARNING] Rate limit hit (attempt {attempt + 1}/{retries + 1}). "
+                      f"Waiting {backoff:.1f}s before retry...")
+
+                time.sleep(backoff)
+
+        # Should never reach here, but just in case
+        if last_error:
+            raise last_error
+
+    def generate_summary(
+        self,
+        dataset_summary: Dict[str, Any],
+        issues: List[Dict[str, Any]]
+    ) -> Tuple[str, List[str]]:
+        """
+        Generate summary and visualization concerns from detected issues
+
+        Returns:
+            Tuple of (summary_text, visualization_concerns_list)
         """
         try:
-            # Build prompts
-            system_prompt = build_system_prompt()
-            user_prompt = build_user_prompt(
-                dataset_summary,
-                column_statistics,
-                sample_rows,
-                detected_issues_summary
-            )
+            # Build prompt
+            prompt = build_summary_prompt(dataset_summary, issues)
 
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
+            # Call OpenAI API with retry logic
+            response = self._call_with_retry(
+                self.client.chat.completions.create,
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "system", "content": "Summarize data quality findings. Return JSON with 'summary' (2-3 sentences) and 'visualization_concerns' (list)."},
+                    {"role": "user", "content": prompt}
                 ],
-                temperature=OPENAI_TEMPERATURE,
-                max_tokens=OPENAI_MAX_TOKENS,
-                response_format={"type": "json_object"}  # Ensure JSON response
+                temperature=0.7,
+                max_tokens=300,
+                response_format={"type": "json_object"},
+                max_retries=2
             )
 
-            # Extract and parse response
+            # Parse response
             content = response.choices[0].message.content
-            parsed_response = json.loads(content)
+            parsed = json.loads(content)
 
-            # Validate response structure
-            if not all(key in parsed_response for key in ['summary', 'visualization_concerns']):
-                raise ValueError("GPT-4 response missing required fields")
+            summary = parsed.get('summary', 'Analysis complete.')
+            concerns = parsed.get('visualization_concerns', [])
 
-            return {
-                "success": True,
-                "summary": parsed_response['summary'],
-                "visualization_concerns": parsed_response.get('visualization_concerns', []),
-                "additional_issues": parsed_response.get('additional_issues', []),
-                "usage": {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                }
-            }
+            print(f"[GPT-4] Generated summary successfully")
+            return summary, concerns
+
+        except RateLimitError as e:
+            print(f"[WARNING] Rate limit exceeded for summary generation. Using fallback.")
+            # Fallback with note about rate limits
+            if len(issues) == 0:
+                return "Your dataset appears clean with no major quality issues detected.", []
+            else:
+                critical = sum(1 for i in issues if i.get('severity') == 'critical')
+                warning = sum(1 for i in issues if i.get('severity') == 'warning')
+                return (
+                    f"Analysis complete. Found {len(issues)} issue(s): {critical} critical, {warning} warnings. "
+                    f"(Detailed AI summary unavailable due to API rate limits)",
+                    []
+                )
 
         except Exception as e:
-            error_message = str(e)
-            error_type = type(e).__name__
-
-            # Determine specific error type
-            if "rate" in error_message.lower() or "429" in error_message:
-                error_type = "rate_limit"
-                error_message = "OpenAI API rate limit exceeded. Please try again later."
-            elif "auth" in error_message.lower() or "401" in error_message:
-                error_type = "authentication"
-                error_message = "OpenAI API authentication failed. Check your API key."
-            elif "api" in error_type.lower():
-                error_type = "api_error"
-            elif isinstance(e, json.JSONDecodeError):
-                error_type = "parse_error"
-                error_message = "Failed to parse GPT-4 response as JSON"
-
-            return {
-                "success": False,
-                "error": error_message,
-                "error_type": error_type,
-                "fallback_summary": build_fallback_summary(len(detected_issues_summary))
-            }
+            print(f"[ERROR] Failed to generate summary: {type(e).__name__}: {str(e)}")
+            # Fallback
+            if len(issues) == 0:
+                return "Your dataset appears clean with no major quality issues detected.", []
+            else:
+                critical = sum(1 for i in issues if i.get('severity') == 'critical')
+                warning = sum(1 for i in issues if i.get('severity') == 'warning')
+                return f"Analysis complete. Found {len(issues)} issue(s): {critical} critical, {warning} warnings.", []
 
     def generate_visualization_impact(
         self,
@@ -134,22 +185,36 @@ class OpenAIClient:
                 sample_values=sample_values
             )
 
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
+            # Call OpenAI API with retry logic
+            response = self._call_with_retry(
+                self.client.chat.completions.create,
                 model=OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are a data visualization expert who explains how data quality issues affect visualizations in clear, educational terms."},
+                    {"role": "system", "content": "Explain how data issues affect charts/graphs. 3 sentences max. Be specific."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,  # Slightly higher for more natural explanations
-                max_tokens=300  # Shorter responses for impact explanations
+                temperature=0.7,
+                max_tokens=150,
+                max_retries=2  # Lower retries for enrichment to avoid long delays
             )
 
             # Extract response
             impact_text = response.choices[0].message.content.strip()
+
+            # Log success
+            print(f"[GPT-4] Generated impact successfully ({len(impact_text)} chars)")
+
             return impact_text
 
+        except RateLimitError as e:
+            # Rate limit exhausted after retries
+            print(f"[WARNING] Rate limit exceeded for issue '{issue_title}'. Using fallback message.")
+            return "This data quality issue may affect the accuracy and clarity of your visualizations. (AI analysis unavailable due to rate limits)"
+
         except Exception as e:
-            # Fallback to generic message if GPT-4 fails
-            print(f"[WARNING] Failed to generate visualization impact: {str(e)}")
+            # Other errors - fallback to generic message
+            error_type = type(e).__name__
+            error_msg = str(e)
+            print(f"[ERROR] Failed to generate visualization impact: {error_type}: {error_msg}")
+
             return "This data quality issue may affect the accuracy and clarity of your visualizations, potentially leading to misleading or incomplete visual representations of your data."

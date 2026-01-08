@@ -8,6 +8,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 OPENAI_TEMPERATURE = 0.3
 OPENAI_MAX_TOKENS = 2000
+OPENAI_RATE_LIMIT_DELAY = float(os.getenv("OPENAI_RATE_LIMIT_DELAY", "20.0"))  # Delay between API calls (seconds)
+OPENAI_MAX_RETRIES = int(os.getenv("OPENAI_MAX_RETRIES", "2"))  # Max retries for rate limits
 
 # Analysis Configuration
 MAX_SAMPLE_ROWS = 20
