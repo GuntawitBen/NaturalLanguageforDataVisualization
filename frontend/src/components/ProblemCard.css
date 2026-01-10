@@ -1,0 +1,206 @@
+/* Problem Card */
+.problem-card {
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  animation: problemSlideIn 0.3s ease-out;
+}
+
+@keyframes problemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Problem Progress */
+.problem-progress {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+/* Problem Header */
+.problem-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.severity-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.severity-badge.severity-critical {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.severity-badge.severity-warning {
+  background: #feebc8;
+  color: #c05621;
+}
+
+.severity-badge.severity-info {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
+.problem-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1a202c;
+  flex: 1;
+}
+
+/* Problem Description */
+.problem-description {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #4a5568;
+}
+
+/* Affected Columns */
+.affected-columns {
+  background: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  color: #4a5568;
+}
+
+.affected-columns strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* Visualization Impact */
+.visualization-impact {
+  background: #ebf8ff;
+  border-left: 3px solid #4299e1;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.impact-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.impact-icon {
+  font-size: 0.875rem;
+}
+
+.impact-label strong {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2c5282;
+}
+
+.visualization-impact p {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #2d3748;
+}
+
+/* Cleaning Options Section */
+.cleaning-options-section {
+  margin-bottom: 1rem;
+}
+
+.options-heading {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.cleaning-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Problem Actions */
+.problem-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.skip-button {
+  padding: 0.5rem 1.25rem;
+  background: white;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skip-button:hover:not(:disabled) {
+  background: #f7fafc;
+  border-color: #a0aec0;
+}
+
+.skip-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .problem-card {
+    padding: 0.875rem;
+  }
+
+  .problem-title {
+    font-size: 0.875rem;
+  }
+
+  .problem-description {
+    font-size: 0.8125rem;
+  }
+
+  .visualization-impact {
+    padding: 0.625rem;
+  }
+
+  .impact-label strong,
+  .visualization-impact p {
+    font-size: 0.75rem;
+  }
+
+  .options-heading {
+    font-size: 0.8125rem;
+  }
+
+  .skip-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+}

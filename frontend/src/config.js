@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
     UPLOAD_TEMP: `${API_BASE_URL}/datasets/upload-temp`,
     FINALIZE: `${API_BASE_URL}/datasets/finalize`,
     CLEANUP_TEMP: `${API_BASE_URL}/datasets/cleanup-temp`,
+    PREVIEW_TEMP: `${API_BASE_URL}/datasets/preview-temp`,
     LIST: `${API_BASE_URL}/datasets/`,
     GET: (id) => `${API_BASE_URL}/datasets/${id}`,
     QUERY: (id) => `${API_BASE_URL}/datasets/${id}/query`,
@@ -40,6 +41,16 @@ export const API_ENDPOINTS = {
     ANALYZE: `${API_BASE_URL}/agents/eda/analyze`,
     ANALYZE_STREAM: `${API_BASE_URL}/agents/eda/analyze-stream`,
     HEALTH: `${API_BASE_URL}/agents/eda/health`,
+  },
+
+  // Cleaning Agent
+  CLEANING: {
+    START_SESSION: `${API_BASE_URL}/agents/cleaning/start-session`,
+    APPLY_OPERATION: `${API_BASE_URL}/agents/cleaning/apply-operation`,
+    SKIP_PROBLEM: `${API_BASE_URL}/agents/cleaning/skip-problem`,
+    UNDO_LAST: `${API_BASE_URL}/agents/cleaning/undo-last`,
+    GET_SESSION: (id) => `${API_BASE_URL}/agents/cleaning/session/${id}`,
+    HEALTH: `${API_BASE_URL}/agents/cleaning/health`,
   },
 
   // Health check

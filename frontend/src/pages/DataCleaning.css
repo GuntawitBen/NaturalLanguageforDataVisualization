@@ -1,6 +1,6 @@
 .data-cleaning-page {
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 1.5rem;
+  max-width: 1600px;
   margin: 0 auto;
   background: transparent;
   min-height: 100vh;
@@ -8,7 +8,7 @@
 
 /* Header Section */
 .cleaning-header {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .back-link {
@@ -56,8 +56,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  margin-bottom: 3rem;
-  padding: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
   background: white;
   border-radius: 12px;
 }
@@ -150,21 +150,21 @@
 }
 
 .stage-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 2px solid #e2e8f0;
 }
 
 .stage-header h2 {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #1a202c;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
 }
 
 .stage-header p {
   color: #718096;
-  font-size: 0.95rem;
+  font-size: 0.8125rem;
   margin: 0;
 }
 
@@ -817,6 +817,77 @@
   .secondary-button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* ============================================================================
+   SPLIT VIEW LAYOUT (Stage 2)
+   ============================================================================ */
+
+/* Remove default padding for Stage 2 */
+.stage-cleaning .stage-body {
+  padding: 0;
+}
+
+/* Split View Container */
+.split-view-container {
+  display: flex;
+  gap: 0;
+  min-height: 700px;
+  max-height: calc(100vh - 300px);
+}
+
+.split-view-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Left Panel (Inspection) */
+.left-panel {
+  flex: 0 0 45%;
+  border-right: 2px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+/* Right Panel (Data Preview) */
+.right-panel {
+  flex: 1;
+  background: white;
+}
+
+/* Responsive: Stack vertically on tablet and mobile */
+@media (max-width: 1024px) {
+  .split-view-container {
+    flex-direction: column;
+    max-height: none;
+    min-height: 800px;
+  }
+
+  .left-panel {
+    flex: 0 0 auto;
+    min-height: 400px;
+    max-height: 500px;
+    border-right: none;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  .right-panel {
+    flex: 0 0 auto;
+    min-height: 400px;
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .split-view-container {
+    min-height: 700px;
+  }
+
+  .left-panel,
+  .right-panel {
+    min-height: 350px;
+    max-height: 450px;
   }
 }
 

@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
 import { CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import CSVUpload from '../components/CSVUpload';
+import CleaningPanel from '../components/CleaningPanel';
+import DataPreviewPanel from '../components/DataPreviewPanel';
 import './DataCleaning.css';
 
 export default function DataCleaning() {
@@ -21,28 +23,24 @@ export default function DataCleaning() {
   const [finalized, setFinalized] = useState(false);
   const [error, setError] = useState(null);
 
-  // EDA Analysis state
-  const [edaReport, setEdaReport] = useState(null);
-  const [edaLoading, setEdaLoading] = useState(false);
-  const [edaError, setEdaError] = useState(null);
-  const [edaCompleted, setEdaCompleted] = useState(false);
-
-  // Progress tracking state
-  const [progressStage, setProgressStage] = useState('');
-  const [progressMessage, setProgressMessage] = useState('');
-  const [enrichmentProgress, setEnrichmentProgress] = useState({ current: 0, total: 0, issue: '' });
+  // Cleaning session state
+  const [cleaningSessionId, setCleaningSessionId] = useState(null);
+  const [sessionState, setSessionState] = useState(null);
+  const [currentProblem, setCurrentProblem] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionError, setSessionError] = useState(null);
+  const [sessionComplete, setSessionComplete] = useState(false);
+  const [operationInProgress, setOperationInProgress] = useState(false);
 
   // Chat interface state
   const [chatMessages, setChatMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
 
-  // Ref for EventSource to cancel streaming analysis
-  const eventSourceRef = useRef(null);
+  // Preview refresh trigger
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
   const stages = [
     { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
-    { id: 2, name: 'Data Inspection', description: 'Review and validate your data' },
-    { id: 3, name: 'Data Processing', description: 'Clean and transform your data' }
+    { id: 2, name: 'Data Cleaning', description: 'Review inspection results and preview your data' }
   ];
 
   // Handle successful upload from CSVUpload component
@@ -67,12 +65,6 @@ export default function DataCleaning() {
   // Cleanup temp file when component unmounts (if not finalized)
   useEffect(() => {
     return () => {
-      // Cancel ongoing analysis on unmount
-      if (eventSourceRef.current) {
-        console.log('Component unmounting, canceling analysis...');
-        eventSourceRef.current.close();
-      }
-
       // Only cleanup if we have a temp file and it wasn't finalized
       if (tempFilePath && !finalized) {
         const cleanupTempFile = async () => {
@@ -98,20 +90,6 @@ export default function DataCleaning() {
     };
   }, [tempFilePath, sessionToken, finalized]);
 
-  // Cancel ongoing analysis
-  const cancelAnalysis = () => {
-    if (eventSourceRef.current) {
-      console.log('Canceling analysis...');
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-      setEdaLoading(false);
-      setIsTyping(false);
-      setProgressStage('');
-      setProgressMessage('');
-      setEnrichmentProgress({ current: 0, total: 0, issue: '' });
-    }
-  };
-
   const handleNext = () => {
     // Stage 1: Upload - can't go next without uploading
     if (currentStage === 1 && !tempFilePath) {
@@ -119,17 +97,23 @@ export default function DataCleaning() {
       return;
     }
 
-    // Stage 2: If analysis is in progress, show confirmation
-    if (currentStage === 2 && edaLoading) {
+    // Stage 2: If cleaning is in progress, show confirmation
+    if (currentStage === 2 && operationInProgress) {
       const confirmLeave = window.confirm(
-        'Data analysis is still in progress. Are you sure you want to leave? The analysis will be canceled.'
+        'An operation is in progress. Are you sure you want to continue?'
       );
       if (!confirmLeave) {
         return;
       }
-      cancelAnalysis();
     }
 
+    // Stage 2 goes directly to completion
+    if (currentStage === 2) {
+      handleComplete();
+      return;
+    }
+
+    // Otherwise move to next stage
     if (currentStage < stages.length) {
       setCurrentStage(currentStage + 1);
       setError(null);
@@ -137,15 +121,14 @@ export default function DataCleaning() {
   };
 
   const handleBack = () => {
-    // If analysis is in progress on Stage 2, show confirmation
-    if (currentStage === 2 && edaLoading) {
+    // If cleaning is in progress on Stage 2, show confirmation
+    if (currentStage === 2 && operationInProgress) {
       const confirmLeave = window.confirm(
-        'Data analysis is still in progress. Are you sure you want to go back? The analysis will be canceled.'
+        'An operation is in progress. Are you sure you want to go back?'
       );
       if (!confirmLeave) {
         return;
       }
-      cancelAnalysis();
     }
 
     if (currentStage > 1) {
@@ -154,250 +137,247 @@ export default function DataCleaning() {
     }
   };
 
-  // Trigger EDA analysis with streaming when entering Stage 2
-  const runEDAAnalysis = () => {
+  // Start cleaning session
+  const startCleaningSession = async () => {
     if (!tempFilePath) {
-      setEdaError('No file uploaded for analysis');
+      setSessionError('No file uploaded');
       return;
     }
 
-    setEdaLoading(true);
-    setEdaError(null);
-    setProgressStage('initializing');
-    setProgressMessage('Starting analysis...');
-    setEnrichmentProgress({ current: 0, total: 0, issue: '' });
-
-    // Build EventSource URL with query params and auth header
-    // Note: EventSource doesn't support POST or custom headers, so we need to use a workaround
-    // We'll send the request body as query parameters
-    const requestBody = {
-      temp_file_path: tempFilePath,
-      include_sample_rows: true,
-      max_sample_rows: 20
-    };
-
-    // Create a POST request to get the streaming response
-    const startStreamingAnalysis = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.EDA.ANALYZE_STREAM, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${sessionToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to start streaming analysis');
-        }
-
-        // Read the stream
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) break;
-
-          // Decode the chunk and add to buffer
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process complete SSE messages
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              const eventType = line.substring(6).trim();
-              continue;
-            }
-
-            if (line.startsWith('data:')) {
-              const data = JSON.parse(line.substring(5).trim());
-
-              // Handle different event types
-              if (data.stage) {
-                setProgressStage(data.stage);
-                setProgressMessage(data.message || '');
-
-                // If enrichment stage, initialize progress
-                if (data.stage === 'enrichment' && data.total) {
-                  setEnrichmentProgress({ current: 0, total: data.total, issue: '' });
-                }
-              }
-
-              if (data.current !== undefined && data.total !== undefined) {
-                // Progress update
-                setEnrichmentProgress({
-                  current: data.current,
-                  total: data.total,
-                  issue: data.issue_title || ''
-                });
-              }
-
-              if (data.error) {
-                setEdaError(data.error);
-                setEdaLoading(false);
-                return;
-              }
-
-              if (data.success !== undefined) {
-                // Complete event with full report
-                setEdaReport(data);
-                setEdaCompleted(true);
-                setEdaLoading(false);
-                setProgressStage('complete');
-                setProgressMessage('Analysis complete!');
-
-                // Build and display chat messages progressively
-                buildChatMessages(data);
-                return;
-              }
-            }
-          }
-        }
-
-      } catch (err) {
-        console.error('Streaming analysis error:', err);
-        setEdaError(err.message);
-        setEdaLoading(false);
-      }
-    };
-
-    startStreamingAnalysis();
-  };
-
-  // Build chat messages from EDA report
-  const buildChatMessages = async (report) => {
-    const messages = [];
-
-    // 1. Greeting message
-    messages.push({
-      id: 'greeting',
-      type: 'assistant',
-      content: `Hi! I've finished analyzing your dataset "${datasetName}". Let me walk you through what I found.`
-    });
-
-    // 2. Summary message
-    const summaryContent = `📊 **Dataset Overview**\n\n` +
-      `• **${report.dataset_summary.row_count.toLocaleString()} rows** and **${report.dataset_summary.column_count} columns**\n` +
-      `• Data completeness: **${report.dataset_summary.overall_completeness.toFixed(1)}%**\n` +
-      `• Duplicate rows: **${report.dataset_summary.duplicate_row_count}**\n\n` +
-      report.gpt_summary;
-
-    messages.push({
-      id: 'summary',
-      type: 'assistant',
-      content: summaryContent
-    });
-
-    // 3. Critical issues
-    const criticalIssues = report.issues.filter(issue => issue.severity === 'critical');
-    if (criticalIssues.length > 0) {
-      messages.push({
-        id: 'critical-intro',
-        type: 'assistant',
-        content: `🚨 I found **${criticalIssues.length} critical issue${criticalIssues.length > 1 ? 's' : ''}** that need your attention:`
-      });
-
-      criticalIssues.forEach((issue, idx) => {
-        messages.push({
-          id: `critical-${idx}`,
-          type: 'assistant',
-          severity: 'critical',
-          content: `**${issue.title}**\n\n${issue.description}\n\n` +
-            (issue.affected_columns.length > 0 ? `📍 Affected columns: ${issue.affected_columns.join(', ')}\n\n` : '') +
-            `📊 **Impact on Visualization:** ${issue.visualization_impact}`
-        });
-      });
-    }
-
-    // 4. Warnings
-    const warnings = report.issues.filter(issue => issue.severity === 'warning');
-    if (warnings.length > 0) {
-      messages.push({
-        id: 'warning-intro',
-        type: 'assistant',
-        content: `⚠️ I also noticed **${warnings.length} warning${warnings.length > 1 ? 's' : ''}**:`
-      });
-
-      warnings.forEach((issue, idx) => {
-        messages.push({
-          id: `warning-${idx}`,
-          type: 'assistant',
-          severity: 'warning',
-          content: `**${issue.title}**\n\n${issue.description}\n\n` +
-            (issue.affected_columns.length > 0 ? `📍 Affected columns: ${issue.affected_columns.join(', ')}\n\n` : '') +
-            `📊 **Impact on Visualization:** ${issue.visualization_impact}`
-        });
-      });
-    }
-
-    // 5. Info items (grouped)
-    const infoIssues = report.issues.filter(issue => issue.severity === 'info');
-    if (infoIssues.length > 0) {
-      let infoContent = `ℹ️ Here are **${infoIssues.length} additional observation${infoIssues.length > 1 ? 's' : ''}** about your data:\n\n`;
-      infoIssues.forEach((issue, idx) => {
-        infoContent += `**${idx + 1}. ${issue.title}**\n${issue.description}\n`;
-        if (issue.affected_columns.length > 0) {
-          infoContent += `Affected: ${issue.affected_columns.join(', ')}\n`;
-        }
-        infoContent += `\n`;
-      });
-
-      messages.push({
-        id: 'info-group',
-        type: 'assistant',
-        severity: 'info',
-        content: infoContent
-      });
-    }
-
-    // 6. Visualization concerns
-    if (report.visualization_concerns.length > 0) {
-      let vizContent = `📈 **Visualization Concerns:**\n\n`;
-      report.visualization_concerns.forEach((concern, idx) => {
-        vizContent += `${idx + 1}. ${concern}\n`;
-      });
-
-      messages.push({
-        id: 'viz-concerns',
-        type: 'assistant',
-        content: vizContent
-      });
-    }
-
-    // 7. Final advice
-    const finalAdvice = report.issues.length === 0
-      ? `✅ Great news! Your dataset looks clean and ready for visualization. You can proceed to the next stage with confidence.`
-      : report.critical_issues_count > 0
-        ? `⚠️ I recommend addressing the critical issues before proceeding. These could significantly impact your visualizations.`
-        : `✅ Your dataset is in good shape! The warnings are optional to fix, but addressing them will improve your visualizations.`;
-
-    messages.push({
-      id: 'final-advice',
-      type: 'assistant',
-      content: finalAdvice
-    });
-
-    // Display messages progressively
+    setSessionLoading(true);
+    setSessionError(null);
     setChatMessages([]);
-    for (let i = 0; i < messages.length; i++) {
-      setIsTyping(true);
-      await new Promise(resolve => setTimeout(resolve, 800)); // Delay between messages
-      setChatMessages(prev => [...prev, messages[i]]);
-      setIsTyping(false);
-      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause after message appears
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.START_SESSION, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temp_file_path: tempFilePath,
+          dataset_name: datasetName
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to start cleaning session');
+      }
+
+      const data = await response.json();
+
+      // Store session info
+      setCleaningSessionId(data.session_id);
+      setSessionState(data.session_state);
+      setCurrentProblem(data.first_problem);
+
+      // Add summary message
+      addChatMessage({
+        id: 'summary',
+        content: data.summary
+      });
+
+      // If we have problems, add a message introducing the workflow
+      if (data.first_problem) {
+        addChatMessage({
+          id: 'workflow-intro',
+          content: `Let's go through each issue one by one. For each problem, I'll provide you with cleaning options along with their pros and cons to help you decide.`
+        });
+        setSessionComplete(false);
+      } else {
+        setSessionComplete(true);
+      }
+
+      setSessionLoading(false);
+    } catch (err) {
+      console.error('Failed to start cleaning session:', err);
+      setSessionError(err.message);
+      setSessionLoading(false);
     }
   };
 
-  // Auto-trigger EDA when entering Stage 2
+  // Apply selected cleaning operation
+  const handleApplyOperation = async (optionId) => {
+    if (!cleaningSessionId || operationInProgress) return;
+
+    setOperationInProgress(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.APPLY_OPERATION, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: cleaningSessionId,
+          option_id: optionId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to apply operation');
+      }
+
+      const result = await response.json();
+
+      // Add success message
+      addChatMessage({
+        id: `operation-${Date.now()}`,
+        content: `✅ ${result.message}`
+      });
+
+      // Update state
+      setCurrentProblem(result.next_problem);
+      setSessionComplete(result.session_complete);
+
+      // If session complete, add completion message
+      if (result.session_complete) {
+        addChatMessage({
+          id: 'complete',
+          content: `🎉 All problems have been addressed! Your dataset is now ready. You can proceed to finalize and save your cleaned dataset.`
+        });
+      }
+
+      setOperationInProgress(false);
+
+      // Force preview refresh by incrementing the refresh key
+      setPreviewRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to apply operation:', err);
+      addChatMessage({
+        id: `error-${Date.now()}`,
+        type: 'error',
+        content: `❌ Error: ${err.message}`
+      });
+      setOperationInProgress(false);
+    }
+  };
+
+  // Skip current problem
+  const handleSkipProblem = async () => {
+    if (!cleaningSessionId || operationInProgress) return;
+
+    setOperationInProgress(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.SKIP_PROBLEM, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: cleaningSessionId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to skip problem');
+      }
+
+      const nextProblem = await response.json();
+
+      // Add skip message
+      addChatMessage({
+        id: `skip-${Date.now()}`,
+        content: `⏭️ Skipped this problem`
+      });
+
+      // Update state
+      setCurrentProblem(nextProblem);
+
+      // If no more problems, mark as complete
+      if (!nextProblem) {
+        setSessionComplete(true);
+        addChatMessage({
+          id: 'complete',
+          content: `All problems have been reviewed! You can proceed to finalize your dataset.`
+        });
+      }
+
+      setOperationInProgress(false);
+    } catch (err) {
+      console.error('Failed to skip problem:', err);
+      addChatMessage({
+        id: `error-${Date.now()}`,
+        type: 'error',
+        content: `❌ Error: ${err.message}`
+      });
+      setOperationInProgress(false);
+    }
+  };
+
+  // Undo last operation
+  const handleUndoLast = async () => {
+    if (!cleaningSessionId || operationInProgress) return;
+
+    setOperationInProgress(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: cleaningSessionId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to undo operation');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Add undo message
+        addChatMessage({
+          id: `undo-${Date.now()}`,
+          content: `↩️ ${result.message}`
+        });
+
+        // Update state
+        setCurrentProblem(result.next_problem);
+        setSessionComplete(result.session_complete);
+      } else {
+        addChatMessage({
+          id: `undo-error-${Date.now()}`,
+          content: `ℹ️ ${result.message}`
+        });
+      }
+
+      setOperationInProgress(false);
+
+      // Force preview refresh by incrementing the refresh key
+      setPreviewRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to undo operation:', err);
+      addChatMessage({
+        id: `error-${Date.now()}`,
+        type: 'error',
+        content: `❌ Error: ${err.message}`
+      });
+      setOperationInProgress(false);
+    }
+  };
+
+  // Helper to add chat messages
+  const addChatMessage = (message) => {
+    setChatMessages(prev => [...prev, message]);
+  };
+
+  // Auto-trigger cleaning session when entering Stage 2
   useEffect(() => {
-    if (currentStage === 2 && tempFilePath && !edaCompleted && !edaLoading) {
-      runEDAAnalysis();
+    if (currentStage === 2 && tempFilePath && !cleaningSessionId && !sessionLoading) {
+      startCleaningSession();
     }
   }, [currentStage, tempFilePath]);
 
@@ -504,234 +484,34 @@ export default function DataCleaning() {
           </div>
         )}
 
-        {/* Stage 2: AI Data Quality Analysis */}
+        {/* Stage 2: Data Cleaning with Split View */}
         {currentStage === 2 && (
-          <div className="stage-panel">
+          <div className="stage-panel stage-cleaning">
             <div className="stage-header">
-              <h2>Stage 2: Data Inspection</h2>
-              <p>AI-powered Inspection Agent analyzing your dataset for potential issues</p>
+              <h2>Stage 2: Interactive Data Cleaning</h2>
+              <p>Review data quality issues and apply cleaning operations</p>
             </div>
-            <div className="stage-body">
-              {/* Loading State - Chat Interface with Progress */}
-              {edaLoading && (
-                <div className="chat-container">
-                  <div className="chat-messages">
-                    {/* Greeting message */}
-                    <div className="chat-message">
-                      <div className="message-avatar">
-                        <div className="avatar-icon">AI</div>
-                      </div>
-                      <div className="message-content">
-                        <div className="message-text">
-                          <strong>Hi there! 👋</strong>
-                          <br /><br />
-                          I'm your data inspection assistant. Let me take a look at your dataset and check for any issues that might affect your visualizations.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Progress message */}
-                    <div className="chat-message">
-                      <div className="message-avatar">
-                        <div className="avatar-icon">AI</div>
-                      </div>
-                      <div className="message-content">
-                        <div className="message-text">
-                          <strong>
-                            {progressStage === 'loading' && '📂 Loading dataset...'}
-                            {progressStage === 'summary' && '📊 Calculating summary statistics...'}
-                            {progressStage === 'statistics' && '📈 Analyzing column statistics...'}
-                            {progressStage === 'detection' && '🔍 Detecting data quality issues...'}
-                            {progressStage === 'enrichment' && '✨ Generating AI insights...'}
-                            {progressStage === 'summary' && '📝 Creating final summary...'}
-                            {!progressStage && 'Analyzing your dataset...'}
-                          </strong>
-                          {progressMessage && (
-                            <>
-                              <br /><br />
-                              {progressMessage}
-                            </>
-                          )}
-
-                          {/* Enrichment progress bar */}
-                          {progressStage === 'enrichment' && enrichmentProgress.total > 0 && (
-                            <>
-                              <br /><br />
-                              <div style={{ marginTop: '1rem' }}>
-                                <div style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  marginBottom: '0.5rem',
-                                  fontSize: '0.9rem',
-                                  color: '#666'
-                                }}>
-                                  <span>
-                                    {enrichmentProgress.current > 0 && enrichmentProgress.issue &&
-                                      `Analyzing: ${enrichmentProgress.issue.substring(0, 50)}...`
-                                    }
-                                  </span>
-                                  <span>
-                                    <strong>{enrichmentProgress.current}</strong> / {enrichmentProgress.total}
-                                  </span>
-                                </div>
-                                <div style={{
-                                  width: '100%',
-                                  height: '8px',
-                                  backgroundColor: '#e0e0e0',
-                                  borderRadius: '4px',
-                                  overflow: 'hidden'
-                                }}>
-                                  <div style={{
-                                    width: `${(enrichmentProgress.current / enrichmentProgress.total) * 100}%`,
-                                    height: '100%',
-                                    backgroundColor: '#4CAF50',
-                                    transition: 'width 0.3s ease'
-                                  }}></div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {/* General progress items */}
-                          {progressStage !== 'enrichment' && (
-                            <>
-                              <br /><br />
-                              I'm checking for:
-                              <br />
-                              <div className="bullet-item" style={{ opacity: progressStage === 'loading' ? 1 : 0.5 }}>
-                                {progressStage === 'loading' ? '🔄' : '✓'} Missing values and data completeness
-                              </div>
-                              <div className="bullet-item" style={{ opacity: progressStage === 'detection' ? 1 : 0.5 }}>
-                                {progressStage === 'detection' ? '🔄' : '✓'} Outliers and anomalies
-                              </div>
-                              <div className="bullet-item" style={{ opacity: progressStage === 'statistics' ? 1 : 0.5 }}>
-                                {progressStage === 'statistics' ? '🔄' : '✓'} Data type consistency
-                              </div>
-                              <div className="bullet-item" style={{ opacity: progressStage === 'enrichment' ? 1 : 0.5 }}>
-                                {progressStage === 'enrichment' ? '🔄' : '✓'} Visualization concerns
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <div className="typing-indicator" style={{ marginTop: '1rem' }}>
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Error State - Chat Interface */}
-              {edaError && !edaLoading && (
-                <div className="chat-container">
-                  <div className="chat-messages">
-                    <div className="chat-message">
-                      <div className="message-avatar">
-                        <div className="avatar-icon">AI</div>
-                      </div>
-                      <div className="message-content error-message">
-                        <div className="message-text">
-                          <strong>Oops! Something went wrong 😔</strong>
-                          <br /><br />
-                          I encountered an error while analyzing your dataset:
-                          <br /><br />
-                          <em>{edaError}</em>
-                          <br /><br />
-                          Would you like me to try again?
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="chat-actions">
-                    <button onClick={runEDAAnalysis} className="secondary-button">
-                      Yes, Retry Analysis
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Chat Interface Results */}
-              {edaReport && !edaLoading && (
-                <div className="chat-container">
-                  <div className="chat-messages">
-                    {chatMessages.map((message) => (
-                      <div key={message.id} className={`chat-message ${message.severity || ''}`}>
-                        <div className="message-avatar">
-                          <div className="avatar-icon">AI</div>
-                        </div>
-                        <div className="message-content">
-                          <div className="message-text">
-                            {message.content.split('\n').map((line, idx) => {
-                              // Simple markdown-like rendering
-                              let processedLine = line;
-
-                              // Bold **text**
-                              processedLine = processedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                              // Bullets •
-                              if (processedLine.trim().startsWith('•')) {
-                                processedLine = `<div class="bullet-item">${processedLine}</div>`;
-                              }
-
-                              return (
-                                <div key={idx} dangerouslySetInnerHTML={{ __html: processedLine || '<br/>' }} />
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Typing indicator */}
-                    {isTyping && (
-                      <div className="chat-message">
-                        <div className="message-avatar">
-                          <div className="avatar-icon">AI</div>
-                        </div>
-                        <div className="message-content">
-                          <div className="typing-indicator">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action button */}
-                  <div className="chat-actions">
-                    <button onClick={runEDAAnalysis} className="secondary-button">
-                      Re-analyze Dataset
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Stage 3: Processing */}
-        {currentStage === 3 && (
-          <div className="stage-panel">
-            <div className="stage-header">
-              <h2>Stage 3: Data Processing</h2>
-              <p>Apply transformations and prepare your data for analysis</p>
-            </div>
-            <div className="stage-body">
-              <div className="dataset-summary">
-                <div className="summary-card">
-                  <h4>Processing Options</h4>
-                  <p>Select the cleaning and transformation operations you want to apply to your dataset.</p>
-                </div>
-
-                <div className="info-card">
-                  <h4>What happens in this stage?</h4>
-                  <p>Handle missing values, remove duplicates, normalize data formats, and apply any necessary transformations.</p>
-                </div>
+            <div className="split-view-container">
+              <div className="split-view-panel left-panel">
+                <CleaningPanel
+                  sessionState={sessionState}
+                  currentProblem={currentProblem}
+                  chatMessages={chatMessages}
+                  onApplyOperation={handleApplyOperation}
+                  onSkipProblem={handleSkipProblem}
+                  onUndoLast={handleUndoLast}
+                  operationInProgress={operationInProgress}
+                  sessionLoading={sessionLoading}
+                  sessionError={sessionError}
+                />
+              </div>
+              <div className="split-view-panel right-panel">
+                <DataPreviewPanel
+                  tempFilePath={tempFilePath}
+                  datasetName={datasetName}
+                  sessionToken={sessionToken}
+                  refreshKey={previewRefreshKey}
+                />
               </div>
             </div>
           </div>
@@ -743,25 +523,29 @@ export default function DataCleaning() {
         <button
           onClick={handleBack}
           className="nav-button secondary"
-          disabled={currentStage === 1 || edaLoading}
-          title={edaLoading ? 'Please wait for analysis to complete' : ''}
+          disabled={currentStage === 1 || operationInProgress}
+          title={operationInProgress ? 'Please wait for operation to complete' : ''}
         >
           <ArrowLeft size={20} />
           Previous
         </button>
 
-        {currentStage < stages.length ? (
+        {currentStage === 1 ? (
           <button
             onClick={handleNext}
             className="nav-button primary"
-            disabled={finalizing || (currentStage === 1 && !tempFilePath) || (currentStage === 2 && edaLoading)}
-            title={edaLoading ? 'Please wait for analysis to complete' : ''}
+            disabled={!tempFilePath}
           >
-            {currentStage === 2 && edaLoading ? 'Analyzing...' : 'Next'}
+            Next
             <ArrowRight size={20} />
           </button>
         ) : (
-          <button onClick={handleComplete} className="nav-button primary" disabled={finalizing}>
+          <button
+            onClick={handleNext}
+            className="nav-button primary"
+            disabled={finalizing || operationInProgress}
+            title={operationInProgress ? 'Please wait for operation to complete' : ''}
+          >
             {finalizing ? 'Processing...' : 'Complete & Save'}
             <CheckCircle2 size={20} />
           </button>

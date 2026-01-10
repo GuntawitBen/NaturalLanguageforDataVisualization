@@ -46,6 +46,15 @@ except Exception as e:
     eda_router = None
 
 try:
+    from routes.cleaning import router as cleaning_router
+    print("[OK] Cleaning router imported successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to import Cleaning router: {e}")
+    import traceback
+    traceback.print_exc()
+    cleaning_router = None
+
+try:
     from database import init_database
     print("[OK] Database module imported successfully")
 except Exception as e:
@@ -144,3 +153,9 @@ if eda_router is not None:
     print("[OK] EDA router included")
 else:
     print("[WARNING] EDA router not included (import failed)")
+
+if cleaning_router is not None:
+    app.include_router(cleaning_router)
+    print("[OK] Cleaning router included")
+else:
+    print("[WARNING] Cleaning router not included (import failed)")

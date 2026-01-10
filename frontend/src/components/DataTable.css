@@ -1,0 +1,161 @@
+/* Data Table Wrapper */
+.data-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 100%;
+  flex: 1;
+}
+
+/* Data Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+/* Table Header */
+.data-table thead {
+  position: sticky;
+  top: 0;
+  background: #f7fafc;
+  z-index: 10;
+}
+
+.data-table th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* Column Header */
+.column-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.column-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.column-meta {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.column-type {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #718096;
+  background: #edf2f7;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 3px;
+}
+
+.column-nulls {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #d69e2e;
+  background: #fefcbf;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 3px;
+}
+
+/* Table Body */
+.data-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table td {
+  padding: 0.5rem 0.75rem;
+  color: #4a5568;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Null Cell Styling */
+.data-table td.null-cell {
+  background: #fafafa;
+  color: #a0aec0;
+  font-style: italic;
+  text-align: center;
+}
+
+.data-table tbody tr:hover td.null-cell {
+  background: #f1f1f1;
+}
+
+/* State Messages (Loading, Error, Empty) */
+.data-table-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.loading-state {
+  color: #718096;
+}
+
+.error-state {
+  color: #e53e3e;
+}
+
+.empty-state {
+  color: #718096;
+}
+
+/* Spinner Animation */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .column-name {
+    font-size: 0.8125rem;
+  }
+
+  .column-type,
+  .column-nulls {
+    font-size: 0.7rem;
+  }
+}

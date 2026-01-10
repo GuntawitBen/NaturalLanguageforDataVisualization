@@ -320,6 +320,75 @@ async def cleanup_temp_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting temp file: {str(e)}")
 
+@router.post("/preview-temp")
+async def preview_temp_csv(
+    temp_file_path: str = Form(...),
+    limit: int = Form(100),
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Preview a temporary CSV file (used in cleaning workflow).
+    Returns columns, sample data, and metadata without creating a dataset.
+    """
+    try:
+        # Validate path is in uploads directory
+        if not temp_file_path or not temp_file_path.startswith("./uploads"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path"
+            )
+
+        # Verify file exists
+        if not os.path.exists(temp_file_path):
+            raise HTTPException(
+                status_code=404,
+                detail="Temporary file not found"
+            )
+
+        # Read CSV with pandas
+        import pandas as pd
+
+        df = pd.read_csv(temp_file_path)
+
+        # Get column info with data types
+        columns_info = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            null_count = int(df[col].isnull().sum())
+            columns_info.append({
+                "name": col,
+                "type": dtype,
+                "null_count": null_count
+            })
+
+        # Get preview data (convert to list of lists for JSON serialization)
+        preview_df = df.head(limit)
+        data_rows = preview_df.values.tolist()
+
+        # Convert NaN to None for JSON serialization
+        for row in data_rows:
+            for i in range(len(row)):
+                if pd.isna(row[i]):
+                    row[i] = None
+
+        return {
+            "success": True,
+            "columns": df.columns.tolist(),
+            "columns_info": columns_info,
+            "data": data_rows,
+            "row_count": len(df),
+            "column_count": len(df.columns),
+            "showing_rows": len(data_rows)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error previewing CSV: {str(e)}"
+        )
+
 @router.post("/finalize", response_model=DatasetResponse)
 async def finalize_dataset(
     temp_file_path: str = Form(...),
