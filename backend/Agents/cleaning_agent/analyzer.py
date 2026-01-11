@@ -281,23 +281,23 @@ class CleaningAgent:
         self,
         problem: Problem,
         df: pd.DataFrame
-    ) -> List:
+    ) -> Tuple[List, Optional]:
         """
-        Generate cleaning options for a problem.
+        Generate cleaning options for a problem with GPT recommendation.
 
         Args:
             problem: Problem object
             df: Current DataFrame
 
         Returns:
-            List of CleaningOption objects
+            Tuple of (List of CleaningOption objects, Optional GPTRecommendation)
         """
         # Get operation templates for this problem type
         problem_type_key = problem.problem_type.value
         operation_templates = CLEANING_OPERATIONS.get(problem_type_key, {})
 
         if not operation_templates:
-            return []
+            return [], None
 
         # Convert templates to list format for GPT-4
         template_list = []
@@ -392,7 +392,6 @@ class CleaningAgent:
         """
         from .models import CleaningOption, ProblemType
         from .config import DEFAULT_PROS_CONS
-        import uuid
 
         # Map operation function names to DEFAULT_PROS_CONS keys
         OPERATION_TO_PROSCONS_KEY = {
@@ -409,7 +408,7 @@ class CleaningAgent:
 
         options = []
 
-        for template in option_templates:
+        for i, template in enumerate(option_templates):
             operation_type = template["operation_type"]
 
             # Handle context-dependent no_operation mapping
@@ -430,8 +429,9 @@ class CleaningAgent:
             cons = defaults.get("cons", "Disadvantages not available for this operation.")
 
             # Create option with static pros/cons
+            # Use deterministic option_id based on problem_id and index
             option = CleaningOption(
-                option_id=str(uuid.uuid4()),
+                option_id=f"{problem.problem_id}-opt-{i+1}",
                 option_name=template["name"],
                 operation_type=operation_type,
                 parameters=template["parameters"],
