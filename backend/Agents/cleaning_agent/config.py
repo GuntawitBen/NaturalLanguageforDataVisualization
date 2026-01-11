@@ -53,6 +53,12 @@ CLEANING_OPERATIONS = {
             "function": "fill_with_mode",
             "parameters": {"columns": []},
             "description": "Replace missing values with the most common value in the column"
+        },
+        "keep_missing": {
+            "name": "Leave as-is",
+            "function": "no_operation",
+            "parameters": {},
+            "description": "Keep missing values unchanged - useful when missing data is meaningful"
         }
     },
     "outliers": {
@@ -81,12 +87,6 @@ CLEANING_OPERATIONS = {
             "function": "drop_duplicate_rows",
             "parameters": {"keep": "first"},
             "description": "Remove duplicate rows, keeping the first occurrence"
-        },
-        "drop_duplicates_last": {
-            "name": "Remove duplicate rows (keep last)",
-            "function": "drop_duplicate_rows",
-            "parameters": {"keep": "last"},
-            "description": "Remove duplicate rows, keeping the last occurrence"
         }
     },
     "duplicates_columns": {
@@ -167,13 +167,13 @@ DEFAULT_PROS_CONS = {
         "pros": "Removes redundant data that inflates counts. Keeps the first occurrence which may be chronologically earlier.",
         "cons": "Loses information if duplicate rows contain slight variations. May not keep the 'best' version of duplicated data."
     },
-    "drop_duplicates_last": {
-        "pros": "Removes redundant data that inflates counts. Keeps the last occurrence which may be more recent or updated.",
-        "cons": "Loses information if duplicate rows contain slight variations. May not keep the 'best' version of duplicated data."
-    },
     "drop_duplicate_columns": {
         "pros": "Reduces data redundancy and file size. Simplifies visualizations and analysis.",
         "cons": "May remove columns that seem identical now but could diverge with future data updates."
+    },
+    "keep_missing": {
+        "pros": "Preserves original data without modification. Missing values may be meaningful (e.g., 'not applicable'). Avoids introducing artificial data.",
+        "cons": "Visualizations may show gaps. Some analysis methods cannot handle missing values. May need special handling downstream."
     }
 }
 
@@ -183,4 +183,14 @@ OPENAI_CONFIG = {
     "temperature": 0.7,
     "max_tokens": 800,
     "timeout": 10,  # seconds
+}
+
+# GPT Recommendation configuration
+RECOMMENDATION_CONFIG = {
+    "enabled": True,  # Global toggle
+    "min_options": 2,  # Only recommend if 2+ options available
+    "timeout": 8,  # Timeout for recommendation API calls (seconds)
+    "temperature": 0.3,  # Lower = more deterministic recommendations
+    "max_tokens": 150,  # Keep reasons short and concise
+    "max_retries": 1,  # Retry once on failure (2 attempts total)
 }

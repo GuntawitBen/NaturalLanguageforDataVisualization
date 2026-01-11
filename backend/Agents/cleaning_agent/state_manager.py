@@ -334,6 +334,47 @@ class SessionManager:
         for session_id in sessions_to_delete:
             self.delete_session(session_id)
 
+    def cleanup_orphaned_backups(self, max_age_hours: int = 24):
+        """
+        Cleanup orphaned backup files that don't belong to any active session.
+        Also removes backup files older than max_age_hours.
+
+        Args:
+            max_age_hours: Maximum age of backup files in hours (default 24)
+        """
+        try:
+            # Get all active backup paths from sessions
+            active_backups = set()
+            for session in self.sessions.values():
+                active_backups.update(session.backups)
+
+            # Scan backup directory
+            if not self._backup_dir.exists():
+                return
+
+            current_time = datetime.now()
+            removed_count = 0
+
+            for backup_file in self._backup_dir.glob("*.pkl"):
+                try:
+                    # Get file modification time
+                    file_mtime = datetime.fromtimestamp(backup_file.stat().st_mtime)
+                    age_hours = (current_time - file_mtime).total_seconds() / 3600
+
+                    # Remove if orphaned OR too old
+                    if str(backup_file) not in active_backups or age_hours > max_age_hours:
+                        backup_file.unlink()
+                        removed_count += 1
+                except Exception as e:
+                    print(f"[WARNING] Failed to remove backup file {backup_file}: {e}")
+                    continue
+
+            if removed_count > 0:
+                print(f"[INFO] Cleaned up {removed_count} orphaned/old backup files")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to cleanup orphaned backups: {e}")
+
 
 # Global session manager instance
 session_manager = SessionManager()

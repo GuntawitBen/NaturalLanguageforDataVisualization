@@ -16,24 +16,34 @@ from .models import (
 from .detection import detect_all_problems
 from .config import CLEANING_OPERATIONS
 from .state_manager import session_manager
-from .openai_client import CleaningOpenAIClient
 
 
 class CleaningAgent:
     """Main orchestrator for interactive data cleaning"""
 
-    def __init__(self, openai_api_key: Optional[str] = None):
+    def __init__(self, enable_gpt_recommendations: bool = True):
         """
         Initialize CleaningAgent
 
         Args:
-            openai_api_key: Optional OpenAI API key
+            enable_gpt_recommendations: Whether to enable GPT recommendations (default True)
+
+        Note: Uses static pros/cons from config, but GPT for recommendations.
         """
-        try:
-            self.openai_client = CleaningOpenAIClient(api_key=openai_api_key)
-        except ValueError as e:
-            print(f"[WARNING] OpenAI client initialization failed: {e}")
-            print("[INFO] Will use fallback pros/cons from config.")
+        self.enable_gpt_recommendations = enable_gpt_recommendations
+
+        # Initialize OpenAI client for recommendations
+        if self.enable_gpt_recommendations:
+            try:
+                from .openai_client import CleaningOpenAIClient
+                self.openai_client = CleaningOpenAIClient()
+                print("[INFO] OpenAI client initialized for recommendations")
+            except Exception as e:
+                print(f"[WARNING] Failed to initialize OpenAI client: {e}")
+                print("[INFO] GPT recommendations will be disabled")
+                self.openai_client = None
+                self.enable_gpt_recommendations = False
+        else:
             self.openai_client = None
 
     def start_session(
@@ -51,6 +61,9 @@ class CleaningAgent:
         Returns:
             StartSessionResponse with session info and first problem
         """
+        # Store dataset name for later use in recommendations
+        self._current_dataset_name = dataset_name
+
         # Load DataFrame to detect problems
         df = pd.read_csv(temp_file_path)
 
@@ -114,15 +127,16 @@ class CleaningAgent:
         # Get current problem
         current_problem = session.problems[session.current_problem_index]
 
-        # Generate cleaning options
-        options = self._generate_options_for_problem(current_problem, session.df)
+        # Generate cleaning options with GPT recommendation
+        options, recommendation = self._generate_options_for_problem(current_problem, session.df)
 
-        # Create ProblemWithOptions
+        # Create ProblemWithOptions with recommendation
         problem_with_options = ProblemWithOptions(
             problem=current_problem,
             options=options,
             current_index=session.current_problem_index,
-            total_problems=len(session.problems)
+            total_problems=len(session.problems),
+            recommendation=recommendation
         )
 
         return problem_with_options
@@ -316,40 +330,124 @@ class CleaningAgent:
 
             template_list.append(template)
 
-        # Get column statistics for context
-        column_stats = {}
-        for col in problem.affected_columns:
-            if col in df.columns:
-                col_stats = {
-                    "dtype": str(df[col].dtype),
-                    "non_null_count": int(df[col].notna().sum()),
-                    "null_count": int(df[col].isna().sum())
-                }
+        # Generate options using static pros/cons from config
+        options = self._create_static_options(template_list, problem)
 
-                # Add numeric stats if applicable
-                if pd.api.types.is_numeric_dtype(df[col]):
-                    col_stats.update({
-                        "min": float(df[col].min()) if df[col].notna().any() else None,
-                        "max": float(df[col].max()) if df[col].notna().any() else None,
-                        "mean": float(df[col].mean()) if df[col].notna().any() else None,
-                        "median": float(df[col].median()) if df[col].notna().any() else None
-                    })
+        # Generate GPT recommendation if enabled
+        recommendation = None
+        if self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
+            try:
+                from .models import GPTRecommendation, DatasetStats
 
-                column_stats[col] = col_stats
+                # Get dataset stats
+                dataset_stats = DatasetStats(
+                    row_count=len(df),
+                    column_count=len(df.columns),
+                    missing_value_count=int(df.isna().sum().sum()),
+                    duplicate_row_count=int(df.duplicated().sum()),
+                    outlier_count=0
+                )
 
-        # Generate options with GPT-4 analysis (or fallback)
-        if self.openai_client:
-            options = self.openai_client.generate_options_analysis(
-                problem=problem,
-                option_templates=template_list,
-                column_stats=column_stats
+                # Get dataset name from session
+                dataset_name = getattr(self, '_current_dataset_name', 'dataset')
+
+                # Call OpenAI for recommendation
+                recommended_id, reason = self.openai_client.generate_recommendation(
+                    problem=problem,
+                    options=options,
+                    dataset_stats=dataset_stats,
+                    dataset_name=dataset_name
+                )
+
+                if recommended_id and reason:
+                    recommendation = GPTRecommendation(
+                        recommended_option_id=recommended_id,
+                        reason=reason
+                    )
+                    print(f"[GPT] Recommended: {recommended_id} - {reason}")
+                else:
+                    print(f"[INFO] No GPT recommendation generated")
+
+            except Exception as e:
+                # Fail silently - no recommendation shown
+                print(f"[WARNING] Failed to generate GPT recommendation: {e}")
+                recommendation = None
+
+        return options, recommendation
+
+    def _create_static_options(
+        self,
+        option_templates: List[Dict],
+        problem: Problem
+    ) -> List:
+        """
+        Create cleaning options using static pros/cons from config.
+
+        Args:
+            option_templates: List of operation templates
+            problem: Problem object
+
+        Returns:
+            List of CleaningOption objects with static pros/cons
+        """
+        from .models import CleaningOption, ProblemType
+        from .config import DEFAULT_PROS_CONS
+        import uuid
+
+        # Map operation function names to DEFAULT_PROS_CONS keys
+        OPERATION_TO_PROSCONS_KEY = {
+            "drop_columns": "drop_columns",
+            "drop_missing_rows": "drop_rows",
+            "fill_with_mean": "fill_mean",
+            "fill_with_median": "fill_median",
+            "fill_with_mode": "fill_mode",
+            "remove_outliers": "remove_outliers",
+            "cap_outliers": "cap_outliers",
+            "drop_duplicate_rows": "drop_duplicates_first",
+            "drop_duplicate_columns": "drop_duplicate_columns",
+        }
+
+        options = []
+
+        for template in option_templates:
+            operation_type = template["operation_type"]
+
+            # Handle context-dependent no_operation mapping
+            if operation_type == "no_operation":
+                if problem.problem_type == ProblemType.MISSING_VALUES:
+                    proscons_key = "keep_missing"
+                elif problem.problem_type == ProblemType.OUTLIERS:
+                    proscons_key = "keep_outliers"
+                else:
+                    proscons_key = "keep_missing"  # Default fallback
+            else:
+                # Get the appropriate key for DEFAULT_PROS_CONS
+                proscons_key = OPERATION_TO_PROSCONS_KEY.get(operation_type, operation_type)
+
+            # Get static pros/cons from config
+            defaults = DEFAULT_PROS_CONS.get(proscons_key, {})
+            pros = defaults.get("pros", "Advantages not available for this operation.")
+            cons = defaults.get("cons", "Disadvantages not available for this operation.")
+
+            # Create option with static pros/cons
+            option = CleaningOption(
+                option_id=str(uuid.uuid4()),
+                option_name=template["name"],
+                operation_type=operation_type,
+                parameters=template["parameters"],
+                pros=pros,
+                cons=cons,
+                impact_metrics={}  # No dynamic metrics needed
             )
-        else:
-            # Use fallback
-            options = self.openai_client._create_fallback_options(template_list, problem) if self.openai_client else []
+            options.append(option)
 
         return options
 
 
 # Global agent instance
-cleaning_agent = CleaningAgent()
+try:
+    cleaning_agent = CleaningAgent()
+except Exception as e:
+    print(f"[WARNING] Failed to initialize CleaningAgent with GPT recommendations: {e}")
+    print("[INFO] Initializing CleaningAgent without GPT recommendations")
+    cleaning_agent = CleaningAgent(enable_gpt_recommendations=False)

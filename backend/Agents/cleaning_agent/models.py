@@ -38,12 +38,19 @@ class CleaningOption(BaseModel):
     impact_metrics: Dict[str, Any]  # {"rows_affected": 150, "data_loss_percentage": 15.0}
 
 
+class GPTRecommendation(BaseModel):
+    """GPT-generated recommendation for a cleaning option"""
+    recommended_option_id: str
+    reason: str  # 1-2 sentence explanation
+
+
 class ProblemWithOptions(BaseModel):
     """A problem with its associated cleaning options"""
     problem: Problem
     options: List[CleaningOption]  # 2-3 options
     current_index: int
     total_problems: int
+    recommendation: Optional[GPTRecommendation] = None  # GPT-generated recommendation (None if failed/disabled)
 
 
 class DatasetStats(BaseModel):

@@ -6,6 +6,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from Auth.Signin import router as signin_router
 from Auth.Signup import router as signup_router
 import os
+import asyncio
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 # Try to import dataset routes with explicit error handling
@@ -83,10 +85,54 @@ if not DB_PATH.exists():
 else:
     print("\n[INFO] Database already exists. Skipping initialization.\n")
 
+# Background cleanup task for cleaning agent
+async def cleanup_task():
+    """Periodically cleanup old sessions and orphaned backup files"""
+    while True:
+        try:
+            await asyncio.sleep(3600)  # Run every hour
+
+            # Import session_manager (only if cleaning agent is available)
+            try:
+                from Agents.cleaning_agent.state_manager import session_manager
+
+                # Cleanup old sessions (older than 30 minutes)
+                session_manager.cleanup_old_sessions()
+
+                # Cleanup orphaned backup files (older than 24 hours)
+                session_manager.cleanup_orphaned_backups(max_age_hours=24)
+
+            except Exception as e:
+                print(f"[WARNING] Cleanup task failed: {e}")
+
+        except asyncio.CancelledError:
+            print("[INFO] Cleanup task cancelled")
+            break
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in cleanup task: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    # Startup
+    print("[INFO] Starting background cleanup task...")
+    cleanup_task_handle = asyncio.create_task(cleanup_task())
+
+    yield
+
+    # Shutdown
+    print("[INFO] Stopping background cleanup task...")
+    cleanup_task_handle.cancel()
+    try:
+        await cleanup_task_handle
+    except asyncio.CancelledError:
+        pass
+
 app = FastAPI(
     title="Natural Language Data Visualization API",
     description="API for uploading datasets and querying them with natural language",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # SessionMiddleware FIRST

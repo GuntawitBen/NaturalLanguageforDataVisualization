@@ -242,6 +242,48 @@ async def get_session_state(
         )
 
 
+@router.post("/cleanup")
+async def cleanup_backups(
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Manually trigger cleanup of old sessions and orphaned backup files.
+
+    This endpoint:
+    1. Removes sessions older than 30 minutes
+    2. Removes orphaned backup files older than 24 hours
+
+    Args:
+        current_user_email: Authenticated user email
+
+    Returns:
+        Cleanup results
+    """
+    try:
+        from Agents.cleaning_agent.state_manager import session_manager
+
+        # Cleanup old sessions
+        session_manager.cleanup_old_sessions()
+
+        # Cleanup orphaned backups
+        session_manager.cleanup_orphaned_backups(max_age_hours=24)
+
+        return {
+            "status": "success",
+            "message": "Cleanup completed successfully"
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Failed to run cleanup: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to run cleanup: {str(e)}"
+        )
+
+
 @router.get("/health")
 async def health_check():
     """
