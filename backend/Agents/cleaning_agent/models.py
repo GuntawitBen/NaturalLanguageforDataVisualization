@@ -13,6 +13,14 @@ class ProblemType(str, Enum):
     OUTLIERS = "outliers"
     DUPLICATES_ROWS = "duplicates_rows"
     DUPLICATES_COLUMNS = "duplicates_columns"
+    FORMAT_INCONSISTENCY = "format_inconsistency"
+
+
+class ProblemSeverity(str, Enum):
+    """Severity levels for data quality problems"""
+    CRITICAL = "critical"
+    WARNING = "warning"
+    INFO = "info"
 
 
 class Problem(BaseModel):

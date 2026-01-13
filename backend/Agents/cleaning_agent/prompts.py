@@ -54,10 +54,14 @@ def generate_recommendation_prompt(context: Dict[str, Any]) -> str:
 Based on the dataset size and the specific problem metrics, recommend which option is BEST for this specific situation.
 
 Consider:
-1. Dataset size ({dataset.get('total_rows', 'N/A')} rows) - impact of data loss
-2. Specific metrics (e.g., null_percentage, outlier_count, etc. from the metadata above)
-3. Trade-offs between data quality and data preservation
-4. **DOMAIN ANALYSIS (CRITICAL for outliers)**: Look at the "example_outliers" in metadata and analyze if these values make sense:
+1. **PRIORITY ORDER**: Format inconsistencies should be fixed FIRST before other issues
+   - Format standardization improves accuracy of missing value and outlier detection
+   - Example: "N/A" in date columns won't be detected as missing until format is standardized
+   - Numeric strings like "$1,234" can't be analyzed for outliers until format is cleaned
+2. Dataset size ({dataset.get('total_rows', 'N/A')} rows) - impact of data loss
+3. Specific metrics (e.g., null_percentage, outlier_count, etc. from the metadata above)
+4. Trade-offs between data quality and data preservation
+5. **DOMAIN ANALYSIS (CRITICAL for outliers)**: Look at the "example_outliers" in metadata and analyze if these values make sense:
    - Check the column name to understand what it represents (Age, Salary, Price, Height, etc.)
    - Look at the actual example_outliers values - are they realistic for this domain?
    - For "Age": values like 85, 90, 95 are valid elderly ages - NOT errors to remove
@@ -66,6 +70,20 @@ Consider:
    - For measurements: consider realistic ranges (human height 4-7 feet, weight 80-400 lbs)
    - If the example_outliers appear to be REAL VALID VALUES, recommend "Keep outliers" option
    - Only recommend removing if values are clearly impossible (Age=200, negative prices, etc.)
+6. **FORMAT INCONSISTENCY (for date/boolean/case problems)**:
+   - For DATES: Look at "detected_formats" and "format_examples" in metadata
+     * Recommend "YYYY-MM-DD" (ISO format) for databases, APIs, or technical datasets
+     * Recommend "DD/MM/YYYY" or "MM/DD/YYYY" based on regional context (check existing data)
+     * Recommend "Month DD, YYYY" for human-readable reports
+   - For BOOLEANS: Look at the detected formats
+     * Recommend "True/False" for programming/technical datasets
+     * Recommend "Yes/No" for human-readable surveys or forms
+     * Recommend "1/0" for numeric analysis or database storage
+   - For TEXT CASE: Consider the column context
+     * Recommend "Title Case" for names, titles, categories
+     * Recommend "UPPERCASE" for codes, IDs, abbreviations
+     * Recommend "lowercase" for emails, usernames, URLs
+   - Reference the "format_examples" to explain why your recommendation fits the data
 
 Return ONLY valid JSON (no markdown):
 {{

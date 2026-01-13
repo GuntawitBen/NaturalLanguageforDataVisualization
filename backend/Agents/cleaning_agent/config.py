@@ -17,6 +17,10 @@ DETECTION_THRESHOLDS = {
     "duplicates": {
         "min_count": 1,  # Minimum duplicates to report
         "critical_percentage": 20.0,  # >20% duplicates is critical
+    },
+    "format_inconsistency": {
+        "min_inconsistency_percentage": 5.0,  # Minimum 5% inconsistent to report
+        "min_unique_formats": 2,  # Need at least 2 different formats
     }
 }
 
@@ -96,6 +100,129 @@ CLEANING_OPERATIONS = {
             "parameters": {"columns": []},
             "description": "Remove columns that have identical values to other columns"
         }
+    },
+    # Format inconsistency operations are dynamically generated based on detected formats
+    # These are template definitions - actual options are created in analyzer.py
+    "format_inconsistency": {
+        # Date format standardization options (dynamically populated)
+        "date_format": {
+            "name": "Standardize to {target_format}",
+            "function": "standardize_date_format",
+            "parameters": {"columns": [], "target_format": ""},
+            "description": "Convert all dates to {target_format} format"
+        },
+        # Boolean format standardization options
+        "boolean_format": {
+            "name": "Standardize to {target_format}",
+            "function": "standardize_boolean_format",
+            "parameters": {"columns": [], "target_format": ""},
+            "description": "Convert all boolean values to {target_format} format"
+        },
+        # Case standardization options
+        "case_format": {
+            "name": "Convert to {target_format}",
+            "function": "standardize_case",
+            "parameters": {"columns": [], "target_case": ""},
+            "description": "Convert all text to {target_format}"
+        },
+        "keep_format": {
+            "name": "Keep current formats (no change)",
+            "function": "no_operation",
+            "parameters": {},
+            "description": "Leave the data as-is without standardizing formats"
+        }
+    }
+}
+
+# Available date formats for user selection
+DATE_FORMAT_OPTIONS = {
+    "YYYY-MM-DD": {
+        "name": "YYYY-MM-DD (ISO)",
+        "example": "2024-01-15",
+        "strftime": "%Y-%m-%d",
+        "description": "International standard format, best for sorting and databases"
+    },
+    "DD/MM/YYYY": {
+        "name": "DD/MM/YYYY",
+        "example": "15/01/2024",
+        "strftime": "%d/%m/%Y",
+        "description": "Common in Europe, UK, and most of the world"
+    },
+    "MM/DD/YYYY": {
+        "name": "MM/DD/YYYY",
+        "example": "01/15/2024",
+        "strftime": "%m/%d/%Y",
+        "description": "Common in the United States"
+    },
+    "DD-MM-YYYY": {
+        "name": "DD-MM-YYYY",
+        "example": "15-01-2024",
+        "strftime": "%d-%m-%Y",
+        "description": "Alternative European format with dashes"
+    },
+    "Month DD, YYYY": {
+        "name": "Month DD, YYYY",
+        "example": "January 15, 2024",
+        "strftime": "%B %d, %Y",
+        "description": "Human-readable format with full month name"
+    },
+    "DD Mon YYYY": {
+        "name": "DD Mon YYYY",
+        "example": "15 Jan 2024",
+        "strftime": "%d %b %Y",
+        "description": "Compact format with abbreviated month"
+    }
+}
+
+# Available boolean formats for user selection
+BOOLEAN_FORMAT_OPTIONS = {
+    "Yes/No": {
+        "name": "Yes / No",
+        "true_value": "Yes",
+        "false_value": "No",
+        "description": "Human-readable format"
+    },
+    "True/False": {
+        "name": "True / False",
+        "true_value": "True",
+        "false_value": "False",
+        "description": "Programming standard format"
+    },
+    "1/0": {
+        "name": "1 / 0",
+        "true_value": "1",
+        "false_value": "0",
+        "description": "Numeric format, good for calculations"
+    },
+    "Y/N": {
+        "name": "Y / N",
+        "true_value": "Y",
+        "false_value": "N",
+        "description": "Compact single-character format"
+    }
+}
+
+# Available case formats for user selection
+CASE_FORMAT_OPTIONS = {
+    "Title Case": {
+        "name": "Title Case",
+        "example": "John Smith",
+        "description": "First letter of each word capitalized"
+    },
+    "UPPERCASE": {
+        "name": "UPPERCASE",
+        "example": "JOHN SMITH",
+        "description": "All letters uppercase"
+    },
+    "lowercase": {
+        "name": "lowercase",
+        "example": "john smith",
+        "description": "All letters lowercase"
+    },
+    "Sentence case": {
+        "name": "Sentence case",
+        "example": "John smith",
+        "description": "Only first letter capitalized"
     }
 }
 
@@ -126,6 +253,11 @@ VISUALIZATION_IMPACT_TEMPLATES = {
     "duplicates_columns": {
         "warning": "Duplicate columns ({count}) will create redundant information in visualizations and may confuse interpretation.",
         "info": "Duplicate columns ({count}) detected - these create redundancy but don't directly affect visualization accuracy."
+    },
+    "format_inconsistency": {
+        "date": "Inconsistent date formats may cause parsing errors and incorrect chronological ordering in time-series visualizations.",
+        "boolean": "Inconsistent boolean formats may cause grouping errors, treating 'Yes' and 'True' as different categories in charts.",
+        "case": "Inconsistent text casing may create duplicate categories (e.g., 'USA' and 'usa' shown separately) in visualizations."
     }
 }
 

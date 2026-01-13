@@ -3,7 +3,7 @@ Main CleaningAgent orchestrator class.
 """
 
 import pandas as pd
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 from .models import (
     Problem,
@@ -14,7 +14,13 @@ from .models import (
     DatasetStats
 )
 from .detection import detect_all_problems
-from .config import CLEANING_OPERATIONS
+from .config import (
+    CLEANING_OPERATIONS,
+    DATE_FORMAT_OPTIONS,
+    BOOLEAN_FORMAT_OPTIONS,
+    CASE_FORMAT_OPTIONS,
+    DEFAULT_PROS_CONS
+)
 from .state_manager import session_manager
 
 
@@ -127,8 +133,16 @@ class CleaningAgent:
         # Get current problem
         current_problem = session.problems[session.current_problem_index]
 
-        # Generate cleaning options with GPT recommendation
-        options, recommendation = self._generate_options_for_problem(current_problem, session.df)
+        # Use cached options if available, otherwise generate new ones
+        if session.cached_options is not None:
+            options = session.cached_options
+            recommendation = session.cached_recommendation
+        else:
+            # Generate cleaning options with GPT recommendation
+            options, recommendation = self._generate_options_for_problem(current_problem, session.df)
+            # Cache the options for consistent option_ids
+            session.cached_options = options
+            session.cached_recommendation = recommendation
 
         # Create ProblemWithOptions with recommendation
         problem_with_options = ProblemWithOptions(
@@ -281,7 +295,7 @@ class CleaningAgent:
         self,
         problem: Problem,
         df: pd.DataFrame
-    ) -> Tuple[List, Optional]:
+    ) -> Tuple[List, Any]:
         """
         Generate cleaning options for a problem with GPT recommendation.
 
@@ -292,8 +306,13 @@ class CleaningAgent:
         Returns:
             Tuple of (List of CleaningOption objects, Optional GPTRecommendation)
         """
-        # Get operation templates for this problem type
         problem_type_key = problem.problem_type.value
+
+        # Special handling for format inconsistency - generate dynamic options
+        if problem_type_key == "format_inconsistency":
+            return self._generate_format_inconsistency_options(problem, df)
+
+        # Get operation templates for this problem type
         operation_templates = CLEANING_OPERATIONS.get(problem_type_key, {})
 
         if not operation_templates:
@@ -301,7 +320,7 @@ class CleaningAgent:
 
         # Convert templates to list format for GPT-4
         template_list = []
-        for op_key, op_config in operation_templates.items():
+        for _, op_config in operation_templates.items():
             # Check if this option should be included based on missing percentage
             if "min_missing_percentage" in op_config:
                 # Get missing percentage from problem metadata
@@ -443,8 +462,166 @@ class CleaningAgent:
 
         return options
 
+    def _generate_format_inconsistency_options(
+        self,
+        problem: Problem,
+        df: pd.DataFrame
+    ) -> Tuple[List, Any]:
+        """
+        Generate dynamic options for format inconsistency problems.
+
+        Based on the format_type in problem metadata, generates appropriate
+        standardization options for the user to choose from.
+
+        Args:
+            problem: Problem object with format inconsistency details
+            df: Current DataFrame
+
+        Returns:
+            Tuple of (List of CleaningOption objects, Optional GPTRecommendation)
+        """
+        from .models import CleaningOption, GPTRecommendation
+
+        format_type = problem.metadata.get("format_type", "")
+        column = problem.metadata.get("column", "")
+        detected_formats = problem.metadata.get("detected_formats", {})
+        format_examples = problem.metadata.get("format_examples", {})
+
+        options = []
+        option_index = 0
+
+        if format_type == "date":
+            # Generate date format options
+            for format_key, format_info in DATE_FORMAT_OPTIONS.items():
+                # Get example if available
+                example = format_info.get("example", "")
+                description = format_info.get("description", "")
+
+                option = CleaningOption(
+                    option_id=f"{problem.problem_id}-opt-{option_index}",
+                    option_name=f"Convert to {format_info['name']}",
+                    operation_type="standardize_date_format",
+                    parameters={
+                        "columns": [column],
+                        "target_format": format_key
+                    },
+                    pros=f"Standardizes all dates to {format_key} format. {description}",
+                    cons=DEFAULT_PROS_CONS.get("standardize_date_format", {}).get("cons", "Original formats will be lost."),
+                    impact_metrics={"example": example}
+                )
+                options.append(option)
+                option_index += 1
+
+        elif format_type == "mixed_numeric_text":
+            # Generate convert to numeric option
+            option = CleaningOption(
+                option_id=f"{problem.problem_id}-opt-{option_index}",
+                option_name="Convert text to numbers (set invalid as missing)",
+                operation_type="convert_mixed_to_numeric",
+                parameters={
+                    "columns": [column]
+                },
+                pros="Converts column to numeric type, enabling correct sorting and calculations.",
+                cons="Text values that cannot be parsed as numbers (e.g., 'Thirty') will be lost and replaced with NaN (missing values).",
+                impact_metrics={"action": "Convert numeric strings, Drop non-numeric text"}
+            )
+            options.append(option)
+            option_index += 1
+
+        elif format_type == "boolean":
+            # Generate boolean format options
+            for format_key, format_info in BOOLEAN_FORMAT_OPTIONS.items():
+                true_val = format_info.get("true_value", "True")
+                false_val = format_info.get("false_value", "False")
+                description = format_info.get("description", "")
+
+                option = CleaningOption(
+                    option_id=f"{problem.problem_id}-opt-{option_index}",
+                    option_name=f"Convert to {format_info['name']}",
+                    operation_type="standardize_boolean_format",
+                    parameters={
+                        "columns": [column],
+                        "target_format": format_key
+                    },
+                    pros=f"Standardizes all values to {true_val}/{false_val}. {description}",
+                    cons=DEFAULT_PROS_CONS.get("standardize_boolean_format", {}).get("cons", "Original text values will be replaced."),
+                    impact_metrics={"true_value": true_val, "false_value": false_val}
+                )
+                options.append(option)
+                option_index += 1
+
+        elif format_type == "case":
+            # Generate case format options
+            for format_key, format_info in CASE_FORMAT_OPTIONS.items():
+                example = format_info.get("example", "")
+                description = format_info.get("description", "")
+
+                option = CleaningOption(
+                    option_id=f"{problem.problem_id}-opt-{option_index}",
+                    option_name=f"Convert to {format_info['name']}",
+                    operation_type="standardize_case",
+                    parameters={
+                        "columns": [column],
+                        "target_case": format_key
+                    },
+                    pros=f"Converts all text to {format_key}. {description}",
+                    cons=DEFAULT_PROS_CONS.get("standardize_case", {}).get("cons", "Original casing will be lost."),
+                    impact_metrics={"example": example}
+                )
+                options.append(option)
+                option_index += 1
+
+        # Always add "Keep as-is" option
+        option = CleaningOption(
+            option_id=f"{problem.problem_id}-opt-{option_index}",
+            option_name="Keep current formats (no change)",
+            operation_type="no_operation",
+            parameters={},
+            pros=DEFAULT_PROS_CONS.get("keep_format", {}).get("pros", "Preserves original data."),
+            cons=DEFAULT_PROS_CONS.get("keep_format", {}).get("cons", "Inconsistent formats may cause issues."),
+            impact_metrics={}
+        )
+        options.append(option)
+
+        # Generate GPT recommendation if enabled
+        recommendation = None
+        if self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
+            try:
+                from .models import DatasetStats
+
+                dataset_stats = DatasetStats(
+                    row_count=len(df),
+                    column_count=len(df.columns),
+                    missing_value_count=int(df.isna().sum().sum()),
+                    duplicate_row_count=int(df.duplicated().sum()),
+                    outlier_count=0
+                )
+
+                dataset_name = getattr(self, '_current_dataset_name', 'dataset')
+
+                recommended_id, reason = self.openai_client.generate_recommendation(
+                    problem=problem,
+                    options=options,
+                    dataset_stats=dataset_stats,
+                    dataset_name=dataset_name
+                )
+
+                if recommended_id and reason:
+                    recommendation = GPTRecommendation(
+                        recommended_option_id=recommended_id,
+                        reason=reason
+                    )
+                    print(f"[GPT] Recommended: {recommended_id} - {reason}")
+
+            except Exception as e:
+                print(f"[WARNING] Failed to generate GPT recommendation for format: {e}")
+                recommendation = None
+
+        return options, recommendation
+
 
 # Global agent instance
+# Version: 2.0 - Updated detection order (format first)
 try:
     cleaning_agent = CleaningAgent()
 except Exception as e:

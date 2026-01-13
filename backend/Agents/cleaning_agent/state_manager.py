@@ -35,6 +35,9 @@ class SessionData:
         self.backups: List[str] = []  # Paths to backup files
         self.created_at = datetime.now().isoformat()
         self.updated_at = datetime.now().isoformat()
+        # Cache for current problem's options (to maintain consistent option_ids)
+        self.cached_options: Optional[List] = None
+        self.cached_recommendation = None
 
     def get_current_stats(self) -> DatasetStats:
         """Get current dataset statistics"""
@@ -286,6 +289,9 @@ class SessionManager:
             session.skipped_problems.append(current_problem.problem_id)
             session.current_problem_index += 1
             session.updated_at = datetime.now().isoformat()
+            # Clear cached options for the next problem
+            session.cached_options = None
+            session.cached_recommendation = None
             return True
 
         return False
@@ -296,6 +302,9 @@ class SessionManager:
         if session:
             session.current_problem_index += 1
             session.updated_at = datetime.now().isoformat()
+            # Clear cached options for the next problem
+            session.cached_options = None
+            session.cached_recommendation = None
 
     def delete_session(self, session_id: str):
         """Delete a session and cleanup backups"""
