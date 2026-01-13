@@ -1,10 +1,10 @@
 import React from 'react';
 import './CleaningOptionCard.css';
 
-export default function CleaningOptionCard({ option, onSelect, disabled }) {
+export default function CleaningOptionCard({ option, onSelect, disabled, isRecommended, recommendationReason }) {
   return (
     <div
-      className={`cleaning-option-card ${disabled ? 'disabled' : ''}`}
+      className={`cleaning-option-card ${disabled ? 'disabled' : ''} ${isRecommended ? 'recommended' : ''}`}
       onClick={!disabled ? onSelect : null}
       role="button"
       tabIndex={disabled ? -1 : 0}
@@ -15,6 +15,14 @@ export default function CleaningOptionCard({ option, onSelect, disabled }) {
         }
       }}
     >
+      {isRecommended && (
+        <div className="recommendation-banner">
+          <span className="recommendation-badge">Recommended</span>
+          {recommendationReason && (
+            <p className="recommendation-reason">{recommendationReason}</p>
+          )}
+        </div>
+      )}
       <div className="option-header">
         <h6 className="option-name">{option.option_name}</h6>
         {option.impact_metrics?.rows_affected !== undefined && option.impact_metrics.rows_affected !== null && (

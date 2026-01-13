@@ -9,7 +9,8 @@ export default function ProblemCard({
   onSkip,
   disabled,
   currentIndex,
-  totalProblems
+  totalProblems,
+  recommendation
 }) {
   // Determine severity badge color
   const getSeverityClass = (severity) => {
@@ -57,14 +58,27 @@ export default function ProblemCard({
       <div className="cleaning-options-section">
         <h5 className="options-heading">Choose a cleaning approach:</h5>
         <div className="cleaning-options">
-          {options.map((option) => (
-            <CleaningOptionCard
-              key={option.option_id}
-              option={option}
-              onSelect={() => onSelectOption(option.option_id)}
-              disabled={disabled}
-            />
-          ))}
+          {/* Sort options: recommended first */}
+          {[...options]
+            .sort((a, b) => {
+              if (recommendation?.recommended_option_id === a.option_id) return -1;
+              if (recommendation?.recommended_option_id === b.option_id) return 1;
+              return 0;
+            })
+            .map((option) => (
+              <CleaningOptionCard
+                key={option.option_id}
+                option={option}
+                onSelect={() => onSelectOption(option.option_id)}
+                disabled={disabled}
+                isRecommended={recommendation?.recommended_option_id === option.option_id}
+                recommendationReason={
+                  recommendation?.recommended_option_id === option.option_id
+                    ? recommendation.reason
+                    : null
+                }
+              />
+            ))}
         </div>
       </div>
 

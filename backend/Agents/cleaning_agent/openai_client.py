@@ -1,5 +1,5 @@
 """
-OpenAI API client for generating pros/cons for cleaning options.
+OpenAI API client for generating cleaning option recommendations.
 """
 
 from openai import OpenAI, RateLimitError
@@ -7,11 +7,11 @@ import json
 import time
 import re
 import os
-from typing import Dict, List, Any, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .models import Problem, CleaningOption, DatasetStats
-from .prompts import SYSTEM_PROMPT, generate_pros_cons_prompt, generate_recommendation_prompt
-from .config import OPENAI_CONFIG, DEFAULT_PROS_CONS, RECOMMENDATION_CONFIG
+from .prompts import generate_recommendation_prompt
+from .config import OPENAI_CONFIG, RECOMMENDATION_CONFIG
 
 
 class CleaningOpenAIClient:
@@ -31,9 +31,6 @@ class CleaningOpenAIClient:
 
         self.client = OpenAI(api_key=self.api_key)
         self.model = OPENAI_CONFIG["model"]
-        self.temperature = OPENAI_CONFIG["temperature"]
-        self.max_tokens = OPENAI_CONFIG["max_tokens"]
-        self.timeout = OPENAI_CONFIG["timeout"]
 
     def _parse_retry_after(self, error_message: str) -> float:
         """
@@ -105,156 +102,6 @@ class CleaningOpenAIClient:
         if last_error:
             raise last_error
 
-    def generate_options_analysis(
-        self,
-        problem: Problem,
-        option_templates: List[Dict[str, Any]],
-        column_stats: Dict[str, Any] = None
-    ) -> List[CleaningOption]:
-        """
-        Generate pros/cons for all cleaning options using GPT-4.
-
-        Args:
-            problem: The Problem object
-            option_templates: List of option templates from config
-            column_stats: Optional column statistics
-
-        Returns:
-            List of CleaningOption objects with AI-generated pros/cons
-        """
-        try:
-            # Generate prompt
-            prompt = generate_pros_cons_prompt(
-                problem_type=problem.problem_type.value,
-                problem_title=problem.title,
-                problem_description=problem.description,
-                affected_columns=problem.affected_columns,
-                options=option_templates,
-                column_stats=column_stats
-            )
-
-            # Call OpenAI API with timeout
-            response = self._call_with_retry(
-                self.client.chat.completions.create,
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                response_format={"type": "json_object"},
-                max_retries=2,
-                timeout=self.timeout
-            )
-
-            # Parse response
-            content = response.choices[0].message.content
-            parsed = json.loads(content)
-
-            # Enrich options with GPT-4 analysis
-            enriched_options = self._enrich_options(
-                option_templates,
-                parsed.get("options", []),
-                problem
-            )
-
-            print(f"[GPT-4] Generated pros/cons for {len(enriched_options)} options successfully")
-            return enriched_options
-
-        except RateLimitError as e:
-            print(f"[WARNING] Rate limit exceeded. Using fallback pros/cons.")
-            return self._create_fallback_options(option_templates, problem)
-
-        except Exception as e:
-            print(f"[ERROR] Failed to generate pros/cons: {type(e).__name__}: {str(e)}")
-            print("[INFO] Using fallback pros/cons from defaults.")
-            return self._create_fallback_options(option_templates, problem)
-
-    def _enrich_options(
-        self,
-        option_templates: List[Dict[str, Any]],
-        gpt_analysis: List[Dict[str, Any]],
-        problem: Problem
-    ) -> List[CleaningOption]:
-        """
-        Combine option templates with GPT-4 analysis to create CleaningOption objects.
-
-        Args:
-            option_templates: Original option templates
-            gpt_analysis: GPT-4 generated analysis
-            problem: The Problem object
-
-        Returns:
-            List of CleaningOption objects
-        """
-        enriched_options = []
-
-        for i, template in enumerate(option_templates):
-            # Find matching GPT analysis by option number
-            gpt_data = next(
-                (opt for opt in gpt_analysis if opt.get("option_number") == i + 1),
-                {}
-            )
-
-            # Get pros/cons from GPT or fallback
-            operation_type = template["operation_type"]
-            pros = gpt_data.get("pros", DEFAULT_PROS_CONS.get(operation_type, {}).get("pros", "Pros not available"))
-            cons = gpt_data.get("cons", DEFAULT_PROS_CONS.get(operation_type, {}).get("cons", "Cons not available"))
-
-            # Get impact estimate
-            impact_estimate = gpt_data.get("impact_estimate", {})
-
-            # Create CleaningOption
-            option = CleaningOption(
-                option_id=f"{problem.problem_id}-opt-{i+1}",
-                option_name=template["name"],
-                operation_type=template["operation_type"],
-                parameters=template["parameters"].copy(),
-                pros=pros,
-                cons=cons,
-                impact_metrics=impact_estimate if impact_estimate else {}
-            )
-
-            enriched_options.append(option)
-
-        return enriched_options
-
-    def _create_fallback_options(
-        self,
-        option_templates: List[Dict[str, Any]],
-        problem: Problem
-    ) -> List[CleaningOption]:
-        """
-        Create CleaningOption objects with fallback pros/cons from config.
-
-        Args:
-            option_templates: Original option templates
-            problem: The Problem object
-
-        Returns:
-            List of CleaningOption objects with default pros/cons
-        """
-        fallback_options = []
-
-        for i, template in enumerate(option_templates):
-            operation_type = template["operation_type"]
-            defaults = DEFAULT_PROS_CONS.get(operation_type, {})
-
-            option = CleaningOption(
-                option_id=f"{problem.problem_id}-opt-{i+1}",
-                option_name=template["name"],
-                operation_type=template["operation_type"],
-                parameters=template["parameters"].copy(),
-                pros=defaults.get("pros", "Advantages not available"),
-                cons=defaults.get("cons", "Disadvantages not available"),
-                impact_metrics={}
-            )
-
-            fallback_options.append(option)
-
-        return fallback_options
-
     def generate_recommendation(
         self,
         problem: Problem,
@@ -319,6 +166,14 @@ class CleaningOpenAIClient:
                 max_retries=RECOMMENDATION_CONFIG.get("max_retries", 1),
                 timeout=RECOMMENDATION_CONFIG.get("timeout", 8)
             )
+
+            # Log token usage
+            if response.usage:
+                prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
+                cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
+                print(f"[GPT] Token usage - Input: {response.usage.prompt_tokens}, "
+                      f"Output: {response.usage.completion_tokens}, "
+                      f"Cached: {cached_tokens}")
 
             # Parse response
             content = response.choices[0].message.content

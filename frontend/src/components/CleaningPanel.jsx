@@ -110,6 +110,7 @@ export default function CleaningPanel({
               disabled={operationInProgress}
               currentIndex={currentProblem.current_index}
               totalProblems={currentProblem.total_problems}
+              recommendation={currentProblem.recommendation}
             />
           )}
 

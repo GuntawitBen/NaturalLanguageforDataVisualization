@@ -26,6 +26,46 @@
   outline-offset: 2px;
 }
 
+/* Recommended Option Styling */
+.cleaning-option-card.recommended {
+  border-color: #48bb78;
+  background: linear-gradient(to bottom, #f0fff4, white);
+  box-shadow: 0 2px 8px rgba(72, 187, 120, 0.15);
+}
+
+.cleaning-option-card.recommended:hover:not(.disabled) {
+  border-color: #38a169;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.25);
+}
+
+.recommendation-banner {
+  background: #c6f6d5;
+  margin: -1rem -1rem 0.75rem -1rem;
+  padding: 0.625rem 1rem;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid #9ae6b4;
+}
+
+.recommendation-badge {
+  display: inline-block;
+  background: #38a169;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.recommendation-reason {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.75rem;
+  color: #276749;
+  line-height: 1.4;
+  font-style: italic;
+}
+
 /* Option Header */
 .option-header {
   display: flex;
