@@ -57,11 +57,20 @@ Consider:
 1. Dataset size ({dataset.get('total_rows', 'N/A')} rows) - impact of data loss
 2. Specific metrics (e.g., null_percentage, outlier_count, etc. from the metadata above)
 3. Trade-offs between data quality and data preservation
+4. **DOMAIN ANALYSIS (CRITICAL for outliers)**: Look at the "example_outliers" in metadata and analyze if these values make sense:
+   - Check the column name to understand what it represents (Age, Salary, Price, Height, etc.)
+   - Look at the actual example_outliers values - are they realistic for this domain?
+   - For "Age": values like 85, 90, 95 are valid elderly ages - NOT errors to remove
+   - For "Salary/Income": high values ($200k+) may be executives - could be legitimate
+   - For "Price": extreme values might be luxury items or bulk orders
+   - For measurements: consider realistic ranges (human height 4-7 feet, weight 80-400 lbs)
+   - If the example_outliers appear to be REAL VALID VALUES, recommend "Keep outliers" option
+   - Only recommend removing if values are clearly impossible (Age=200, negative prices, etc.)
 
 Return ONLY valid JSON (no markdown):
 {{
   "recommended_option_id": "<the exact ID value from the option you recommend, e.g., xxx-opt-1>",
-  "reason": "Two concise sentence explaining why this option is best for THIS specific situation. Reference the actual metrics."
+  "reason": "Two concise sentences explaining why this option is best. For outliers, explain whether they appear to be valid domain values or errors. Reference actual metrics."
 }}
 
 IMPORTANT: Use the exact ID string shown after "ID:" for each option, NOT "Option 1" or similar.

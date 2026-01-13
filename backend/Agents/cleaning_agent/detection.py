@@ -135,6 +135,7 @@ def detect_outlier_problems(df: pd.DataFrame) -> List[Problem]:
                 "outlier_percentage": float(outlier_percentage),
                 "lower_bound": outlier_info["lower_bound"],
                 "upper_bound": outlier_info["upper_bound"],
+                "example_outliers": outlier_info["example_outliers"],
                 "column": column
             }
         )
@@ -242,7 +243,7 @@ def _detect_outliers_iqr(df: pd.DataFrame, column: str) -> Dict[str, Any]:
     Detect outliers using IQR method.
 
     Returns:
-        Dict with outlier information
+        Dict with outlier information including sample values
     """
     values = df[column].dropna()
 
@@ -250,7 +251,8 @@ def _detect_outliers_iqr(df: pd.DataFrame, column: str) -> Dict[str, Any]:
         return {
             'outlier_count': 0,
             'lower_bound': None,
-            'upper_bound': None
+            'upper_bound': None,
+            'example_outliers': []
         }
 
     Q1 = values.quantile(0.25)
@@ -264,10 +266,21 @@ def _detect_outliers_iqr(df: pd.DataFrame, column: str) -> Dict[str, Any]:
     outlier_mask = (df[column] < lower_bound) | (df[column] > upper_bound)
     outlier_count = outlier_mask.sum()
 
+    # Get sample outlier values (up to 5 examples)
+    example_outliers = []
+    if outlier_count > 0:
+        outlier_values = df.loc[outlier_mask, column].dropna()
+        # Get unique outlier values, sorted by how extreme they are
+        unique_outliers = outlier_values.unique()
+        # Take up to 5 examples, prefer extreme values
+        sorted_outliers = sorted(unique_outliers, key=lambda x: abs(x - values.median()), reverse=True)
+        example_outliers = [round(float(v), 2) for v in sorted_outliers[:5]]
+
     return {
         'outlier_count': int(outlier_count),
         'lower_bound': float(lower_bound),
-        'upper_bound': float(upper_bound)
+        'upper_bound': float(upper_bound),
+        'example_outliers': example_outliers
     }
 
 
