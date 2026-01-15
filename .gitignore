@@ -65,6 +65,7 @@ backend/uploads/
 backend/nul
 nul
 tmpclaude-*
+.claude/
 
 # Temporary runtime data
 backend/backups/
