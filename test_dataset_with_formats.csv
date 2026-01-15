@@ -1,6 +1,0 @@
-ID,Name,Age,Email,Join Date,Salary,Department,Status
-1,John,25,john@example.com,2024-01-01,100000,Sales,Yes
-2,Jane,29,jane-doe@,01/03/2024,120000.5,IT,1
-,Doe,22,doe@example.com,March 1 2024,-50000,HR,True
-4,Alice,Thirty,alice@example.com,2024-01-05,200000,Sales,no
-5,Bob,35,,N/A,Not Available,---,FALSE
