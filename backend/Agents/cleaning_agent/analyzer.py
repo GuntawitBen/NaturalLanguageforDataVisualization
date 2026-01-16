@@ -199,8 +199,8 @@ class CleaningAgent:
             problem_id=current_problem.problem_id
         )
 
-        # Move to next problem
-        session_manager.move_to_next_problem(session_id)
+        # Update problems state
+        session_manager.update_problems_after_operation(session_id)
 
         # Get next problem
         next_problem = self.get_next_problem(session_id)

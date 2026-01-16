@@ -18,6 +18,7 @@ from .models import (
 )
 from .config import SESSION_CONFIG
 from .operations import execute_operation
+from .detection import detect_all_problems
 
 
 class SessionData:
@@ -259,12 +260,10 @@ class SessionManager:
 
             # Remove last operation from history
             session.operation_history.pop()
-            session.updated_at = datetime.now().isoformat()
-
-            # Move back to previous problem if current problem was completed
-            if session.current_problem_index > 0:
-                session.current_problem_index -= 1
-
+            
+            # Re-sync problems state with the restored DataFrame
+            self.update_problems_after_operation(session_id)
+            
             return True
         except Exception as e:
             print(f"Error undoing operation: {e}")
@@ -296,15 +295,58 @@ class SessionManager:
 
         return False
 
-    def move_to_next_problem(self, session_id: str):
-        """Move to the next problem after completing current one"""
+    def update_problems_after_operation(self, session_id: str):
+        """
+        Re-detect all problems after an operation and update the session state.
+        Preserves problem IDs for problems that still exist.
+        """
         session = self.get_session(session_id)
-        if session:
-            session.current_problem_index += 1
-            session.updated_at = datetime.now().isoformat()
-            # Clear cached options for the next problem
-            session.cached_options = None
-            session.cached_recommendation = None
+        if not session:
+            return
+
+        # 1. Detect new problems on the current DataFrame
+        new_problems = detect_all_problems(session.df)
+
+        # 2. Create a lookup for existing problems to preserve IDs
+        # Key: (problem_type, set(affected_columns), title)
+        existing_problems_map = {}
+        for p in session.problems:
+            # key needs to be hashable
+            cols = tuple(sorted(p.affected_columns)) if p.affected_columns else ()
+            key = (p.problem_type, cols, p.title)
+            existing_problems_map[key] = p.problem_id
+
+        # 3. Match new problems with existing ones
+        final_problems = []
+        for new_p in new_problems:
+            cols = tuple(sorted(new_p.affected_columns)) if new_p.affected_columns else ()
+            key = (new_p.problem_type, cols, new_p.title)
+            
+            if key in existing_problems_map:
+                # Reuse existing ID
+                new_p.problem_id = existing_problems_map[key]
+            
+            final_problems.append(new_p)
+
+        # 4. Update session problems
+        session.problems = final_problems
+        
+        # 5. Reset index to verify if we can skip "Skipped" problems
+        # We want to find the first problem that hasn't been skipped
+        session.current_problem_index = 0
+        while session.current_problem_index < len(session.problems):
+            current_p = session.problems[session.current_problem_index]
+            if current_p.problem_id in session.skipped_problems:
+                # This problem was previously skipped and still exists -> skip it again
+                session.current_problem_index += 1
+            else:
+                # Found a non-skipped problem
+                break
+        
+        session.updated_at = datetime.now().isoformat()
+        # Clear cached options
+        session.cached_options = None
+        session.cached_recommendation = None
 
     def delete_session(self, session_id: str):
         """Delete a session and cleanup backups"""
