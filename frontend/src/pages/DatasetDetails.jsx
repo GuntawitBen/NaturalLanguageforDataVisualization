@@ -26,6 +26,16 @@ export default function DatasetDetails() {
   const [sqlError, setSqlError] = useState(null);
   const sqlSessionStarted = useRef(false);
   const messagesEndRef = useRef(null);
+  const recommendPromptIndex = useRef(0);
+
+  // Cycling prompts for the Recommend button
+  const recommendPrompts = [
+    "Recommend some interesting questions I should explore about this data.",
+    "What patterns or trends might be hidden in this dataset?",
+    "Suggest some analytical questions that could reveal insights.",
+    "What are some unusual or surprising things I should look for?",
+    "What comparisons or breakdowns would be most valuable to analyze?",
+  ];
 
   useEffect(() => {
     fetchDatasetDetails();
@@ -236,7 +246,9 @@ export default function DatasetDetails() {
   };
 
   const handleRecommend = () => {
-    sendSqlMessage("Recommend some interesting questions I should explore about this data.");
+    const prompt = recommendPrompts[recommendPromptIndex.current];
+    recommendPromptIndex.current = (recommendPromptIndex.current + 1) % recommendPrompts.length;
+    sendSqlMessage(prompt);
   };
 
   const handleRecommendationClick = (question) => {
@@ -435,7 +447,7 @@ export default function DatasetDetails() {
               {/* Recommended Questions */}
               {sqlRecommendations.length > 0 && (
                 <div className="sql-recommendations">
-                  <p className="recommendations-label">Suggested questions:</p>
+                  <span className="recommendations-label">Try:</span>
                   <div className="recommendations-chips">
                     {sqlRecommendations.map((question, index) => (
                       <button
