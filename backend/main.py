@@ -57,6 +57,15 @@ except Exception as e:
     cleaning_router = None
 
 try:
+    from routes.text_to_sql import router as text_to_sql_router
+    print("[OK] Text-to-SQL router imported successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to import Text-to-SQL router: {e}")
+    import traceback
+    traceback.print_exc()
+    text_to_sql_router = None
+
+try:
     from database import init_database
     print("[OK] Database module imported successfully")
 except Exception as e:
@@ -205,3 +214,9 @@ if cleaning_router is not None:
     print("[OK] Cleaning router included")
 else:
     print("[WARNING] Cleaning router not included (import failed)")
+
+if text_to_sql_router is not None:
+    app.include_router(text_to_sql_router)
+    print("[OK] Text-to-SQL router included")
+else:
+    print("[WARNING] Text-to-SQL router not included (import failed)")

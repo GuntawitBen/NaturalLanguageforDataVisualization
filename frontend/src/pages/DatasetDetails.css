@@ -1,4 +1,5 @@
 .dataset-details-page {
+  position: relative;
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
@@ -8,7 +9,17 @@
 
 /* Header Section */
 .details-header {
-  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.dataset-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .back-button {
@@ -24,7 +35,7 @@
   color: #4a5568;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-bottom: 1.5rem;
+  width: fit-content;
 }
 
 .back-button:hover {
@@ -40,32 +51,146 @@
   margin: 0 0 0.5rem 0;
 }
 
+.dataset-info {
+  flex: 1;
+}
+
 .dataset-filename {
   font-size: 0.95rem;
   color: #718096;
-  margin: 0 0 1rem 0;
+  margin: 0;
 }
 
-.header-stats {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.stat-badge {
+/* Info Dropdown */
+.info-dropdown-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #718096;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.info-dropdown-toggle:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.info-dropdown-toggle.open {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.info-dropdown-toggle.open svg {
+  transform: rotate(180deg);
+}
+
+.info-dropdown-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.info-dropdown {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  padding: 1rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.info-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  min-width: 150px;
+  flex: 1;
+  border-right: 1px solid #e2e8f0;
+}
+
+.info-dropdown-item:last-child {
+  border-right: none;
+}
+
+.info-label {
+  color: #718096;
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  color: #1a202c;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Navigation Tabs */
+.details-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
   color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.stat-badge svg {
+.tab-button:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.tab-button.active {
+  background: #1a202c;
+  border-color: #1a202c;
+  color: white;
+}
+
+/* Tab Content */
+.tab-content {
+  background: white;
+  border-radius: 12px;
+  min-height: 400px;
+}
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
   color: #718096;
+}
+
+.placeholder-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 0.5rem 0;
+}
+
+.placeholder-content p {
+  margin: 0;
 }
 
 /* Data Table Section */
@@ -182,8 +307,28 @@
     font-size: 1.5rem;
   }
 
-  .header-stats {
+  .info-dropdown {
     flex-direction: column;
+  }
+
+  .info-dropdown-item {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .info-dropdown-item:last-child {
+    border-bottom: none;
+  }
+
+  .info-label {
+    margin-bottom: 0;
+  }
+
+  .details-tabs {
+    flex-wrap: wrap;
   }
 
   .table-wrapper {

@@ -72,8 +72,9 @@ backend/backups/
 backups/
 
 # Text-to-SQL large files (BIRD benchmark)
-backend/Agents/text-to-sql/mini_dev/minidev/
-backend/Agents/text-to-sql/mini_dev/bird_env/
-backend/Agents/text-to-sql/mini_dev/finetuning/
+backend/Agents/birdmini_benchmark/mini_dev/minidev/
+backend/Agents/birdmini_benchmark/mini_dev/bird_env/
+backend/Agents/birdmini_benchmark/mini_dev/finetuning/
 backend/Agents/text-to-sql/mini_dev/*.zip
-backend/Agents/text-to-sql/mini_dev/.git/
+backend/Agents/birdmini_benchmark/mini_dev/.git/
+backend/Agents/birdmini_benchmark/

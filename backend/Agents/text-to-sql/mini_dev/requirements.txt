@@ -1,9 +1,0 @@
-pandas
-numpy
-sqlparse
-psycopg2-binary
-mysql-connector-python
-openai
-anthropic
-python-dotenv
-func-timeout

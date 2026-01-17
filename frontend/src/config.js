@@ -53,6 +53,14 @@ export const API_ENDPOINTS = {
     HEALTH: `${API_BASE_URL}/agents/cleaning/health`,
   },
 
+  // Text-to-SQL Agent
+  TEXT_TO_SQL: {
+    START_SESSION: `${API_BASE_URL}/agents/text-to-sql/start-session`,
+    CHAT: `${API_BASE_URL}/agents/text-to-sql/chat`,
+    GET_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
+    END_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
+  },
+
   // Health check
   HELLO: `${API_BASE_URL}/api/hello`,
 };
