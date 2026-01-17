@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
-import { ArrowLeft, ChevronDown, Send } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Sparkles } from 'lucide-react';
 import './DatasetDetails.css';
 
 export default function DatasetDetails() {
@@ -20,8 +20,7 @@ export default function DatasetDetails() {
   const [sqlSessionId, setSqlSessionId] = useState(null);
   const [sqlSessionLoading, setSqlSessionLoading] = useState(false);
   const [sqlMessages, setSqlMessages] = useState([]);
-  const [sqlSampleQuestions, setSqlSampleQuestions] = useState([]);
-  const [sqlResults, setSqlResults] = useState(null);
+  const [sqlRecommendations, setSqlRecommendations] = useState([]);
   const [sqlInputValue, setSqlInputValue] = useState('');
   const [sqlSending, setSqlSending] = useState(false);
   const [sqlError, setSqlError] = useState(null);
@@ -129,12 +128,11 @@ export default function DatasetDetails() {
 
       const data = await response.json();
       setSqlSessionId(data.session_id);
-      setSqlSampleQuestions(data.sample_questions || []);
 
       // Add welcome message
       setSqlMessages([{
         role: 'assistant',
-        content: 'Hello! I can help you query your data using natural language. Ask me questions like "How many rows are there?" or "What are the top 10 values in column X?" and I\'ll generate the SQL for you.',
+        content: `Hi! I'm here to help you explore your data. Ask me any question, or click the "Recommend" button to get suggestions for interesting things to explore!`,
       }]);
     } catch (err) {
       console.error('Error starting SQL session:', err);
@@ -187,23 +185,39 @@ export default function DatasetDetails() {
       }
 
       const data = await response.json();
+      console.log('[TextToSQL] Response:', data);
 
-      // Add assistant response
-      setSqlMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.message,
-        sql_query: data.sql_query,
-        error: data.status === 'error',
-      }]);
+      // Handle recommendations
+      if (data.status === 'recommendations' && data.recommendations) {
+        setSqlRecommendations(data.recommendations);
+        setSqlMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message || 'Here are some questions you might find interesting:',
+        }]);
+        return;
+      }
 
-      // Update results if available
-      if (data.results && data.columns) {
-        setSqlResults({
+      // Clear recommendations when user asks a regular question
+      setSqlRecommendations([]);
+
+      // Build results object if available
+      let results = null;
+      if (data.results && Array.isArray(data.results) && data.results.length > 0 && data.columns) {
+        results = {
           columns: data.columns,
           data: data.results,
-          row_count: data.row_count,
-        });
+          row_count: data.row_count || data.results.length,
+        };
       }
+
+      // Add assistant response with results included
+      setSqlMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.message || 'Query executed.',
+        sql_query: data.sql_query || null,
+        results: results,
+        error: data.status === 'error',
+      }]);
     } catch (err) {
       console.error('Error sending message:', err);
       setSqlMessages(prev => [...prev, {
@@ -221,7 +235,12 @@ export default function DatasetDetails() {
     sendSqlMessage(sqlInputValue);
   };
 
-  const handleSampleQuestionClick = (question) => {
+  const handleRecommend = () => {
+    sendSqlMessage("Recommend some interesting questions I should explore about this data.");
+  };
+
+  const handleRecommendationClick = (question) => {
+    setSqlRecommendations([]);  // Clear recommendations
     sendSqlMessage(question);
   };
 
@@ -341,42 +360,64 @@ export default function DatasetDetails() {
             </div>
           ) : (
             <>
-              {/* Sample Questions */}
-              {sqlSampleQuestions.length > 0 && (
-                <div className="sql-sample-questions">
-                  <p className="sample-questions-label">Try asking:</p>
-                  <div className="sample-questions-chips">
-                    {sqlSampleQuestions.map((question, index) => (
-                      <button
-                        key={index}
-                        className="sample-question-chip"
-                        onClick={() => handleSampleQuestionClick(question)}
-                        disabled={sqlSending}
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Chat Messages */}
               <div className="sql-messages">
-                {sqlMessages.map((msg, index) => (
-                  <div key={index} className={`sql-message ${msg.role}`}>
-                    <div className="message-content">
-                      <p>{msg.content}</p>
-                      {msg.sql_query && (
-                        <div className="sql-code-block">
-                          <div className="sql-code-header">
-                            <span>SQL Query</span>
+                {sqlMessages.map((msg, index) => {
+                  if (!msg) return null;
+                  return (
+                    <div key={index} className={`sql-message ${msg.role || 'assistant'}`}>
+                      <div className="message-content">
+                        <p>{msg.content || ''}</p>
+                        {msg.sql_query && (
+                          <div className="sql-code-block">
+                            <div className="sql-code-header">
+                              <span>SQL Query</span>
+                            </div>
+                            <pre><code>{msg.sql_query}</code></pre>
                           </div>
-                          <pre><code>{msg.sql_query}</code></pre>
-                        </div>
-                      )}
+                        )}
+                        {msg.results && msg.results.data && msg.results.columns && (
+                          <div className="sql-results-inline">
+                            <div className="sql-results-header-inline">
+                              <span>Results</span>
+                              <span className="results-count-inline">
+                                {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <div className="sql-results-table-wrapper-inline">
+                              <table className="sql-results-table">
+                                <thead>
+                                  <tr>
+                                    {msg.results.columns.map((col, colIndex) => (
+                                      <th key={colIndex}>{col}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {msg.results.data.map((row, rowIndex) => {
+                                    if (!row || typeof row !== 'object') return null;
+                                    return (
+                                      <tr key={rowIndex}>
+                                        {msg.results.columns.map((col, cellIndex) => {
+                                          const cell = row[col];
+                                          return (
+                                            <td key={cellIndex}>
+                                              {cell !== null && cell !== undefined ? String(cell) : '—'}
+                                            </td>
+                                          );
+                                        })}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {sqlSending && (
                   <div className="sql-message assistant">
                     <div className="message-content">
@@ -391,40 +432,37 @@ export default function DatasetDetails() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Results Table */}
-              {sqlResults && sqlResults.data && sqlResults.data.length > 0 && (
-                <div className="sql-results">
-                  <div className="sql-results-header">
-                    <h3>Query Results</h3>
-                    <span className="results-count">
-                      {sqlResults.row_count} row{sqlResults.row_count !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="sql-results-table-wrapper">
-                    <table className="sql-results-table">
-                      <thead>
-                        <tr>
-                          {sqlResults.columns.map((col, index) => (
-                            <th key={index}>{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sqlResults.data.map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {row.map((cell, cellIndex) => (
-                              <td key={cellIndex}>{cell !== null ? String(cell) : '—'}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Recommended Questions */}
+              {sqlRecommendations.length > 0 && (
+                <div className="sql-recommendations">
+                  <p className="recommendations-label">Suggested questions:</p>
+                  <div className="recommendations-chips">
+                    {sqlRecommendations.map((question, index) => (
+                      <button
+                        key={index}
+                        className="recommendation-chip"
+                        onClick={() => handleRecommendationClick(question)}
+                        disabled={sqlSending}
+                      >
+                        {question}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
               {/* Input Form */}
               <form className="sql-input-form" onSubmit={handleSqlSubmit}>
+                <button
+                  type="button"
+                  className="sql-recommend-button"
+                  onClick={handleRecommend}
+                  disabled={sqlSending || !sqlSessionId}
+                  title="Get a recommendation"
+                >
+                  <Sparkles size={20} />
+                  <span>Recommend</span>
+                </button>
                 <input
                   type="text"
                   className="sql-input"

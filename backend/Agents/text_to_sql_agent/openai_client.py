@@ -131,7 +131,8 @@ class TextToSQLOpenAIClient:
                 sql=data.get("sql"),
                 explanation=data.get("explanation"),
                 clarification_needed=data.get("clarification_needed"),
-                error=data.get("error")
+                error=data.get("error"),
+                recommendations=data.get("recommendations")
             )
 
         except json.JSONDecodeError as e:

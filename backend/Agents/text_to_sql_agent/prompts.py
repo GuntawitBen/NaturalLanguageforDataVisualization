@@ -7,7 +7,7 @@ from .models import SchemaContext, Message
 from .config import TOKEN_CONFIG
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are a SQL query generator for DuckDB databases. Your task is to convert natural language questions into valid DuckDB SQL queries.
+SYSTEM_PROMPT_TEMPLATE = """You are a helpful data analyst assistant for DuckDB databases. Your task is to help users explore and understand their data by converting natural language questions into SQL queries.
 
 DATABASE SCHEMA:
 Table: {table_name}
@@ -30,13 +30,20 @@ RESPONSE FORMAT:
 You MUST respond with a JSON object in one of these formats:
 
 For successful SQL generation:
-{{"sql": "SELECT ...", "explanation": "Brief explanation of what the query does"}}
+{{"sql": "SELECT ...", "explanation": "Brief explanation of what the query does and what the results show"}}
 
 If the question is ambiguous or needs clarification:
 {{"clarification_needed": "What specific aspect would you like to clarify?"}}
 
 If the question cannot be answered with the available data:
 {{"error": "Explanation of why this query cannot be generated"}}
+
+SPECIAL - RECOMMENDATION REQUEST:
+When the user asks for recommendations (e.g., "recommend questions", "suggest questions", "what should I explore"):
+- Analyze the schema and think about what would be genuinely interesting to explore
+- Generate 3-4 specific, actionable questions the user could ask about this data
+- Focus on questions that reveal insights: distributions, top/bottom values, correlations, trends, outliers
+- Return JSON format: {{"recommendations": ["Question 1?", "Question 2?", "Question 3?"], "explanation": "Brief explanation of why these questions are interesting"}}
 
 IMPORTANT:
 - Never include markdown code blocks, just raw JSON
@@ -111,11 +118,8 @@ def build_user_prompt(
 
 
 def generate_sample_questions(schema: SchemaContext) -> List[str]:
-    """Generate sample questions based on the schema"""
+    """Generate simple sample questions based on the schema"""
     questions = []
-
-    # Basic count question
-    questions.append(f"How many rows are in the dataset?")
 
     # Find numeric and string columns
     numeric_columns = []
@@ -128,30 +132,21 @@ def generate_sample_questions(schema: SchemaContext) -> List[str]:
         elif col_type_upper == 'VARCHAR':
             string_columns.append(col)
 
+    # Basic count question
+    questions.append("How many rows are in the dataset?")
+
+    # Show sample data
+    questions.append("Show me the first 10 rows")
+
     # Add aggregation question if numeric columns exist
     if numeric_columns:
         col = numeric_columns[0]
         questions.append(f"What is the average {col}?")
-        if len(numeric_columns) > 1:
-            col2 = numeric_columns[1]
-            questions.append(f"What is the total {col2}?")
 
     # Add grouping question if both types exist
     if string_columns and numeric_columns:
         str_col = string_columns[0]
         num_col = numeric_columns[0]
-        # Use sample value if available
-        if str_col.sample_values and len(str_col.sample_values) > 0:
-            questions.append(f"Show the sum of {num_col} grouped by {str_col.name}")
-        else:
-            questions.append(f"Show {num_col} by {str_col.name}")
-
-    # Add filter question with sample value
-    if string_columns:
-        for str_col in string_columns:
-            if str_col.sample_values and len(str_col.sample_values) > 0:
-                sample = str_col.sample_values[0]
-                questions.append(f"Show all rows where {str_col.name} is '{sample}'")
-                break
+        questions.append(f"Show {num_col} by {str_col.name}")
 
     return questions[:4]  # Return at most 4 sample questions

@@ -66,13 +66,14 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Response from a chat message"""
-    status: str  # "success", "error", "clarification_needed"
+    status: str  # "success", "error", "clarification_needed", "recommendations"
     message: str
     sql_query: Optional[str] = None
     results: Optional[List[Dict[str, Any]]] = None
     columns: Optional[List[str]] = None
     row_count: Optional[int] = None
     error_details: Optional[str] = None
+    recommendations: Optional[List[str]] = None  # List of recommended questions
 
 
 class GPTSQLResponse(BaseModel):
@@ -81,3 +82,4 @@ class GPTSQLResponse(BaseModel):
     explanation: Optional[str] = None
     clarification_needed: Optional[str] = None
     error: Optional[str] = None
+    recommendations: Optional[List[str]] = None  # List of recommended questions

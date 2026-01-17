@@ -13,7 +13,6 @@ from .models import (
 )
 from .openai_client import TextToSQLOpenAIClient
 from .state_manager import session_manager, build_schema_context
-from .prompts import generate_sample_questions
 from .config import SQL_CONFIG
 
 from database.db_utils import get_dataset, query_dataset
@@ -51,16 +50,13 @@ class TextToSQLAgent:
         # Create session
         session = session_manager.create_session(dataset_id, schema)
 
-        # Generate sample questions
-        sample_questions = generate_sample_questions(schema)
-
         print(f"[AGENT] Started session {session.session_id} for dataset {dataset_id}")
         print(f"[AGENT] Schema: {len(schema.columns)} columns, {schema.row_count:,} rows")
 
         return StartSessionResponse(
             session_id=session.session_id,
             schema=schema,
-            sample_questions=sample_questions
+            sample_questions=[]  # Users can click "Recommend" to get AI-generated questions
         )
 
     def chat(self, session_id: str, message: str) -> ChatResponse:
@@ -97,6 +93,17 @@ class TextToSQLAgent:
             schema=session.schema,
             messages=messages
         )
+
+        # Handle recommendations
+        if gpt_response.recommendations:
+            explanation = gpt_response.explanation or "Here are some interesting questions you could explore:"
+            session_manager.add_message(session_id, "assistant", explanation)
+
+            return ChatResponse(
+                status="recommendations",
+                message=explanation,
+                recommendations=gpt_response.recommendations
+            )
 
         # Handle clarification needed
         if gpt_response.clarification_needed:
