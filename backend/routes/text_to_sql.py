@@ -2,7 +2,9 @@
 Text-to-SQL Agent API Routes
 """
 
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 
 from Auth.Auth_utils import get_current_user
 from Agents.text_to_sql_agent import (
@@ -13,8 +15,46 @@ from Agents.text_to_sql_agent import (
     ChatResponse,
     SessionState,
 )
+from database.db_utils import (
+    get_user_conversations,
+    get_conversation,
+    get_conversation_messages,
+    delete_conversation,
+    touch_conversation
+)
 
 router = APIRouter(prefix="/agents/text-to-sql", tags=["Text-to-SQL Agent"])
+
+
+# ============================================================================
+# Response Models for History
+# ============================================================================
+
+class HistoryItem(BaseModel):
+    """A conversation in the history list"""
+    session_id: str
+    dataset_id: Optional[str]
+    dataset_name: Optional[str]
+    title: Optional[str]
+    first_question: Optional[str]
+    message_count: int
+    created_at: str
+    updated_at: str
+
+
+class HistoryListResponse(BaseModel):
+    """Response for history list"""
+    conversations: List[HistoryItem]
+
+
+class HistoryDetailResponse(BaseModel):
+    """Response for single conversation history"""
+    session_id: str
+    dataset_id: Optional[str]
+    dataset_name: Optional[str]
+    title: Optional[str]
+    messages: List[dict]
+    created_at: str
 
 
 # ============================================================================
@@ -44,7 +84,8 @@ async def start_session(
     """
     try:
         response = text_to_sql_agent.start_session(
-            dataset_id=request.dataset_id
+            dataset_id=request.dataset_id,
+            user_id=current_user_email
         )
         return response
 
@@ -196,3 +237,207 @@ async def health_check():
         "version": "1.0.0",
         "active_sessions": session_manager.get_active_session_count()
     }
+
+
+# ============================================================================
+# History Endpoints
+# ============================================================================
+
+@router.get("/history", response_model=HistoryListResponse)
+async def get_history(
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Get list of past text-to-SQL sessions for the current user.
+
+    Returns:
+        List of past conversations with metadata
+    """
+    try:
+        conversations = get_user_conversations(current_user_email, limit=50)
+
+        history_items = []
+        for conv in conversations:
+            history_items.append(HistoryItem(
+                session_id=conv['conversation_id'],
+                dataset_id=conv.get('dataset_id'),
+                dataset_name=conv.get('dataset_name'),
+                title=conv.get('title'),
+                first_question=conv.get('first_question'),
+                message_count=conv.get('message_count', 0),
+                created_at=str(conv.get('created_at', '')),
+                updated_at=str(conv.get('updated_at', ''))
+            ))
+
+        return HistoryListResponse(conversations=history_items)
+
+    except Exception as e:
+        print(f"[ERROR] Failed to get history: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get history: {str(e)}"
+        )
+
+
+@router.get("/history/{session_id}", response_model=HistoryDetailResponse)
+async def get_history_detail(
+    session_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Get full conversation history for a specific session.
+
+    Args:
+        session_id: Session/conversation identifier
+
+    Returns:
+        Full conversation with all messages
+    """
+    try:
+        # Get conversation
+        conversation = get_conversation(session_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+        # Verify user owns this conversation
+        if conversation.get('user_id') != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Get messages
+        messages = get_conversation_messages(session_id)
+
+        # Format messages for response
+        formatted_messages = []
+        for msg in messages:
+            formatted_messages.append({
+                "role": msg['role'],
+                "content": msg['content'],
+                "sql_query": msg.get('query_sql'),
+                "query_result": msg.get('query_result'),
+                "created_at": str(msg.get('created_at', ''))
+            })
+
+        return HistoryDetailResponse(
+            session_id=session_id,
+            dataset_id=conversation.get('dataset_id'),
+            dataset_name=conversation.get('dataset_name'),
+            title=conversation.get('title'),
+            messages=formatted_messages,
+            created_at=str(conversation.get('created_at', ''))
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        print(f"[ERROR] Failed to get history detail: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get history detail: {str(e)}"
+        )
+
+
+@router.post("/history/{session_id}/resume", response_model=StartSessionResponse)
+async def resume_session(
+    session_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Resume a historical session, restoring it to active memory.
+
+    Args:
+        session_id: Session/conversation identifier
+
+    Returns:
+        StartSessionResponse with session info
+    """
+    try:
+        # Verify user owns this conversation
+        conversation = get_conversation(session_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+        if conversation.get('user_id') != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Update the timestamp to keep most recent at top
+        touch_conversation(session_id)
+
+        response = text_to_sql_agent.resume_session(
+            session_id=session_id,
+            user_id=current_user_email
+        )
+        return response
+
+    except HTTPException:
+        raise
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        print(f"[ERROR] Failed to resume session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to resume session: {str(e)}"
+        )
+
+
+@router.delete("/history/{session_id}")
+async def delete_history_session(
+    session_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Delete a conversation from history.
+
+    Args:
+        session_id: Session/conversation identifier
+
+    Returns:
+        Success status
+    """
+    try:
+        # Verify user owns this conversation
+        conversation = get_conversation(session_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+        if conversation.get('user_id') != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Delete the conversation (hard delete to remove from history)
+        deleted = delete_conversation(session_id, hard_delete=True)
+
+        if deleted:
+            return {
+                "status": "success",
+                "message": f"Session {session_id} deleted successfully"
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to delete session"
+            )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        print(f"[ERROR] Failed to delete session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete session: {str(e)}"
+        )

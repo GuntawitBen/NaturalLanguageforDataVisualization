@@ -24,12 +24,13 @@ class TextToSQLAgent:
     def __init__(self):
         self.openai_client = TextToSQLOpenAIClient()
 
-    def start_session(self, dataset_id: str) -> StartSessionResponse:
+    def start_session(self, dataset_id: str, user_id: str = None) -> StartSessionResponse:
         """
         Start a new chat session for a dataset
 
         Args:
             dataset_id: Dataset identifier
+            user_id: User identifier (for persistence)
 
         Returns:
             StartSessionResponse with session ID, schema, and sample questions
@@ -47,8 +48,8 @@ class TextToSQLAgent:
         if not schema:
             raise ValueError(f"Failed to build schema for dataset: {dataset_id}")
 
-        # Create session
-        session = session_manager.create_session(dataset_id, schema)
+        # Create session with user_id for persistence
+        session = session_manager.create_session(dataset_id, schema, user_id)
 
         print(f"[AGENT] Started session {session.session_id} for dataset {dataset_id}")
         print(f"[AGENT] Schema: {len(schema.columns)} columns, {schema.row_count:,} rows")
@@ -57,6 +58,52 @@ class TextToSQLAgent:
             session_id=session.session_id,
             schema=schema,
             sample_questions=[]  # Users can click "Recommend" to get AI-generated questions
+        )
+
+    def resume_session(self, session_id: str, user_id: str) -> StartSessionResponse:
+        """
+        Resume an existing session from history
+
+        Args:
+            session_id: Session/conversation identifier
+            user_id: User identifier
+
+        Returns:
+            StartSessionResponse with session ID, schema, and sample questions
+
+        Raises:
+            ValueError: If session not found
+        """
+        from database.db_utils import get_conversation
+
+        # Get conversation from database
+        conversation = get_conversation(session_id)
+        if not conversation:
+            raise ValueError(f"Session not found: {session_id}")
+
+        dataset_id = conversation['dataset_id']
+
+        # Verify dataset still exists
+        dataset = get_dataset(dataset_id)
+        if not dataset:
+            raise ValueError(f"Dataset no longer exists: {dataset_id}")
+
+        # Build schema context
+        schema = build_schema_context(dataset_id)
+        if not schema:
+            raise ValueError(f"Failed to build schema for dataset: {dataset_id}")
+
+        # Restore session from database to memory
+        session = session_manager.restore_session(session_id, schema, user_id)
+        if not session:
+            raise ValueError(f"Failed to restore session: {session_id}")
+
+        print(f"[AGENT] Resumed session {session_id} with {len(session.messages)} messages")
+
+        return StartSessionResponse(
+            session_id=session.session_id,
+            schema=schema,
+            sample_questions=[]
         )
 
     def chat(self, session_id: str, message: str) -> ChatResponse:
@@ -171,7 +218,13 @@ class TextToSQLAgent:
         else:
             response_msg += f" Found {result['row_count']:,} rows."
 
-        session_manager.add_message(session_id, "assistant", response_msg, sql_query)
+        # Save message with query results for history
+        query_result_for_db = {
+            "columns": result.get("columns", []),
+            "data": results_data,
+            "row_count": result.get("row_count", 0)
+        }
+        session_manager.add_message(session_id, "assistant", response_msg, sql_query, query_result_for_db)
 
         return ChatResponse(
             status="success",
@@ -277,7 +330,14 @@ class TextToSQLAgent:
         explanation = fix_response.explanation or "Query was fixed and executed successfully."
 
         response_msg = f"{explanation} Found {result.get('row_count', 0):,} rows."
-        session_manager.add_message(session.session_id, "assistant", response_msg, fixed_sql)
+
+        # Save message with query results for history
+        query_result_for_db = {
+            "columns": result.get("columns", []),
+            "data": results_data,
+            "row_count": result.get("row_count", 0)
+        }
+        session_manager.add_message(session.session_id, "assistant", response_msg, fixed_sql, query_result_for_db)
 
         return ChatResponse(
             status="success",

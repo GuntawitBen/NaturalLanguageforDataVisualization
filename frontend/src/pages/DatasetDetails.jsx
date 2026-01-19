@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
 import { ArrowLeft, ChevronDown, Send, Sparkles } from 'lucide-react';
@@ -8,12 +8,17 @@ import './DatasetDetails.css';
 export default function DatasetDetails() {
   const { datasetId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { sessionToken } = useAuth();
+
+  // Check if we're resuming a session from history
+  const resumedSessionId = location.state?.resumedSessionId;
+  const shouldOpenChat = location.state?.openChat;
   const [dataset, setDataset] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('raw-data');
+  const [activeTab, setActiveTab] = useState(shouldOpenChat ? 'visualize' : 'raw-data');
   const [showInfoDropdown, setShowInfoDropdown] = useState(false);
 
   // Text-to-SQL state
@@ -44,7 +49,11 @@ export default function DatasetDetails() {
   // Start SQL session when visualize tab is opened
   useEffect(() => {
     if (activeTab === 'visualize' && !sqlSessionId && !sqlSessionStarted.current) {
-      startSqlSession();
+      if (resumedSessionId) {
+        resumeSqlSession(resumedSessionId);
+      } else {
+        startSqlSession();
+      }
     }
   }, [activeTab]);
 
@@ -146,6 +155,98 @@ export default function DatasetDetails() {
       }]);
     } catch (err) {
       console.error('Error starting SQL session:', err);
+      setSqlError(err.message);
+      sqlSessionStarted.current = false;
+    } finally {
+      setSqlSessionLoading(false);
+    }
+  };
+
+  const resumeSqlSession = async (sessionId) => {
+    sqlSessionStarted.current = true;
+    setSqlSessionLoading(true);
+    setSqlError(null);
+
+    try {
+      // First, resume the session on the backend
+      const resumeResponse = await fetch(API_ENDPOINTS.TEXT_TO_SQL.RESUME_SESSION(sessionId), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!resumeResponse.ok) {
+        throw new Error('Failed to resume session');
+      }
+
+      // Then, fetch the conversation history
+      const historyResponse = await fetch(API_ENDPOINTS.TEXT_TO_SQL.GET_HISTORY(sessionId), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!historyResponse.ok) {
+        throw new Error('Failed to load conversation history');
+      }
+
+      const historyData = await historyResponse.json();
+
+      // Set the session ID
+      setSqlSessionId(sessionId);
+
+      // Convert history messages to UI format
+      const restoredMessages = [];
+
+      // Add a "session restored" message first
+      restoredMessages.push({
+        role: 'assistant',
+        content: 'Session restored. Here is your previous conversation:',
+      });
+
+      // Add all previous messages
+      if (historyData.messages && historyData.messages.length > 0) {
+        for (const msg of historyData.messages) {
+          const uiMessage = {
+            role: msg.role,
+            content: msg.content,
+          };
+
+          // Add SQL query if present
+          if (msg.sql_query) {
+            uiMessage.sql_query = msg.sql_query;
+          }
+
+          // Add results if present
+          if (msg.query_result && msg.query_result.data && msg.query_result.columns) {
+            uiMessage.results = {
+              columns: msg.query_result.columns,
+              data: msg.query_result.data,
+              row_count: msg.query_result.row_count || msg.query_result.data.length,
+            };
+          }
+
+          restoredMessages.push(uiMessage);
+        }
+      }
+
+      // Add a continuation prompt
+      restoredMessages.push({
+        role: 'assistant',
+        content: 'You can continue asking questions about your data.',
+      });
+
+      setSqlMessages(restoredMessages);
+
+      // Clear the location state to prevent re-resuming on refresh
+      window.history.replaceState({}, document.title);
+
+    } catch (err) {
+      console.error('Error resuming SQL session:', err);
       setSqlError(err.message);
       sqlSessionStarted.current = false;
     } finally {

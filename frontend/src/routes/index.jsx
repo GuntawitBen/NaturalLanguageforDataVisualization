@@ -5,6 +5,7 @@ import Home from '../pages/Home';
 import Datasets from '../pages/Datasets';
 import DatasetDetails from '../pages/DatasetDetails';
 import DataCleaning from '../pages/DataCleaning';
+import History from '../pages/History';
 
 
 export default function AppRoutes() {
@@ -29,6 +30,7 @@ export default function AppRoutes() {
                     {/* Redirect /upload to /data-cleaning for unified workflow */}
                     <Route path="/upload" element={<Navigate to="/data-cleaning" replace />} />
                     <Route path="/data-cleaning" element={<DataCleaning />} />
+                    <Route path="/history" element={<History />} />
                 </Routes>
             </main>
         </div>

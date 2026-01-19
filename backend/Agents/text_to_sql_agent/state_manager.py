@@ -9,7 +9,14 @@ from threading import Lock
 
 from .models import SessionState, SchemaContext, Message, ColumnInfo
 from .config import SESSION_CONFIG, TOKEN_CONFIG
-from database.db_utils import get_dataset
+from database.db_utils import (
+    get_dataset,
+    create_conversation,
+    add_message as db_add_message,
+    get_conversation_messages,
+    get_conversation,
+    update_conversation_title
+)
 
 
 class SessionManager:
@@ -22,7 +29,8 @@ class SessionManager:
     def create_session(
         self,
         dataset_id: str,
-        schema: SchemaContext
+        schema: SchemaContext,
+        user_id: str = None
     ) -> SessionState:
         """
         Create a new session for a dataset
@@ -30,12 +38,22 @@ class SessionManager:
         Args:
             dataset_id: Dataset identifier
             schema: Schema context for the dataset
+            user_id: User identifier (for persistence)
 
         Returns:
             New SessionState
         """
-        session_id = str(uuid.uuid4())
         now = datetime.now()
+
+        # Create conversation in database if user_id provided
+        if user_id:
+            session_id = create_conversation(user_id, dataset_id)
+            if not session_id:
+                # Fallback to in-memory only
+                session_id = str(uuid.uuid4())
+                print(f"[SESSION] Warning: Failed to persist conversation, using in-memory only")
+        else:
+            session_id = str(uuid.uuid4())
 
         session = SessionState(
             session_id=session_id,
@@ -46,10 +64,13 @@ class SessionManager:
             last_activity=now
         )
 
+        # Store user_id for later message persistence
+        session._user_id = user_id
+
         with self._lock:
             self._sessions[session_id] = session
 
-        print(f"[SESSION] Created session {session_id} for dataset {dataset_id}")
+        print(f"[SESSION] Created session {session_id} for dataset {dataset_id} (user: {user_id})")
         return session
 
     def get_session(self, session_id: str) -> Optional[SessionState]:
@@ -99,7 +120,8 @@ class SessionManager:
         session_id: str,
         role: str,
         content: str,
-        sql_query: Optional[str] = None
+        sql_query: Optional[str] = None,
+        query_result: any = None
     ) -> bool:
         """
         Add a message to a session's conversation history
@@ -109,6 +131,7 @@ class SessionManager:
             role: Message role ("user" or "assistant")
             content: Message content
             sql_query: SQL query (if any)
+            query_result: Query results (for persistence)
 
         Returns:
             True if message was added
@@ -124,6 +147,21 @@ class SessionManager:
                 sql_query=sql_query
             )
             session.messages.append(message)
+
+            # Persist message to database
+            user_id = getattr(session, '_user_id', None)
+            if user_id:
+                db_add_message(
+                    conversation_id=session_id,
+                    role=role,
+                    content=content,
+                    query_sql=sql_query,
+                    query_result=query_result
+                )
+                # Set conversation title from first user message
+                if role == "user" and len(session.messages) == 1:
+                    title = content[:100] + "..." if len(content) > 100 else content
+                    update_conversation_title(session_id, title)
 
             # Trim messages if exceeding limit
             max_messages = SESSION_CONFIG["max_messages_per_session"]
@@ -196,6 +234,65 @@ class SessionManager:
         """Get count of active sessions"""
         with self._lock:
             return len(self._sessions)
+
+    def restore_session(
+        self,
+        session_id: str,
+        schema: SchemaContext,
+        user_id: str
+    ) -> Optional[SessionState]:
+        """
+        Restore a session from the database into memory
+
+        Args:
+            session_id: Session/conversation identifier
+            schema: Schema context for the dataset
+            user_id: User identifier
+
+        Returns:
+            Restored SessionState or None if not found
+        """
+        # Check if session is already in memory
+        with self._lock:
+            if session_id in self._sessions:
+                return self._sessions[session_id]
+
+        # Get conversation from database
+        conversation = get_conversation(session_id)
+        if not conversation:
+            return None
+
+        # Get messages from database
+        db_messages = get_conversation_messages(session_id)
+
+        # Convert database messages to Message objects
+        messages = []
+        for msg in db_messages:
+            messages.append(Message(
+                role=msg['role'],
+                content=msg['content'],
+                sql_query=msg.get('query_sql'),
+                timestamp=msg.get('created_at', datetime.now())
+            ))
+
+        now = datetime.now()
+        session = SessionState(
+            session_id=session_id,
+            dataset_id=conversation['dataset_id'],
+            schema=schema,
+            messages=messages,
+            created_at=conversation.get('created_at', now),
+            last_activity=now
+        )
+
+        # Store user_id for persistence
+        session._user_id = user_id
+
+        with self._lock:
+            self._sessions[session_id] = session
+
+        print(f"[SESSION] Restored session {session_id} with {len(messages)} messages")
+        return session
 
 
 def build_schema_context(dataset_id: str) -> Optional[SchemaContext]:

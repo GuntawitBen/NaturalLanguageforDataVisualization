@@ -366,18 +366,29 @@ def get_conversation_messages(conversation_id: str) -> List[Dict]:
         print(f"Error getting messages: {e}")
         return []
 
-def get_user_conversations(user_id: str, include_archived: bool = False) -> List[Dict]:
-    """Get all conversations for a user"""
+def get_user_conversations(user_id: str, include_archived: bool = False, limit: int = 50) -> List[Dict]:
+    """Get all conversations for a user with message counts"""
     conn = get_db_connection()
 
     try:
-        query = "SELECT * FROM conversations WHERE user_id = ?"
+        query = """
+            SELECT c.*,
+                   d.dataset_name,
+                   COUNT(m.message_id) as message_count,
+                   (SELECT content FROM messages WHERE conversation_id = c.conversation_id AND role = 'user' ORDER BY created_at ASC LIMIT 1) as first_question
+            FROM conversations c
+            LEFT JOIN datasets d ON c.dataset_id = d.dataset_id
+            LEFT JOIN messages m ON c.conversation_id = m.conversation_id
+            WHERE c.user_id = ?
+        """
         params = [user_id]
 
         if not include_archived:
-            query += " AND is_archived = FALSE"
+            query += " AND c.is_archived = FALSE"
 
-        query += " ORDER BY updated_at DESC"
+        query += " GROUP BY c.conversation_id, c.user_id, c.dataset_id, c.title, c.created_at, c.updated_at, c.is_archived, d.dataset_name"
+        query += " ORDER BY c.updated_at DESC"
+        query += f" LIMIT {limit}"
 
         results = conn.execute(query, params).fetchall()
         columns = [desc[0] for desc in conn.description]
@@ -387,6 +398,96 @@ def get_user_conversations(user_id: str, include_archived: bool = False) -> List
     except Exception as e:
         print(f"Error getting conversations: {e}")
         return []
+
+
+def get_conversation(conversation_id: str) -> Optional[Dict]:
+    """Get a single conversation by ID"""
+    conn = get_db_connection()
+
+    try:
+        result = conn.execute("""
+            SELECT c.*, d.dataset_name, d.table_name
+            FROM conversations c
+            LEFT JOIN datasets d ON c.dataset_id = d.dataset_id
+            WHERE c.conversation_id = ?
+        """, [conversation_id]).fetchone()
+
+        if not result:
+            return None
+
+        columns = [desc[0] for desc in conn.description]
+        return dict(zip(columns, result))
+
+    except Exception as e:
+        print(f"Error getting conversation: {e}")
+        return None
+
+
+def update_conversation_title(conversation_id: str, title: str) -> bool:
+    """Update a conversation's title"""
+    conn = get_db_connection()
+
+    try:
+        conn.execute("""
+            UPDATE conversations SET title = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE conversation_id = ?
+        """, [title, conversation_id])
+        return True
+    except Exception as e:
+        print(f"Error updating conversation title: {e}")
+        return False
+
+
+def touch_conversation(conversation_id: str) -> bool:
+    """Update the conversation's updated_at timestamp to now"""
+    conn = get_db_connection()
+
+    try:
+        conn.execute("""
+            UPDATE conversations SET updated_at = CURRENT_TIMESTAMP
+            WHERE conversation_id = ?
+        """, [conversation_id])
+        return True
+    except Exception as e:
+        print(f"Error touching conversation: {e}")
+        return False
+
+
+def delete_conversation(conversation_id: str, hard_delete: bool = False) -> bool:
+    """
+    Delete a conversation and its messages.
+
+    Args:
+        conversation_id: Conversation identifier
+        hard_delete: If True, permanently delete. If False, archive (soft delete).
+
+    Returns:
+        True if successful
+    """
+    conn = get_db_connection()
+
+    try:
+        if hard_delete:
+            # Delete messages first (foreign key constraint)
+            conn.execute("""
+                DELETE FROM messages WHERE conversation_id = ?
+            """, [conversation_id])
+            # Delete conversation
+            conn.execute("""
+                DELETE FROM conversations WHERE conversation_id = ?
+            """, [conversation_id])
+        else:
+            # Soft delete (archive)
+            conn.execute("""
+                UPDATE conversations SET is_archived = TRUE, updated_at = CURRENT_TIMESTAMP
+                WHERE conversation_id = ?
+            """, [conversation_id])
+
+        return True
+    except Exception as e:
+        print(f"Error deleting conversation: {e}")
+        return False
+
 
 # ============================================================================
 # QUERY HISTORY

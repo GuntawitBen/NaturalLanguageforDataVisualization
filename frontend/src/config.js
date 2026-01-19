@@ -59,6 +59,10 @@ export const API_ENDPOINTS = {
     CHAT: `${API_BASE_URL}/agents/text-to-sql/chat`,
     GET_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
     END_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
+    HISTORY: `${API_BASE_URL}/agents/text-to-sql/history`,
+    GET_HISTORY: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}`,
+    RESUME_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}/resume`,
+    DELETE_HISTORY: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}`,
   },
 
   // Health check
