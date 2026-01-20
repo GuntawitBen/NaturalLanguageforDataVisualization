@@ -13,7 +13,8 @@ from .models import (
 )
 from .openai_client import TextToSQLOpenAIClient
 from .state_manager import session_manager, build_schema_context
-from .config import SQL_CONFIG
+from .config import SQL_CONFIG, VALIDATION_CONFIG
+from .sql_validator import SQLValidator, ValidationResult
 
 from database.db_utils import get_dataset, query_dataset
 
@@ -184,6 +185,24 @@ class TextToSQLAgent:
         sql_query = gpt_response.sql
         explanation = gpt_response.explanation or "Query generated successfully."
 
+        # Validate SQL before execution
+        validation_result = self._validate_sql(sql_query, session.schema)
+
+        if not validation_result.is_valid:
+            # Try to handle validation errors (auto-fix or return helpful message)
+            error_response = self._handle_validation_error(
+                session=session,
+                original_sql=sql_query,
+                validation_result=validation_result,
+                original_question=message
+            )
+            if error_response:
+                return error_response
+
+        # Use normalized SQL if available
+        if validation_result.normalized_sql:
+            sql_query = validation_result.normalized_sql
+
         # Execute SQL query
         result = self._execute_sql(session.dataset_id, sql_query)
 
@@ -347,6 +366,145 @@ class TextToSQLAgent:
             columns=result.get("columns", []),
             row_count=result.get("row_count", 0)
         )
+
+    def _validate_sql(self, sql: str, schema: SchemaContext) -> ValidationResult:
+        """
+        Validate SQL query for syntax, security, and schema compatibility.
+
+        Args:
+            sql: SQL query to validate
+            schema: Schema context for validation
+
+        Returns:
+            ValidationResult with validation status and errors
+        """
+        if not VALIDATION_CONFIG.get("enable_syntax_validation", True) and \
+           not VALIDATION_CONFIG.get("enable_security_validation", True) and \
+           not VALIDATION_CONFIG.get("enable_schema_validation", True):
+            # Validation disabled, return valid result
+            return ValidationResult(is_valid=True, normalized_sql=sql)
+
+        validator = SQLValidator(schema)
+        return validator.validate(sql)
+
+    def _handle_validation_error(
+        self,
+        session: SessionState,
+        original_sql: str,
+        validation_result: ValidationResult,
+        original_question: str
+    ) -> Optional[ChatResponse]:
+        """
+        Handle validation errors - try to fix or return helpful error message.
+
+        Args:
+            session: Current session state
+            original_sql: SQL that failed validation
+            validation_result: Validation result with errors
+            original_question: Original user question
+
+        Returns:
+            ChatResponse with error details and suggestions
+        """
+        errors = validation_result.errors
+
+        # Check for security errors first - these cannot be auto-fixed
+        security_errors = [e for e in errors if e.error_type == "security"]
+        if security_errors:
+            error_msg = security_errors[0].message
+            suggestion = security_errors[0].suggestion or ""
+            full_msg = f"{error_msg} {suggestion}".strip()
+
+            session_manager.add_message(
+                session.session_id, "assistant", f"Error: {full_msg}", original_sql
+            )
+
+            return ChatResponse(
+                status="error",
+                message=full_msg,
+                sql_query=original_sql,
+                error_details=error_msg
+            )
+
+        # Check for missing column errors - provide suggestions
+        column_errors = [e for e in errors if e.error_type == "missing_column"]
+        if column_errors:
+            error = column_errors[0]
+            error_msg = error.message
+
+            if error.similar_names:
+                suggestion = error.suggestion or f"Did you mean: {', '.join(error.similar_names)}?"
+                full_msg = f"{error_msg} {suggestion}"
+
+                # Try to auto-fix by asking GPT to regenerate with correct column names
+                print(f"[AGENT] Attempting to auto-fix column error: {error_msg}")
+                fix_hint = f"The column might be misspelled. Valid columns are: {', '.join([col.name for col in session.schema.columns])}"
+
+                fix_response = self.openai_client.fix_sql_error(
+                    original_sql=original_sql,
+                    error_message=f"{error_msg} {fix_hint}",
+                    schema=session.schema
+                )
+
+                if fix_response.sql and not fix_response.error:
+                    # Validate the fixed SQL
+                    fixed_validation = self._validate_sql(fix_response.sql, session.schema)
+                    if fixed_validation.is_valid:
+                        # Return None to continue with fixed SQL
+                        print(f"[AGENT] Auto-fixed SQL: {fix_response.sql}")
+                        return None
+            else:
+                full_msg = error_msg
+
+            session_manager.add_message(
+                session.session_id, "assistant", f"Error: {full_msg}", original_sql
+            )
+
+            return ChatResponse(
+                status="error",
+                message=full_msg,
+                sql_query=original_sql,
+                error_details=error_msg
+            )
+
+        # Handle syntax errors
+        syntax_errors = [e for e in errors if e.error_type == "syntax"]
+        if syntax_errors:
+            error = syntax_errors[0]
+            error_msg = error.message
+            suggestion = error.suggestion or ""
+            full_msg = f"{error_msg} {suggestion}".strip()
+
+            session_manager.add_message(
+                session.session_id, "assistant", f"Error: {full_msg}", original_sql
+            )
+
+            return ChatResponse(
+                status="error",
+                message=full_msg,
+                sql_query=original_sql,
+                error_details=error_msg
+            )
+
+        # Handle any other errors
+        if errors:
+            error = errors[0]
+            error_msg = error.message
+            suggestion = error.suggestion or ""
+            full_msg = f"{error_msg} {suggestion}".strip()
+
+            session_manager.add_message(
+                session.session_id, "assistant", f"Error: {full_msg}", original_sql
+            )
+
+            return ChatResponse(
+                status="error",
+                message=full_msg,
+                sql_query=original_sql,
+                error_details=error_msg
+            )
+
+        return None
 
     def get_session_state(self, session_id: str) -> SessionState:
         """

@@ -14,6 +14,12 @@ from .models import (
     SessionState,
 )
 from .agent import TextToSQLAgent, text_to_sql_agent
+from .sql_validator import (
+    SQLValidator,
+    ValidationResult,
+    ValidationError,
+    create_validator,
+)
 
 __all__ = [
     "TextToSQLAgent",
@@ -26,4 +32,8 @@ __all__ = [
     "StartSessionRequest",
     "StartSessionResponse",
     "SessionState",
+    "SQLValidator",
+    "ValidationResult",
+    "ValidationError",
+    "create_validator",
 ]

@@ -47,3 +47,17 @@ SUPPORTED_OPERATIONS = {
     "limiting": ["LIMIT", "OFFSET"],
     "date_operations": ["EXTRACT", "DATE_TRUNC", "DATE_DIFF"],
 }
+
+# SQL Validation Configuration
+VALIDATION_CONFIG = {
+    "dangerous_keywords": [
+        "DROP", "DELETE", "INSERT", "UPDATE", "ALTER",
+        "TRUNCATE", "CREATE", "GRANT", "REVOKE", "EXEC",
+        "EXECUTE", "MERGE", "CALL", "LOAD", "COPY"
+    ],
+    "max_query_length": 5000,
+    "suggestion_similarity_threshold": 0.6,
+    "enable_syntax_validation": True,
+    "enable_security_validation": True,
+    "enable_schema_validation": True,
+}

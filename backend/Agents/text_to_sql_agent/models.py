@@ -2,9 +2,17 @@
 Pydantic models for the Text-to-SQL agent.
 """
 
+import warnings
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+
+# Suppress Pydantic warning about "schema" field name shadowing BaseModel attribute
+# This is safe - we intentionally use "schema" for API compatibility
+warnings.filterwarnings(
+    "ignore",
+    message='Field name "schema" in .* shadows an attribute in parent "BaseModel"'
+)
 
 
 class ColumnInfo(BaseModel):
@@ -36,6 +44,8 @@ class Message(BaseModel):
 
 class SessionState(BaseModel):
     """State of a text-to-SQL session"""
+    model_config = ConfigDict(protected_namespaces=())
+
     session_id: str
     dataset_id: str
     schema: SchemaContext
@@ -53,6 +63,8 @@ class StartSessionRequest(BaseModel):
 
 class StartSessionResponse(BaseModel):
     """Response when starting a text-to-SQL session"""
+    model_config = ConfigDict(protected_namespaces=())
+
     session_id: str
     schema: SchemaContext
     sample_questions: List[str]
