@@ -221,22 +221,28 @@ export default function DataCleaning() {
   };
 
   // Apply selected cleaning operation
-  const handleApplyOperation = async (optionId) => {
+  const handleApplyOperation = async (optionId, customValue = null) => {
     if (!cleaningSessionId || operationInProgress) return;
 
     setOperationInProgress(true);
 
     try {
+      const body = {
+        session_id: cleaningSessionId,
+        option_id: optionId
+      };
+
+      if (customValue !== null) {
+        body.custom_parameters = { value: customValue };
+      }
+
       const response = await fetch(API_ENDPOINTS.CLEANING.APPLY_OPERATION, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: cleaningSessionId,
-          option_id: optionId
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -498,7 +504,7 @@ export default function DataCleaning() {
             disabled={finalizing || operationInProgress || !sessionComplete}
             title={
               operationInProgress ? 'Please wait for operation to complete' :
-              !sessionComplete ? 'Please resolve all data quality issues first' : ''
+                !sessionComplete ? 'Please resolve all data quality issues first' : ''
             }
           >
             {finalizing ? 'Processing...' : 'Complete & Save'}

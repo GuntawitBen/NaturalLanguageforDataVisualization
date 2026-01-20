@@ -112,7 +112,8 @@ async def apply_cleaning_operation(
         # Apply operation
         result = cleaning_agent.apply_operation(
             session_id=request.session_id,
-            option_id=request.option_id
+            option_id=request.option_id,
+            custom_parameters=request.custom_parameters
         )
 
         return result

@@ -58,11 +58,12 @@ CLEANING_OPERATIONS = {
             "parameters": {"columns": []},
             "description": "Replace missing values with the most common value in the column"
         },
-        "keep_missing": {
-            "name": "Leave as-is",
-            "function": "no_operation",
-            "parameters": {},
-            "description": "Keep missing values unchanged - useful when missing data is meaningful"
+        "fill_custom": {
+            "name": "Set default value",
+            "function": "fill_with_value",
+            "parameters": {"columns": [], "value": ""},
+            "description": "Replace missing values with a custom value of your choice",
+            "requires_input": True
         }
     },
     "outliers": {
@@ -303,9 +304,9 @@ DEFAULT_PROS_CONS = {
         "pros": "Reduces data redundancy and file size. Simplifies visualizations and analysis.",
         "cons": "May remove columns that seem identical now but could diverge with future data updates."
     },
-    "keep_missing": {
-        "pros": "Preserves original data without modification. Missing values may be meaningful (e.g., 'not applicable'). Avoids introducing artificial data.",
-        "cons": "Visualizations may show gaps. Some analysis methods cannot handle missing values. May need special handling downstream."
+    "fill_with_value": {
+        "pros": "Preserves all rows. Allows you to specify a meaningful default value (e.g., 'Unknown' or 0). Avoids introducing statistical bias from mean/median.",
+        "cons": "Introduces artificial values. The chosen default might not perfectly represent the missing data."
     }
 }
 

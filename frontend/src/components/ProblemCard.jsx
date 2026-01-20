@@ -68,7 +68,7 @@ export default function ProblemCard({
               <CleaningOptionCard
                 key={option.option_id}
                 option={option}
-                onSelect={() => onSelectOption(option.option_id)}
+                onSelect={(value) => onSelectOption(option.option_id, value)}
                 disabled={disabled}
                 isRecommended={recommendation?.recommended_option_id === option.option_id}
                 recommendationReason={

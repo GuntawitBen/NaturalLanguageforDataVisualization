@@ -44,6 +44,7 @@ class CleaningOption(BaseModel):
     pros: str  # AI-generated advantages
     cons: str  # AI-generated disadvantages
     impact_metrics: Dict[str, Any]  # {"rows_affected": 150, "data_loss_percentage": 15.0}
+    requires_input: bool = False  # Whether this option requires user input (e.g., custom value)
 
 
 class GPTRecommendation(BaseModel):
@@ -126,6 +127,7 @@ class ApplyOperationRequest(BaseModel):
     """Request to apply a cleaning operation"""
     session_id: str
     option_id: str
+    custom_parameters: Optional[Dict[str, Any]] = None
 
 
 class UndoLastRequest(BaseModel):

@@ -247,6 +247,31 @@ class CleaningOperations:
         return df_cleaned, message
 
     @staticmethod
+    def fill_with_value(df: pd.DataFrame, columns: List[str], value: Any) -> Tuple[pd.DataFrame, str]:
+        """
+        Fill missing values with a custom provided value.
+
+        Args:
+            df: DataFrame to clean
+            columns: List of columns to fill
+            value: The value to use for filling
+
+        Returns:
+            Tuple of (cleaned DataFrame, description message)
+        """
+        df_cleaned = df.copy()
+        filled_counts = []
+
+        for column in columns:
+            null_count = df_cleaned[column].isna().sum()
+            df_cleaned[column] = df_cleaned[column].fillna(value)
+            filled_counts.append(f"{column} ({null_count} values)")
+
+        message = f"Filled missing values with custom value '{value}' in {', '.join(filled_counts)}"
+        return df_cleaned, message
+
+
+    @staticmethod
     def no_operation(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, str]:
         """
         No-op operation (keep data as-is).
@@ -531,6 +556,7 @@ OPERATION_REGISTRY = {
     "fill_with_mean": CleaningOperations.fill_with_mean,
     "fill_with_median": CleaningOperations.fill_with_median,
     "fill_with_mode": CleaningOperations.fill_with_mode,
+    "fill_with_value": CleaningOperations.fill_with_value,
     "remove_outliers": CleaningOperations.remove_outliers,
     "cap_outliers": CleaningOperations.cap_outliers,
     "drop_duplicate_rows": CleaningOperations.drop_duplicate_rows,
@@ -538,7 +564,6 @@ OPERATION_REGISTRY = {
     "no_operation": CleaningOperations.no_operation,
     # Format standardization operations
     "standardize_date_format": CleaningOperations.standardize_date_format,
-    "standardize_boolean_format": CleaningOperations.standardize_boolean_format,
     "standardize_boolean_format": CleaningOperations.standardize_boolean_format,
     "standardize_case": CleaningOperations.standardize_case,
     "convert_mixed_to_numeric": CleaningOperations.convert_mixed_to_numeric,

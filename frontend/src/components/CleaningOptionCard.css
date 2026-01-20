@@ -153,6 +153,70 @@
   color: #2d3748;
 }
 
+/* Option Input Section */
+.cleaning-option-card.has-input {
+  cursor: default;
+}
+
+.cleaning-option-card.has-input:hover:not(.disabled) {
+  transform: none;
+}
+
+.option-input-container {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.custom-value-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.custom-value-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.apply-value-button {
+  padding: 0.5rem 1rem;
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.apply-value-button:hover:not(:disabled) {
+  background-color: #3182ce;
+}
+
+.apply-value-button:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.input-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #718096;
+  font-style: italic;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .cleaning-option-card {

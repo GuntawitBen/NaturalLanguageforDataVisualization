@@ -158,7 +158,8 @@ class CleaningAgent:
     def apply_operation(
         self,
         session_id: str,
-        option_id: str
+        option_id: str,
+        custom_parameters: Optional[Dict[str, Any]] = None
     ) -> OperationResult:
         """
         Apply a cleaning operation.
@@ -190,11 +191,16 @@ class CleaningAgent:
         # Get stats before operation
         stats_before = session.get_current_stats()
 
+        # Get parameters
+        parameters = selected_option.parameters.copy()
+        if custom_parameters:
+            parameters.update(custom_parameters)
+
         # Apply operation
         operation_record = session_manager.apply_operation(
             session_id=session_id,
             operation_type=selected_option.operation_type,
-            parameters=selected_option.parameters,
+            parameters=parameters,
             option_id=option_id,
             problem_id=current_problem.problem_id
         )
@@ -320,7 +326,8 @@ class CleaningAgent:
                 "name": op_config["name"],
                 "operation_type": op_config["function"],
                 "parameters": op_config["parameters"].copy(),
-                "description": op_config["description"]
+                "description": op_config["description"],
+                "requires_input": op_config.get("requires_input", False)
             }
 
             # Fill in affected columns for missing values and outliers
@@ -406,6 +413,7 @@ class CleaningAgent:
             "fill_with_mean": "fill_mean",
             "fill_with_median": "fill_median",
             "fill_with_mode": "fill_mode",
+            "fill_with_value": "fill_with_value",
             "remove_outliers": "remove_outliers",
             "cap_outliers": "cap_outliers",
             "drop_duplicate_rows": "drop_duplicates_first",
@@ -443,7 +451,8 @@ class CleaningAgent:
                 parameters=template["parameters"],
                 pros=pros,
                 cons=cons,
-                impact_metrics={}  # No dynamic metrics needed
+                impact_metrics={},  # No dynamic metrics needed
+                requires_input=template.get("requires_input", False)
             )
             options.append(option)
 
