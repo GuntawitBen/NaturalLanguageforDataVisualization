@@ -233,7 +233,7 @@
 /* Stage Navigation */
 .stage-navigation {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
 }
@@ -260,6 +260,17 @@
   background: #2d3748;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-button.success {
+  background: #48bb78;
+  color: white;
+}
+
+.nav-button.success:hover:not(:disabled) {
+  background: #38a169;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
 }
 
 .nav-button.secondary {

@@ -368,8 +368,8 @@ export default function DatasetDetails() {
       <div className="dataset-details-page">
         <div className="error-container">
           <p className="error-message">Error: {error}</p>
-          <button onClick={() => navigate('/datasets')} className="back-button">
-            Back to Datasets
+          <button onClick={() => navigate(-1)} className="back-button">
+            Back
           </button>
         </div>
       </div>
@@ -380,9 +380,9 @@ export default function DatasetDetails() {
     <div className="dataset-details-page">
       {/* Header */}
       <div className="details-header">
-        <button onClick={() => navigate('/datasets')} className="back-button">
+        <button onClick={() => navigate(-1)} className="back-button">
           <ArrowLeft size={20} />
-          Back to Datasets
+          Back
         </button>
 
         <div className="dataset-title-row">

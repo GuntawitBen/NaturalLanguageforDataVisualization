@@ -2,6 +2,7 @@
 import './App.css';
 import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NavigationGuardProvider } from './contexts/NavigationGuardContext';
 import AppRoutes from './routes';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
@@ -65,7 +66,9 @@ function App() {
     return (
         <AuthProvider>
             <BrowserRouter>
-                <AppContent />
+                <NavigationGuardProvider>
+                    <AppContent />
+                </NavigationGuardProvider>
             </BrowserRouter>
         </AuthProvider>
     );

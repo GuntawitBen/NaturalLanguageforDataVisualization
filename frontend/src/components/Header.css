@@ -131,6 +131,8 @@
   text-decoration: none;
   cursor: pointer;
   z-index: 101;
+  border: none;
+  background: none;
 }
 
 .app-header .logo-icon {
@@ -173,6 +175,8 @@
   transition: all 0.2s ease;
   background: rgba(226, 232, 240, 0.4);
   backdrop-filter: blur(8px);
+  border: none;
+  cursor: pointer;
 }
 
 .nav-link svg {

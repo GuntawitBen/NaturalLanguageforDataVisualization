@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigationGuard } from '../contexts/NavigationGuardContext';
 import { API_ENDPOINTS } from '../config';
-import { CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 import CSVUpload from '../components/CSVUpload';
 import CleaningPanel from '../components/CleaningPanel';
 import DataPreviewPanel from '../components/DataPreviewPanel';
@@ -11,6 +12,7 @@ import './DataCleaning.css';
 export default function DataCleaning() {
   const navigate = useNavigate();
   const { sessionToken } = useAuth();
+  const { blockNavigation, unblockNavigation } = useNavigationGuard();
 
   // State for uploaded file info
   const [tempFilePath, setTempFilePath] = useState(null);
@@ -62,33 +64,53 @@ export default function DataCleaning() {
     setError(error);
   };
 
+  // Cleanup temp file function
+  const cleanupTempFile = useCallback(() => {
+    if (tempFilePath && !finalized) {
+      try {
+        const formData = new FormData();
+        formData.append('temp_file_path', tempFilePath);
+
+        // Use keepalive to ensure request completes even during page unload
+        fetch(API_ENDPOINTS.DATASETS.CLEANUP_TEMP, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: formData,
+          keepalive: true,
+        }).catch(() => {
+          // Silently fail - best effort cleanup
+        });
+      } catch (err) {
+        console.warn('Failed to cleanup temp file:', err);
+      }
+    }
+  }, [tempFilePath, sessionToken, finalized]);
+
   // Cleanup temp file when component unmounts (if not finalized)
   useEffect(() => {
     return () => {
-      // Only cleanup if we have a temp file and it wasn't finalized
-      if (tempFilePath && !finalized) {
-        const cleanupTempFile = async () => {
-          try {
-            const formData = new FormData();
-            formData.append('temp_file_path', tempFilePath);
-
-            await fetch(API_ENDPOINTS.DATASETS.CLEANUP_TEMP, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${sessionToken}`,
-              },
-              body: formData,
-            });
-          } catch (err) {
-            // Silently fail - cleanup is best effort
-            console.warn('Failed to cleanup temp file:', err);
-          }
-        };
-
-        cleanupTempFile();
-      }
+      cleanupTempFile();
     };
-  }, [tempFilePath, sessionToken, finalized]);
+  }, [cleanupTempFile]);
+
+  // Block navigation at all stages until finalized (includes browser close/refresh)
+  useEffect(() => {
+    if (!finalized) {
+      blockNavigation(
+        'Are you sure you want to leave? All current progress will be deleted.',
+        cleanupTempFile
+      );
+    } else {
+      unblockNavigation();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      unblockNavigation();
+    };
+  }, [finalized, blockNavigation, unblockNavigation, cleanupTempFile]);
 
   const handleNext = () => {
     // Stage 1: Upload - can't go next without uploading
@@ -368,10 +390,6 @@ export default function DataCleaning() {
     <div className="data-cleaning-page">
       {/* Header */}
       <div className="cleaning-header">
-        <button onClick={() => navigate('/datasets')} className="back-link">
-          <ArrowLeft size={20} />
-          Back to Datasets
-        </button>
         <h1>Upload & Clean Dataset</h1>
         <p className="subtitle">
           {datasetName ? `Preparing: ${datasetName}` : 'Upload and prepare your dataset for analysis'}
@@ -464,16 +482,6 @@ export default function DataCleaning() {
 
       {/* Navigation Buttons */}
       <div className="stage-navigation">
-        <button
-          onClick={handleBack}
-          className="nav-button secondary"
-          disabled={currentStage === 1 || operationInProgress}
-          title={operationInProgress ? 'Please wait for operation to complete' : ''}
-        >
-          <ArrowLeft size={20} />
-          Previous
-        </button>
-
         {currentStage === 1 ? (
           <button
             onClick={handleNext}
@@ -486,7 +494,7 @@ export default function DataCleaning() {
         ) : (
           <button
             onClick={handleNext}
-            className="nav-button primary"
+            className="nav-button success"
             disabled={finalizing || operationInProgress || !sessionComplete}
             title={
               operationInProgress ? 'Please wait for operation to complete' :

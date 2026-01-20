@@ -34,9 +34,6 @@ export default function CleaningPanel({
           {/* Loading State */}
           {sessionLoading && (
             <div className="chat-message">
-              <div className="message-avatar">
-                <div className="avatar-icon">AI</div>
-              </div>
               <div className="message-content">
                 <div className="message-text">
                   <strong>Hi! 👋</strong>
@@ -55,9 +52,6 @@ export default function CleaningPanel({
           {/* Error State */}
           {sessionError && !sessionLoading && (
             <div className="chat-message">
-              <div className="message-avatar">
-                <div className="avatar-icon">AI</div>
-              </div>
               <div className="message-content error-message">
                 <div className="message-text">
                   <strong>Oops! Something went wrong 😔</strong>
@@ -73,9 +67,6 @@ export default function CleaningPanel({
           {/* Chat Messages */}
           {!sessionLoading && !sessionError && chatMessages.map((message) => (
             <div key={message.id} className={`chat-message ${message.type || ''}`}>
-              <div className="message-avatar">
-                <div className="avatar-icon">AI</div>
-              </div>
               <div className="message-content">
                 <div className="message-text">
                   {message.content.split('\n').map((line, idx) => {
@@ -115,9 +106,6 @@ export default function CleaningPanel({
           {/* Operation in progress indicator */}
           {operationInProgress && (
             <div className="chat-message">
-              <div className="message-avatar">
-                <div className="avatar-icon">AI</div>
-              </div>
               <div className="message-content">
                 <div className="message-text">
                   <strong>Applying operation...</strong>

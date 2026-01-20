@@ -239,8 +239,8 @@
 
 .form-input:focus {
   outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
 .form-input:disabled {
@@ -285,7 +285,7 @@ textarea.form-input {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4299e1 0%, #3182ce 100%);
+  background: linear-gradient(90deg, #2d3748 0%, #000 100%);
   border-radius: 9999px;
   transition: width 0.3s ease;
   position: relative;
@@ -352,14 +352,14 @@ textarea.form-input {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  background: #000;
   color: white;
-  box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
-  box-shadow: 0 4px 8px rgba(66, 153, 225, 0.4);
+  background: #2d3748;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 

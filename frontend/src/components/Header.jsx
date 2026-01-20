@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Database, Clock, LogOut, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigationGuard } from '../contexts/NavigationGuardContext';
 import './Header.css';
 
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { confirmNavigation } = useNavigationGuard();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -52,10 +54,18 @@ export default function Header() {
 
   return (
     <header className="app-header">
-      <Link to="/" className="logo">
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          if (location.pathname !== '/') {
+            confirmNavigation(() => navigate('/'));
+          }
+        }}
+        className="logo"
+      >
         <Sparkles size={20} className="logo-icon" />
         <h1>Phebe</h1>
-      </Link>
+      </button>
 
       <div className="header-container">
         <nav className="header-nav">
@@ -63,14 +73,19 @@ export default function Header() {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
-              <Link
+              <button
                 key={item.path}
-                to={item.path}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (location.pathname !== item.path) {
+                    confirmNavigation(() => navigate(item.path));
+                  }
+                }}
                 className={`nav-link ${isActive ? 'active' : ''}`}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
-              </Link>
+              </button>
             );
           })}
         </nav>
