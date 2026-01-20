@@ -2,7 +2,7 @@
 Main Text-to-SQL Agent orchestrator.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 
 from .models import (
     SchemaContext,
@@ -190,17 +190,21 @@ class TextToSQLAgent:
 
         if not validation_result.is_valid:
             # Try to handle validation errors (auto-fix or return helpful message)
-            error_response = self._handle_validation_error(
+            validation_response = self._handle_validation_error(
                 session=session,
                 original_sql=sql_query,
                 validation_result=validation_result,
                 original_question=message
             )
-            if error_response:
-                return error_response
-
-        # Use normalized SQL if available
-        if validation_result.normalized_sql:
+            if isinstance(validation_response, ChatResponse):
+                # Return error response to user
+                return validation_response
+            elif isinstance(validation_response, str):
+                # Auto-fix succeeded, use the fixed SQL
+                sql_query = validation_response
+            # If None, continue with original (shouldn't happen when is_valid=False)
+        elif validation_result.normalized_sql:
+            # Use normalized SQL if available
             sql_query = validation_result.normalized_sql
 
         # Execute SQL query
@@ -393,7 +397,7 @@ class TextToSQLAgent:
         original_sql: str,
         validation_result: ValidationResult,
         original_question: str
-    ) -> Optional[ChatResponse]:
+    ) -> Union[ChatResponse, str, None]:
         """
         Handle validation errors - try to fix or return helpful error message.
 
@@ -404,7 +408,7 @@ class TextToSQLAgent:
             original_question: Original user question
 
         Returns:
-            ChatResponse with error details and suggestions
+            ChatResponse with error details, or fixed SQL string if auto-fix succeeded
         """
         errors = validation_result.errors
 
@@ -450,9 +454,9 @@ class TextToSQLAgent:
                     # Validate the fixed SQL
                     fixed_validation = self._validate_sql(fix_response.sql, session.schema)
                     if fixed_validation.is_valid:
-                        # Return None to continue with fixed SQL
+                        # Return the fixed SQL to use
                         print(f"[AGENT] Auto-fixed SQL: {fix_response.sql}")
-                        return None
+                        return fixed_validation.normalized_sql or fix_response.sql
             else:
                 full_msg = error_msg
 
