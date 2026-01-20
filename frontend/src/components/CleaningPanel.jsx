@@ -7,7 +7,6 @@ export default function CleaningPanel({
   currentProblem,
   chatMessages,
   onApplyOperation,
-  onSkipProblem,
   onUndoLast,
   operationInProgress,
   sessionLoading,
@@ -106,7 +105,6 @@ export default function CleaningPanel({
               problem={currentProblem.problem}
               options={currentProblem.options}
               onSelectOption={onApplyOperation}
-              onSkip={onSkipProblem}
               disabled={operationInProgress}
               currentIndex={currentProblem.current_index}
               totalProblems={currentProblem.total_problems}

@@ -217,19 +217,6 @@ class CleaningAgent:
             session_complete=session_complete
         )
 
-    def skip_problem(self, session_id: str) -> ProblemWithOptions:
-        """
-        Skip the current problem and move to next.
-
-        Args:
-            session_id: Session ID
-
-        Returns:
-            Next ProblemWithOptions or None
-        """
-        session_manager.skip_problem(session_id)
-        return self.get_next_problem(session_id)
-
     def undo_last(self, session_id: str) -> OperationResult:
         """
         Undo the last operation.

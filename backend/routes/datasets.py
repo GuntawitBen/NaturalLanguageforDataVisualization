@@ -365,10 +365,14 @@ async def preview_temp_csv(
         preview_df = df.head(limit)
         data_rows = preview_df.values.tolist()
 
-        # Convert NaN to None for JSON serialization
+        # Convert NaN and inf values to None for JSON serialization
+        import math
         for row in data_rows:
             for i in range(len(row)):
-                if pd.isna(row[i]):
+                val = row[i]
+                if pd.isna(val):
+                    row[i] = None
+                elif isinstance(val, float) and (math.isinf(val) or math.isnan(val)):
                     row[i] = None
 
         return {

@@ -6,7 +6,6 @@ export default function ProblemCard({
   problem,
   options,
   onSelectOption,
-  onSkip,
   disabled,
   currentIndex,
   totalProblems,
@@ -80,16 +79,6 @@ export default function ProblemCard({
               />
             ))}
         </div>
-      </div>
-
-      <div className="problem-actions">
-        <button
-          onClick={onSkip}
-          className="skip-button"
-          disabled={disabled}
-        >
-          Skip this problem
-        </button>
       </div>
     </div>
   );

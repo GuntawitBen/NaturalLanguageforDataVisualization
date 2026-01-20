@@ -518,6 +518,39 @@
   overflow-y: auto;
 }
 
+/* Message Recommendations (inline under AI message) */
+.message-recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.recommendation-option {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #2d3748;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.recommendation-option:hover:not(:disabled) {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  transform: translateX(4px);
+}
+
+.recommendation-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Typing Indicator */
 .typing-indicator {
   display: flex;

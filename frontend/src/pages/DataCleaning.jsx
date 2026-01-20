@@ -227,7 +227,7 @@ export default function DataCleaning() {
       // Add success message
       addChatMessage({
         id: `operation-${Date.now()}`,
-        content: `✅ ${result.message}`
+        content: `${result.message}`
       });
 
       // Update state
@@ -238,7 +238,7 @@ export default function DataCleaning() {
       if (result.session_complete) {
         addChatMessage({
           id: 'complete',
-          content: `🎉 All problems have been addressed! Your dataset is now ready. You can proceed to finalize and save your cleaned dataset.`
+          content: `All problems have been addressed! Your dataset is now ready. You can proceed to finalize and save your cleaned dataset.`
         });
       }
 
@@ -251,62 +251,7 @@ export default function DataCleaning() {
       addChatMessage({
         id: `error-${Date.now()}`,
         type: 'error',
-        content: `❌ Error: ${err.message}`
-      });
-      setOperationInProgress(false);
-    }
-  };
-
-  // Skip current problem
-  const handleSkipProblem = async () => {
-    if (!cleaningSessionId || operationInProgress) return;
-
-    setOperationInProgress(true);
-
-    try {
-      const response = await fetch(API_ENDPOINTS.CLEANING.SKIP_PROBLEM, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: cleaningSessionId
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to skip problem');
-      }
-
-      const nextProblem = await response.json();
-
-      // Add skip message
-      addChatMessage({
-        id: `skip-${Date.now()}`,
-        content: `⏭️ Skipped this problem`
-      });
-
-      // Update state
-      setCurrentProblem(nextProblem);
-
-      // If no more problems, mark as complete
-      if (!nextProblem) {
-        setSessionComplete(true);
-        addChatMessage({
-          id: 'complete',
-          content: `All problems have been reviewed! You can proceed to finalize your dataset.`
-        });
-      }
-
-      setOperationInProgress(false);
-    } catch (err) {
-      console.error('Failed to skip problem:', err);
-      addChatMessage({
-        id: `error-${Date.now()}`,
-        type: 'error',
-        content: `❌ Error: ${err.message}`
+        content: `Error: ${err.message}`
       });
       setOperationInProgress(false);
     }
@@ -498,7 +443,6 @@ export default function DataCleaning() {
                   currentProblem={currentProblem}
                   chatMessages={chatMessages}
                   onApplyOperation={handleApplyOperation}
-                  onSkipProblem={handleSkipProblem}
                   onUndoLast={handleUndoLast}
                   operationInProgress={operationInProgress}
                   sessionLoading={sessionLoading}
@@ -543,8 +487,11 @@ export default function DataCleaning() {
           <button
             onClick={handleNext}
             className="nav-button primary"
-            disabled={finalizing || operationInProgress}
-            title={operationInProgress ? 'Please wait for operation to complete' : ''}
+            disabled={finalizing || operationInProgress || !sessionComplete}
+            title={
+              operationInProgress ? 'Please wait for operation to complete' :
+              !sessionComplete ? 'Please resolve all data quality issues first' : ''
+            }
           >
             {finalizing ? 'Processing...' : 'Complete & Save'}
             <CheckCircle2 size={20} />

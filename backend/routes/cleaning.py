@@ -11,10 +11,8 @@ from Agents.cleaning_agent import (
     StartSessionRequest,
     StartSessionResponse,
     ApplyOperationRequest,
-    SkipProblemRequest,
     UndoLastRequest,
     OperationResult,
-    ProblemWithOptions,
     SessionState
 )
 
@@ -131,40 +129,6 @@ async def apply_cleaning_operation(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to apply operation: {str(e)}"
-        )
-
-
-@router.post("/skip-problem", response_model=Optional[ProblemWithOptions])
-async def skip_current_problem(
-    request: SkipProblemRequest,
-    current_user_email: str = Depends(get_current_user)
-):
-    """
-    Skip the current problem and move to the next one.
-
-    Args:
-        request: SkipProblemRequest with session_id
-        current_user_email: Authenticated user email
-
-    Returns:
-        Next ProblemWithOptions or None if no more problems
-    """
-    try:
-        next_problem = cleaning_agent.skip_problem(session_id=request.session_id)
-        return next_problem
-
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    except Exception as e:
-        # Log error for debugging
-        print(f"[ERROR] Failed to skip problem: {str(e)}")
-        import traceback
-        traceback.print_exc()
-
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to skip problem: {str(e)}"
         )
 
 

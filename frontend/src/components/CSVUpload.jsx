@@ -372,31 +372,31 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of your dataset..."
-              rows={3}
-              disabled={uploading}
-              className="form-input"
-            />
-          </div>
+          {/*<div className="form-group">*/}
+          {/*  <label htmlFor="description">Description</label>*/}
+          {/*  <textarea*/}
+          {/*    id="description"*/}
+          {/*    value={description}*/}
+          {/*    onChange={(e) => setDescription(e.target.value)}*/}
+          {/*    placeholder="Brief description of your dataset..."*/}
+          {/*    rows={3}*/}
+          {/*    disabled={uploading}*/}
+          {/*    className="form-input"*/}
+          {/*  />*/}
+          {/*</div>*/}
 
-          <div className="form-group">
-            <label htmlFor="tags">Tags</label>
-            <input
-              id="tags"
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g., sales, 2024, quarterly (comma-separated)"
-              disabled={uploading}
-              className="form-input"
-            />
-          </div>
+          {/*<div className="form-group">*/}
+          {/*  <label htmlFor="tags">Tags</label>*/}
+          {/*  <input*/}
+          {/*    id="tags"*/}
+          {/*    type="text"*/}
+          {/*    value={tags}*/}
+          {/*    onChange={(e) => setTags(e.target.value)}*/}
+          {/*    placeholder="e.g., sales, 2024, quarterly (comma-separated)"*/}
+          {/*    disabled={uploading}*/}
+          {/*    className="form-input"*/}
+          {/*  />*/}
+          {/*</div>*/}
 
           {/* Upload Progress */}
           {uploading && (

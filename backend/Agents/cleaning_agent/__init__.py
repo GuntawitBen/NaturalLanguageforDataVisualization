@@ -13,7 +13,6 @@ from .models import (
     StartSessionRequest,
     StartSessionResponse,
     ApplyOperationRequest,
-    SkipProblemRequest,
     UndoLastRequest
 )
 
@@ -29,6 +28,5 @@ __all__ = [
     "StartSessionRequest",
     "StartSessionResponse",
     "ApplyOperationRequest",
-    "SkipProblemRequest",
     "UndoLastRequest"
 ]

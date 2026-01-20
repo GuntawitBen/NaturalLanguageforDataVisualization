@@ -90,7 +90,6 @@ class SessionState(BaseModel):
     dataset_name: str
     problems: List[Problem]
     current_problem_index: int
-    skipped_problems: List[str]
     operation_history: List[OperationRecord]
     current_stats: DatasetStats
     created_at: str
@@ -127,11 +126,6 @@ class ApplyOperationRequest(BaseModel):
     """Request to apply a cleaning operation"""
     session_id: str
     option_id: str
-
-
-class SkipProblemRequest(BaseModel):
-    """Request to skip a problem"""
-    session_id: str
 
 
 class UndoLastRequest(BaseModel):

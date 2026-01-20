@@ -31,7 +31,6 @@ class SessionData:
         self.df = df
         self.problems = problems
         self.current_problem_index = 0
-        self.skipped_problems: List[str] = []
         self.operation_history: List[OperationRecord] = []
         self.backups: List[str] = []  # Paths to backup files
         self.created_at = datetime.now().isoformat()
@@ -73,7 +72,6 @@ class SessionData:
             dataset_name=self.dataset_name,
             problems=self.problems,
             current_problem_index=self.current_problem_index,
-            skipped_problems=self.skipped_problems,
             operation_history=self.operation_history,
             current_stats=self.get_current_stats(),
             created_at=self.created_at,
@@ -269,32 +267,6 @@ class SessionManager:
             print(f"Error undoing operation: {e}")
             return False
 
-    def skip_problem(self, session_id: str) -> bool:
-        """
-        Skip the current problem and move to next.
-
-        Args:
-            session_id: Session ID
-
-        Returns:
-            True if skipped successfully
-        """
-        session = self.get_session(session_id)
-        if not session:
-            raise ValueError(f"Session not found: {session_id}")
-
-        if session.current_problem_index < len(session.problems):
-            current_problem = session.problems[session.current_problem_index]
-            session.skipped_problems.append(current_problem.problem_id)
-            session.current_problem_index += 1
-            session.updated_at = datetime.now().isoformat()
-            # Clear cached options for the next problem
-            session.cached_options = None
-            session.cached_recommendation = None
-            return True
-
-        return False
-
     def update_problems_after_operation(self, session_id: str):
         """
         Re-detect all problems after an operation and update the session state.
@@ -304,10 +276,15 @@ class SessionManager:
         if not session:
             return
 
-        # 1. Detect new problems on the current DataFrame
+        # 1. Get problem IDs that have been addressed (have an operation in history)
+        addressed_problem_ids = set()
+        for op in session.operation_history:
+            addressed_problem_ids.add(op.problem_id)
+
+        # 2. Detect new problems on the current DataFrame
         new_problems = detect_all_problems(session.df)
 
-        # 2. Create a lookup for existing problems to preserve IDs
+        # 3. Create a lookup for existing problems to preserve IDs
         # Key: (problem_type, set(affected_columns), title)
         existing_problems_map = {}
         for p in session.problems:
@@ -316,33 +293,32 @@ class SessionManager:
             key = (p.problem_type, cols, p.title)
             existing_problems_map[key] = p.problem_id
 
-        # 3. Match new problems with existing ones
+        # 4. Match new problems with existing ones
         final_problems = []
         for new_p in new_problems:
             cols = tuple(sorted(new_p.affected_columns)) if new_p.affected_columns else ()
             key = (new_p.problem_type, cols, new_p.title)
-            
+
             if key in existing_problems_map:
                 # Reuse existing ID
                 new_p.problem_id = existing_problems_map[key]
-            
+
             final_problems.append(new_p)
 
-        # 4. Update session problems
+        # 5. Update session problems
         session.problems = final_problems
-        
-        # 5. Reset index to verify if we can skip "Skipped" problems
-        # We want to find the first problem that hasn't been skipped
+
+        # 6. Reset index to find the first problem that hasn't been addressed
         session.current_problem_index = 0
         while session.current_problem_index < len(session.problems):
             current_p = session.problems[session.current_problem_index]
-            if current_p.problem_id in session.skipped_problems:
-                # This problem was previously skipped and still exists -> skip it again
+            if current_p.problem_id in addressed_problem_ids:
+                # This problem was previously addressed -> skip it
                 session.current_problem_index += 1
             else:
-                # Found a non-skipped problem
+                # Found a non-addressed problem
                 break
-        
+
         session.updated_at = datetime.now().isoformat()
         # Clear cached options
         session.cached_options = None

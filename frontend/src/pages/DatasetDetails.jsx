@@ -25,7 +25,6 @@ export default function DatasetDetails() {
   const [sqlSessionId, setSqlSessionId] = useState(null);
   const [sqlSessionLoading, setSqlSessionLoading] = useState(false);
   const [sqlMessages, setSqlMessages] = useState([]);
-  const [sqlRecommendations, setSqlRecommendations] = useState([]);
   const [sqlInputValue, setSqlInputValue] = useState('');
   const [sqlSending, setSqlSending] = useState(false);
   const [sqlError, setSqlError] = useState(null);
@@ -298,18 +297,15 @@ export default function DatasetDetails() {
       const data = await response.json();
       console.log('[TextToSQL] Response:', data);
 
-      // Handle recommendations
+      // Handle recommendations - include them in the message
       if (data.status === 'recommendations' && data.recommendations) {
-        setSqlRecommendations(data.recommendations);
         setSqlMessages(prev => [...prev, {
           role: 'assistant',
           content: data.message || 'Here are some questions you might find interesting:',
+          recommendations: data.recommendations,
         }]);
         return;
       }
-
-      // Clear recommendations when user asks a regular question
-      setSqlRecommendations([]);
 
       // Build results object if available
       let results = null;
@@ -353,7 +349,6 @@ export default function DatasetDetails() {
   };
 
   const handleRecommendationClick = (question) => {
-    setSqlRecommendations([]);  // Clear recommendations
     sendSqlMessage(question);
   };
 
@@ -527,6 +522,20 @@ export default function DatasetDetails() {
                             </div>
                           </div>
                         )}
+                        {msg.recommendations && msg.recommendations.length > 0 && (
+                          <div className="message-recommendations">
+                            {msg.recommendations.map((question, qIndex) => (
+                              <button
+                                key={qIndex}
+                                className="recommendation-option"
+                                onClick={() => handleRecommendationClick(question)}
+                                disabled={sqlSending}
+                              >
+                                {question}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -544,25 +553,6 @@ export default function DatasetDetails() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Recommended Questions */}
-              {sqlRecommendations.length > 0 && (
-                <div className="sql-recommendations">
-                  <span className="recommendations-label">Try:</span>
-                  <div className="recommendations-chips">
-                    {sqlRecommendations.map((question, index) => (
-                      <button
-                        key={index}
-                        className="recommendation-chip"
-                        onClick={() => handleRecommendationClick(question)}
-                        disabled={sqlSending}
-                      >
-                        {question}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Input Form */}
               <form className="sql-input-form" onSubmit={handleSqlSubmit}>
