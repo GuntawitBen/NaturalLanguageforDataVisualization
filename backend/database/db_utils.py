@@ -4,10 +4,23 @@ Database utility functions for managing datasets, conversations, and queries
 import uuid
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
 from typing import List, Dict, Optional, Any
 from sqlalchemy import text
 from database.db_init import get_db_engine, get_db_connection
+
+
+class CustomJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle MySQL types like Decimal, datetime, etc."""
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, bytes):
+            return obj.decode('utf-8', errors='replace')
+        return super().default(obj)
 
 # ============================================================================
 # USER MANAGEMENT
@@ -316,10 +329,21 @@ def query_dataset(dataset_id: str, sql_query: str) -> Dict[str, Any]:
 # CONVERSATION MANAGEMENT
 # ============================================================================
 
-def create_conversation(user_id: str, dataset_id: str = None, title: str = None) -> str:
-    """Create a new conversation"""
+def create_conversation(user_id: str, dataset_id: str = None, title: str = None, conversation_id: str = None) -> str:
+    """Create a new conversation
+
+    Args:
+        user_id: User identifier
+        dataset_id: Optional dataset ID
+        title: Optional conversation title
+        conversation_id: Optional conversation ID (if not provided, generates a new UUID)
+
+    Returns:
+        conversation_id if successful, None otherwise
+    """
     engine = get_db_engine()
-    conversation_id = str(uuid.uuid4())
+    if conversation_id is None:
+        conversation_id = str(uuid.uuid4())
 
     try:
         with engine.connect() as conn:
@@ -351,9 +375,9 @@ def add_message(
     message_id = str(uuid.uuid4())
 
     try:
-        # Convert complex types to JSON
-        query_result_json = json.dumps(query_result) if query_result else None
-        viz_config_json = json.dumps(visualization_config) if visualization_config else None
+        # Convert complex types to JSON (using custom encoder for Decimal, datetime, etc.)
+        query_result_json = json.dumps(query_result, cls=CustomJSONEncoder) if query_result else None
+        viz_config_json = json.dumps(visualization_config, cls=CustomJSONEncoder) if visualization_config else None
 
         with engine.connect() as conn:
             conn.execute(text("""
@@ -413,9 +437,12 @@ def get_conversation_messages(conversation_id: str) -> List[Dict]:
 
                 # Parse JSON fields
                 if message.get('query_result'):
-                    message['query_result'] = json.loads(message['query_result'])
+                    raw_result = message['query_result']
+                    if isinstance(raw_result, str):
+                        message['query_result'] = json.loads(raw_result)
                 if message.get('visualization_config'):
-                    message['visualization_config'] = json.loads(message['visualization_config'])
+                    if isinstance(message['visualization_config'], str):
+                        message['visualization_config'] = json.loads(message['visualization_config'])
 
                 messages.append(message)
 
@@ -425,8 +452,15 @@ def get_conversation_messages(conversation_id: str) -> List[Dict]:
         print(f"Error getting messages: {e}")
         return []
 
-def get_user_conversations(user_id: str, include_archived: bool = False, limit: int = 50) -> List[Dict]:
-    """Get all conversations for a user with message counts"""
+def get_user_conversations(user_id: str, include_archived: bool = False, limit: int = 50, dataset_id: str = None) -> List[Dict]:
+    """Get all conversations for a user with message counts
+
+    Args:
+        user_id: User identifier
+        include_archived: Whether to include archived conversations
+        limit: Maximum number of conversations to return
+        dataset_id: Optional dataset ID to filter conversations by
+    """
     engine = get_db_engine()
 
     try:
@@ -442,6 +476,10 @@ def get_user_conversations(user_id: str, include_archived: bool = False, limit: 
                 WHERE c.user_id = :user_id
             """
             params = {"user_id": user_id}
+
+            if dataset_id:
+                query += " AND c.dataset_id = :dataset_id"
+                params["dataset_id"] = dataset_id
 
             if not include_archived:
                 query += " AND c.is_archived = FALSE"

@@ -245,16 +245,20 @@ async def health_check():
 
 @router.get("/history", response_model=HistoryListResponse)
 async def get_history(
+    dataset_id: Optional[str] = None,
     current_user_email: str = Depends(get_current_user)
 ):
     """
     Get list of past text-to-SQL sessions for the current user.
 
+    Args:
+        dataset_id: Optional dataset ID to filter conversations by
+
     Returns:
         List of past conversations with metadata
     """
     try:
-        conversations = get_user_conversations(current_user_email, limit=50)
+        conversations = get_user_conversations(current_user_email, limit=50, dataset_id=dataset_id)
 
         history_items = []
         for conv in conversations:
@@ -312,11 +316,13 @@ async def get_history_detail(
         # Format messages for response
         formatted_messages = []
         for msg in messages:
+            query_result = msg.get('query_result')
+
             formatted_messages.append({
                 "role": msg['role'],
                 "content": msg['content'],
                 "sql_query": msg.get('query_sql'),
-                "query_result": msg.get('query_result'),
+                "query_result": query_result,
                 "created_at": str(msg.get('created_at', ''))
             })
 

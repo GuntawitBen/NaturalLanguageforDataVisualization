@@ -35,7 +35,8 @@ class SessionManager:
         user_id: str = None
     ) -> SessionState:
         """
-        Create a new session for a dataset
+        Create a new session for a dataset.
+        Note: Conversation is NOT persisted to database until first message is sent.
 
         Args:
             dataset_id: Dataset identifier
@@ -47,15 +48,9 @@ class SessionManager:
         """
         now = datetime.now()
 
-        # Create conversation in database if user_id provided
-        if user_id:
-            session_id = create_conversation(user_id, dataset_id)
-            if not session_id:
-                # Fallback to in-memory only
-                session_id = str(uuid.uuid4())
-                print(f"[SESSION] Warning: Failed to persist conversation, using in-memory only")
-        else:
-            session_id = str(uuid.uuid4())
+        # Generate session ID but DON'T create conversation in database yet
+        # Conversation will be created when first message is sent
+        session_id = str(uuid.uuid4())
 
         session = SessionState(
             session_id=session_id,
@@ -66,13 +61,14 @@ class SessionManager:
             last_activity=now
         )
 
-        # Store user_id for later message persistence
+        # Store user_id and dataset_id for later conversation creation
         session._user_id = user_id
+        session._conversation_created = False  # Track if conversation exists in DB
 
         with self._lock:
             self._sessions[session_id] = session
 
-        print(f"[SESSION] Created session {session_id} for dataset {dataset_id} (user: {user_id})")
+        print(f"[SESSION] Created session {session_id} for dataset {dataset_id} (user: {user_id}) - not persisted yet")
         return session
 
     def get_session(self, session_id: str) -> Optional[SessionState]:
@@ -126,7 +122,8 @@ class SessionManager:
         query_result: any = None
     ) -> bool:
         """
-        Add a message to a session's conversation history
+        Add a message to a session's conversation history.
+        Creates the conversation in database on first message.
 
         Args:
             session_id: Session identifier
@@ -153,6 +150,17 @@ class SessionManager:
             # Persist message to database
             user_id = getattr(session, '_user_id', None)
             if user_id:
+                # Create conversation in database on first message (lazy creation)
+                conversation_created = getattr(session, '_conversation_created', False)
+                if not conversation_created:
+                    # Use existing session_id as conversation_id
+                    db_session_id = create_conversation(user_id, session.dataset_id, conversation_id=session_id)
+                    if db_session_id:
+                        session._conversation_created = True
+                        print(f"[SESSION] Created conversation in DB: {db_session_id}")
+                    else:
+                        print(f"[SESSION] Warning: Failed to persist conversation")
+
                 db_add_message(
                     conversation_id=session_id,
                     role=role,
@@ -287,8 +295,9 @@ class SessionManager:
             last_activity=now
         )
 
-        # Store user_id for persistence
+        # Store user_id for persistence and mark as already in DB
         session._user_id = user_id
+        session._conversation_created = True  # Already exists in database
 
         with self._lock:
             self._sessions[session_id] = session

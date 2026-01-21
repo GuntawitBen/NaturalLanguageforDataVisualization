@@ -288,6 +288,8 @@ class TextToSQLAgent:
         data = result.get("data", [])
 
         # Convert tuples to dicts
+        from decimal import Decimal
+
         formatted = []
         for row in data:
             row_dict = {}
@@ -295,7 +297,9 @@ class TextToSQLAgent:
                 value = row[i] if i < len(row) else None
                 # Handle special types for JSON serialization
                 if value is not None:
-                    if hasattr(value, 'isoformat'):
+                    if isinstance(value, Decimal):
+                        value = float(value)
+                    elif hasattr(value, 'isoformat'):
                         value = value.isoformat()
                     elif isinstance(value, (bytes, bytearray)):
                         value = value.decode('utf-8', errors='replace')

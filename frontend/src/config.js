@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
     GET_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
     END_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
     HISTORY: `${API_BASE_URL}/agents/text-to-sql/history`,
+    HISTORY_BY_DATASET: (datasetId) => `${API_BASE_URL}/agents/text-to-sql/history?dataset_id=${datasetId}`,
     GET_HISTORY: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}`,
     RESUME_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}/resume`,
     DELETE_HISTORY: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}`,

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
-import { ArrowLeft, ChevronDown, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Send, Sparkles, Plus, MessageSquare, Trash2 } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
@@ -15,13 +15,17 @@ export default function DatasetDetails() {
 
   // Check if we're resuming a session from history
   const resumedSessionId = location.state?.resumedSessionId;
-  const shouldOpenChat = location.state?.openChat;
   const [dataset, setDataset] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState(shouldOpenChat ? 'visualize' : 'raw-data');
+  const [activeTab, setActiveTab] = useState('conversations');
   const [showInfoDropdown, setShowInfoDropdown] = useState(false);
+
+  // Conversations tab state
+  const [conversationsView, setConversationsView] = useState('list'); // 'list' | 'chat'
+  const [conversations, setConversations] = useState([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
 
   // Text-to-SQL state
   const [sqlSessionId, setSqlSessionId] = useState(null);
@@ -47,24 +51,19 @@ export default function DatasetDetails() {
     fetchDatasetDetails();
   }, [datasetId]);
 
-  // Start SQL session when visualize tab is opened
+  // Track current session ID in a ref for cleanup
+  const currentSessionRef = useRef(null);
   useEffect(() => {
-    if (activeTab === 'visualize' && !sqlSessionId && !sqlSessionStarted.current) {
-      if (resumedSessionId) {
-        resumeSqlSession(resumedSessionId);
-      } else {
-        startSqlSession();
-      }
-    }
-  }, [activeTab]);
+    currentSessionRef.current = sqlSessionId;
+  }, [sqlSessionId]);
 
-  // Cleanup session on unmount
+  // Cleanup session only on page unload or component unmount
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (sqlSessionId) {
+      if (currentSessionRef.current) {
         // Use sendBeacon for reliable cleanup
         navigator.sendBeacon(
-          API_ENDPOINTS.TEXT_TO_SQL.END_SESSION(sqlSessionId),
+          API_ENDPOINTS.TEXT_TO_SQL.END_SESSION(currentSessionRef.current),
           JSON.stringify({ method: 'DELETE' })
         );
       }
@@ -74,16 +73,142 @@ export default function DatasetDetails() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (sqlSessionId) {
-        endSqlSession(sqlSessionId);
+      // Only cleanup on actual unmount (leaving the page), not when switching sessions
+      if (currentSessionRef.current) {
+        endSqlSession(currentSessionRef.current);
       }
     };
-  }, [sqlSessionId]);
+  }, []); // Empty dependency - only runs on mount/unmount
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [sqlMessages]);
+
+  // Fetch conversations when conversations tab is opened (list view)
+  useEffect(() => {
+    if (activeTab === 'conversations' && conversationsView === 'list') {
+      fetchDatasetConversations();
+    }
+  }, [activeTab, conversationsView]);
+
+  // Handle resumedSessionId from navigation - go to conversations chat view
+  useEffect(() => {
+    if (resumedSessionId) {
+      setActiveTab('conversations');
+      setConversationsView('chat');
+    }
+  }, [resumedSessionId]);
+
+  // Start session when entering chat view in conversations tab
+  useEffect(() => {
+    if (activeTab === 'conversations' && conversationsView === 'chat' && !sqlSessionId && !sqlSessionStarted.current) {
+      if (resumedSessionId) {
+        resumeSqlSession(resumedSessionId);
+      } else {
+        startSqlSession();
+      }
+    }
+  }, [activeTab, conversationsView]);
+
+  const fetchDatasetConversations = async () => {
+    setConversationsLoading(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.TEXT_TO_SQL.HISTORY_BY_DATASET(datasetId), {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch conversations');
+      const data = await response.json();
+      setConversations(data.conversations || []);
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+    } finally {
+      setConversationsLoading(false);
+    }
+  };
+
+  const handleNewChat = async () => {
+    // Reset any existing session
+    if (sqlSessionId) {
+      await endSqlSession(sqlSessionId);
+    }
+
+    // Reset chat state
+    setSqlSessionId(null);
+    setSqlMessages([]);
+    sqlSessionStarted.current = false;
+
+    // Switch to chat view
+    setConversationsView('chat');
+
+    // Start new session directly (don't rely on useEffect which may not trigger)
+    startSqlSession();
+  };
+
+  const handleSelectConversation = async (sessionId) => {
+    // Reset current session state
+    if (sqlSessionId && sqlSessionId !== sessionId) {
+      await endSqlSession(sqlSessionId);
+    }
+
+    setSqlSessionId(null);
+    setSqlMessages([]);
+    sqlSessionStarted.current = false;
+
+    // Set up for resuming and switch to chat view
+    // We'll use a ref or state to track which session to resume
+    setConversationsView('chat');
+
+    // Resume the session
+    resumeSqlSession(sessionId);
+  };
+
+  const handleDeleteConversation = async (sessionId) => {
+    if (!window.confirm('Delete this conversation?')) return;
+
+    try {
+      const response = await fetch(API_ENDPOINTS.TEXT_TO_SQL.DELETE_HISTORY(sessionId), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete');
+
+      // Remove from local state
+      setConversations(prev => prev.filter(c => c.session_id !== sessionId));
+    } catch (err) {
+      console.error('Error deleting:', err);
+      alert('Failed to delete conversation');
+    }
+  };
+
+  const handleBackToList = () => {
+    setConversationsView('list');
+    // Refresh conversations list
+    fetchDatasetConversations();
+  };
+
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   const fetchDatasetDetails = async () => {
     setLoading(true);
@@ -147,6 +272,11 @@ export default function DatasetDetails() {
       }
 
       const data = await response.json();
+
+      if (!data.session_id) {
+        throw new Error('No session ID returned from server');
+      }
+
       setSqlSessionId(data.session_id);
 
       // Add welcome message
@@ -164,6 +294,12 @@ export default function DatasetDetails() {
   };
 
   const resumeSqlSession = async (sessionId) => {
+    if (!sessionId) {
+      console.error('No session ID provided for resume');
+      setSqlError('No session to resume');
+      return;
+    }
+
     sqlSessionStarted.current = true;
     setSqlSessionLoading(true);
     setSqlError(null);
@@ -434,10 +570,10 @@ export default function DatasetDetails() {
       {/* Navigation Tabs */}
       <div className="details-tabs">
         <button
-          className={`tab-button ${activeTab === 'visualize' ? 'active' : ''}`}
-          onClick={() => setActiveTab('visualize')}
+          className={`tab-button ${activeTab === 'conversations' ? 'active' : ''}`}
+          onClick={() => setActiveTab('conversations')}
         >
-          Visualize
+          Conversations
         </button>
         <button
           className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -454,137 +590,213 @@ export default function DatasetDetails() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'visualize' && (
-        <div className="tab-content sql-chat-container">
-          {sqlSessionLoading ? (
-            <div className="sql-loading">
-              <div className="spinner"></div>
-              <p>Starting session...</p>
-            </div>
-          ) : sqlError ? (
-            <div className="sql-error">
-              <p>Error: {sqlError}</p>
-              <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }} className="retry-button">
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Chat Messages */}
-              <div className="sql-messages">
-                {sqlMessages.map((msg, index) => {
-                  if (!msg) return null;
-                  return (
-                    <div key={index} className={`sql-message ${msg.role || 'assistant'}`}>
-                      <div className="message-content">
-                        <p>{msg.content || ''}</p>
-                        {msg.sql_query && (
-                          <div className="sql-code-block">
-                            <div className="sql-code-header">
-                              <span>SQL Query</span>
-                            </div>
-                            <pre><code>{msg.sql_query}</code></pre>
-                          </div>
-                        )}
-                        {msg.results && msg.results.data && msg.results.columns && (
-                          <div className="sql-results-inline">
-                            <div className="sql-results-header-inline">
-                              <span>Results</span>
-                              <span className="results-count-inline">
-                                {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                            <div className="sql-results-table-wrapper-inline">
-                              <table className="sql-results-table">
-                                <thead>
-                                  <tr>
-                                    {msg.results.columns.map((col, colIndex) => (
-                                      <th key={colIndex}>{col}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {msg.results.data.map((row, rowIndex) => {
-                                    if (!row || typeof row !== 'object') return null;
-                                    return (
-                                      <tr key={rowIndex}>
-                                        {msg.results.columns.map((col, cellIndex) => {
-                                          const cell = row[col];
-                                          return (
-                                            <td key={cellIndex}>
-                                              {cell !== null && cell !== undefined ? String(cell) : '—'}
-                                            </td>
-                                          );
-                                        })}
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                        {msg.recommendations && msg.recommendations.length > 0 && (
-                          <div className="message-recommendations">
-                            {msg.recommendations.map((question, qIndex) => (
-                              <button
-                                key={qIndex}
-                                className="recommendation-option"
-                                onClick={() => handleRecommendationClick(question)}
-                                disabled={sqlSending}
-                              >
-                                {question}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {sqlSending && (
-                  <div className="sql-message assistant">
-                    <div className="message-content">
-                      <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
+      {activeTab === 'conversations' && (
+        <div className="tab-content conversations-container">
+          {conversationsView === 'list' ? (
+            /* Conversations List View */
+            <div className="conversations-list-container">
+              <div className="conversations-header">
+                <h3>Conversations</h3>
+                <button className="new-chat-button" onClick={handleNewChat}>
+                  <Plus size={18} />
+                  New Chat
+                </button>
               </div>
 
-              {/* Input Form */}
-              <form className="sql-input-form" onSubmit={handleSqlSubmit}>
-                <button
-                  type="button"
-                  className="sql-recommend-button"
-                  onClick={handleRecommend}
-                  disabled={sqlSending || !sqlSessionId}
-                  title="Get a recommendation"
-                >
-                  <Sparkles size={20} />
-                  <span>Recommend</span>
-                </button>
-                <input
-                  type="text"
-                  className="sql-input"
-                  placeholder="Ask a question about your data..."
-                  value={sqlInputValue}
-                  onChange={(e) => setSqlInputValue(e.target.value)}
-                  disabled={sqlSending || !sqlSessionId}
-                />
-                <button
-                  type="submit"
-                  className="sql-send-button"
-                  disabled={sqlSending || !sqlInputValue.trim() || !sqlSessionId}
-                >
-                  <Send size={20} />
-                </button>
-              </form>
-            </>
+              {conversationsLoading && (
+                <div className="conversations-loading">
+                  <div className="spinner"></div>
+                  <p>Loading conversations...</p>
+                </div>
+              )}
+
+              {!conversationsLoading && conversations.length === 0 && (
+                <div className="conversations-empty">
+                  <MessageSquare size={48} />
+                  <h4>No conversations yet</h4>
+                  <p>Start a new chat to explore your data</p>
+                  <button className="new-chat-button" onClick={handleNewChat}>
+                    <Plus size={18} />
+                    Start New Chat
+                  </button>
+                </div>
+              )}
+
+              {!conversationsLoading && conversations.length > 0 && (
+                <div className="conversations-list">
+                  {conversations.map(conv => (
+                    <div
+                      key={conv.session_id}
+                      className="conversation-item"
+                      onClick={() => handleSelectConversation(conv.session_id)}
+                    >
+                      <div className="conversation-item-content">
+                        <h4>{conv.title || conv.first_question || 'Untitled conversation'}</h4>
+                        <span className="conversation-meta">
+                          {conv.message_count} message{conv.message_count !== 1 ? 's' : ''} · {formatRelativeTime(conv.updated_at)}
+                        </span>
+                      </div>
+                      <button
+                        className="delete-conversation-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteConversation(conv.session_id);
+                        }}
+                        title="Delete conversation"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Chat View */
+            <div className="sql-chat-container">
+              <button className="back-to-list-button" onClick={handleBackToList}>
+                <ArrowLeft size={18} />
+                Back to Conversations
+              </button>
+
+              {sqlSessionLoading ? (
+                <div className="sql-loading">
+                  <div className="spinner"></div>
+                  <p>Starting session...</p>
+                </div>
+              ) : sqlError ? (
+                <div className="sql-error">
+                  <p>Error: {sqlError}</p>
+                  <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }} className="retry-button">
+                    Retry
+                  </button>
+                </div>
+              ) : !sqlSessionId ? (
+                <div className="sql-error">
+                  <p>Session not started</p>
+                  <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }} className="retry-button">
+                    Start Session
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Chat Messages */}
+                  <div className="sql-messages">
+                    {sqlMessages.map((msg, index) => {
+                      if (!msg) return null;
+                      return (
+                        <div key={index} className={`sql-message ${msg.role || 'assistant'}`}>
+                          <div className="message-content">
+                            <p>{msg.content || ''}</p>
+                            {msg.sql_query && (
+                              <div className="sql-code-block">
+                                <div className="sql-code-header">
+                                  <span>SQL Query</span>
+                                </div>
+                                <pre><code>{msg.sql_query}</code></pre>
+                              </div>
+                            )}
+                            {msg.results && msg.results.data && msg.results.columns && (
+                              <div className="sql-results-inline">
+                                <div className="sql-results-header-inline">
+                                  <span>Results</span>
+                                  <span className="results-count-inline">
+                                    {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <div className="sql-results-table-wrapper-inline">
+                                  <table className="sql-results-table">
+                                    <thead>
+                                      <tr>
+                                        {msg.results.columns.map((col, colIndex) => (
+                                          <th key={colIndex}>{col}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {msg.results.data.map((row, rowIndex) => {
+                                        if (!row || typeof row !== 'object') return null;
+                                        return (
+                                          <tr key={rowIndex}>
+                                            {msg.results.columns.map((col, cellIndex) => {
+                                              const cell = row[col];
+                                              return (
+                                                <td key={cellIndex}>
+                                                  {cell !== null && cell !== undefined ? String(cell) : '—'}
+                                                </td>
+                                              );
+                                            })}
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                            {msg.recommendations && msg.recommendations.length > 0 && (
+                              <div className="message-recommendations">
+                                {msg.recommendations.map((question, qIndex) => (
+                                  <button
+                                    key={qIndex}
+                                    className="recommendation-option"
+                                    onClick={() => handleRecommendationClick(question)}
+                                    disabled={sqlSending}
+                                  >
+                                    {question}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {sqlSending && (
+                      <div className="sql-message assistant">
+                        <div className="message-content">
+                          <div className="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Input Form */}
+                  <form className="sql-input-form" onSubmit={handleSqlSubmit}>
+                    <button
+                      type="button"
+                      className="sql-recommend-button"
+                      onClick={handleRecommend}
+                      disabled={sqlSending || !sqlSessionId}
+                      title="Get a recommendation"
+                    >
+                      <Sparkles size={20} />
+                      <span>Recommend</span>
+                    </button>
+                    <input
+                      type="text"
+                      className="sql-input"
+                      placeholder="Ask a question about your data..."
+                      value={sqlInputValue}
+                      onChange={(e) => setSqlInputValue(e.target.value)}
+                      disabled={sqlSending || !sqlSessionId}
+                    />
+                    <button
+                      type="submit"
+                      className="sql-send-button"
+                      disabled={sqlSending || !sqlInputValue.trim() || !sqlSessionId}
+                    >
+                      <Send size={20} />
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
           )}
         </div>
       )}
