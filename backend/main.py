@@ -72,18 +72,31 @@ print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT F
 print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
 print("=" * 50)
 
-# Initialize database on startup (only if it doesn't exist)
-from pathlib import Path
-DB_PATH = Path(__file__).parent / "database" / "nlp_viz.duckdb"
-if not DB_PATH.exists():
-    print("\n[INFO] Database not found. Initializing for first time...")
+# Initialize database on startup (check MySQL connection and tables)
+def check_mysql_connection():
+    """Check MySQL connection and initialize tables if needed"""
+    from sqlalchemy import text
+    from database.db_init import get_db_engine
+
     try:
-        init_database()
-        print("[OK] Database initialized successfully\n")
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = DATABASE() AND table_name = 'users'"
+            ))
+            if result.scalar() == 0:
+                print("\n[INFO] Database tables not found. Initializing for first time...")
+                init_database()
+                print("[OK] Database initialized successfully\n")
+            else:
+                print("\n[INFO] Database tables already exist. Skipping initialization.\n")
     except Exception as e:
-        print(f"[ERROR] Database initialization failed: {e}\n")
-else:
-    print("\n[INFO] Database already exists. Skipping initialization.\n")
+        print(f"\n[ERROR] Database connection failed: {e}")
+        print("[INFO] Make sure MySQL is running (docker-compose up -d)\n")
+        raise RuntimeError(f"Database connection failed: {e}")
+
+check_mysql_connection()
 
 # Background cleanup task for cleaning agent
 async def cleanup_task():

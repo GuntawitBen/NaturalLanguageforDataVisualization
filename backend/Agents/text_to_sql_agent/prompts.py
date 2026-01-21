@@ -7,7 +7,7 @@ from .models import SchemaContext, Message
 from .config import TOKEN_CONFIG
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are a helpful data analyst assistant for DuckDB databases. Your task is to help users explore and understand their data by converting natural language questions into SQL queries.
+SYSTEM_PROMPT_TEMPLATE = """You are a helpful data analyst assistant for MySQL databases. Your task is to help users explore and understand their data by converting natural language questions into SQL queries.
 
 DATABASE SCHEMA:
 Table: {table_name}
@@ -23,8 +23,8 @@ RULES:
 4. Use WHERE for filtering with operators: =, !=, <, >, <=, >=, IN, BETWEEN, LIKE
 5. Use ORDER BY ASC/DESC for sorting
 6. Always add LIMIT 1000 unless the user specifies a different limit
-7. For string comparisons, use ILIKE for case-insensitive matching
-8. DuckDB uses standard SQL syntax
+7. For case-insensitive string comparisons, use LOWER(column) = LOWER('value') or LIKE with appropriate collation
+8. Use MySQL-compatible SQL syntax (e.g., use CONCAT() for string concatenation, DATE_FORMAT() for date formatting)
 
 RESPONSE FORMAT:
 You MUST respond with a JSON object in one of these formats:

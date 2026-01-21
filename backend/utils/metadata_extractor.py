@@ -5,7 +5,8 @@ Extracts comprehensive metadata including statistical analysis
 import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from database.db_init import get_db_connection
+from sqlalchemy import text
+from database.db_init import get_db_engine
 
 # ============================================================================
 # BASIC METADATA EXTRACTION
@@ -21,45 +22,45 @@ def extract_basic_metadata(table_name: str) -> Dict[str, Any]:
         - columns_info: List of column definitions
         - table_size_bytes: Approximate table size in bytes
     """
-    conn = get_db_connection()
+    engine = get_db_engine()
 
     try:
-        # Row count
-        row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+        with engine.connect() as conn:
+            # Row count
+            row_count = conn.execute(text(f"SELECT COUNT(*) FROM `{table_name}`")).fetchone()[0]
 
-        # Column information from information_schema
-        columns_info = conn.execute(f"""
-            SELECT
-                column_name,
-                data_type,
-                is_nullable
-            FROM information_schema.columns
-            WHERE table_name = '{table_name}'
-            ORDER BY ordinal_position
-        """).fetchall()
+            # Column information from information_schema
+            columns_info = conn.execute(text(f"""
+                SELECT
+                    column_name,
+                    data_type,
+                    is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE() AND table_name = :table_name
+                ORDER BY ordinal_position
+            """), {"table_name": table_name}).fetchall()
 
-        column_count = len(columns_info)
+            column_count = len(columns_info)
 
-        # Format column info
-        columns = [
-            {
-                "name": col[0],
-                "type": col[1],
-                "nullable": col[2] == 'YES'
+            # Format column info
+            columns = [
+                {
+                    "name": col[0],
+                    "type": col[1],
+                    "nullable": col[2] == 'YES'
+                }
+                for col in columns_info
+            ]
+
+            # Estimate table size (not exact, but good approximation)
+            table_size_bytes = row_count * column_count * 50  # ~50 bytes per cell average
+
+            return {
+                "row_count": row_count,
+                "column_count": column_count,
+                "columns_info": columns,
+                "table_size_bytes": table_size_bytes
             }
-            for col in columns_info
-        ]
-
-        # Estimate table size (not exact, but good approximation)
-        # DuckDB stores data efficiently, this is a rough estimate
-        table_size_bytes = row_count * column_count * 50  # ~50 bytes per cell average
-
-        return {
-            "row_count": row_count,
-            "column_count": column_count,
-            "columns_info": columns,
-            "table_size_bytes": table_size_bytes
-        }
 
     except Exception as e:
         print(f"Error extracting basic metadata: {e}")
@@ -79,113 +80,134 @@ def extract_column_statistics(table_name: str, column_name: str, data_type: str)
     - Date: min_date, max_date, distinct_count, null_count
     - Boolean: true_count, false_count, null_count
     """
-    conn = get_db_connection()
+    engine = get_db_engine()
     stats = {
         "column_name": column_name,
         "data_type": data_type
     }
 
     try:
-        # Null count (universal)
-        null_count = conn.execute(f"""
-            SELECT COUNT(*) FROM {table_name} WHERE "{column_name}" IS NULL
-        """).fetchone()[0]
-        stats["null_count"] = null_count
+        with engine.connect() as conn:
+            # Null count (universal)
+            null_count = conn.execute(text(f"""
+                SELECT COUNT(*) FROM `{table_name}` WHERE `{column_name}` IS NULL
+            """)).fetchone()[0]
+            stats["null_count"] = null_count
 
-        # Distinct count (universal)
-        distinct_count = conn.execute(f"""
-            SELECT COUNT(DISTINCT "{column_name}") FROM {table_name}
-        """).fetchone()[0]
-        stats["distinct_count"] = distinct_count
+            # Distinct count (universal)
+            distinct_count = conn.execute(text(f"""
+                SELECT COUNT(DISTINCT `{column_name}`) FROM `{table_name}`
+            """)).fetchone()[0]
+            stats["distinct_count"] = distinct_count
 
-        # Type-specific statistics
-        if data_type in ['INTEGER', 'BIGINT', 'DOUBLE', 'FLOAT', 'DECIMAL', 'HUGEINT']:
-            # Numeric statistics
-            numeric_stats = conn.execute(f"""
-                SELECT
-                    MIN("{column_name}") as min_val,
-                    MAX("{column_name}") as max_val,
-                    AVG("{column_name}") as mean_val,
-                    MEDIAN("{column_name}") as median_val,
-                    STDDEV("{column_name}") as std_dev
-                FROM {table_name}
-                WHERE "{column_name}" IS NOT NULL
-            """).fetchone()
+            # Type-specific statistics
+            # MySQL numeric types
+            numeric_types = ['int', 'bigint', 'double', 'float', 'decimal', 'tinyint', 'smallint', 'mediumint']
+            if any(t in data_type.lower() for t in numeric_types):
+                # Numeric statistics (without MEDIAN - use AVG as approximation or window function)
+                numeric_stats = conn.execute(text(f"""
+                    SELECT
+                        MIN(`{column_name}`) as min_val,
+                        MAX(`{column_name}`) as max_val,
+                        AVG(`{column_name}`) as mean_val,
+                        STDDEV(`{column_name}`) as std_dev
+                    FROM `{table_name}`
+                    WHERE `{column_name}` IS NOT NULL
+                """)).fetchone()
 
-            if numeric_stats:
-                stats.update({
-                    "min": float(numeric_stats[0]) if numeric_stats[0] is not None else None,
-                    "max": float(numeric_stats[1]) if numeric_stats[1] is not None else None,
-                    "mean": float(numeric_stats[2]) if numeric_stats[2] is not None else None,
-                    "median": float(numeric_stats[3]) if numeric_stats[3] is not None else None,
-                    "std_dev": float(numeric_stats[4]) if numeric_stats[4] is not None else None
-                })
+                if numeric_stats:
+                    stats.update({
+                        "min": float(numeric_stats[0]) if numeric_stats[0] is not None else None,
+                        "max": float(numeric_stats[1]) if numeric_stats[1] is not None else None,
+                        "mean": float(numeric_stats[2]) if numeric_stats[2] is not None else None,
+                        "std_dev": float(numeric_stats[3]) if numeric_stats[3] is not None else None
+                    })
 
-        elif data_type == 'VARCHAR':
-            # String statistics
-            string_stats = conn.execute(f"""
-                SELECT
-                    MIN(LENGTH("{column_name}")) as min_length,
-                    MAX(LENGTH("{column_name}")) as max_length,
-                    AVG(LENGTH("{column_name}")) as avg_length
-                FROM {table_name}
-                WHERE "{column_name}" IS NOT NULL
-            """).fetchone()
+                # Calculate median using MySQL 8.0 window function approach
+                try:
+                    median_result = conn.execute(text(f"""
+                        SELECT AVG(val) as median_val
+                        FROM (
+                            SELECT `{column_name}` as val,
+                                   ROW_NUMBER() OVER (ORDER BY `{column_name}`) as rn,
+                                   COUNT(*) OVER () as cnt
+                            FROM `{table_name}`
+                            WHERE `{column_name}` IS NOT NULL
+                        ) t
+                        WHERE rn IN (FLOOR((cnt + 1) / 2), CEIL((cnt + 1) / 2))
+                    """)).fetchone()
 
-            if string_stats:
-                stats.update({
-                    "min_length": int(string_stats[0]) if string_stats[0] is not None else None,
-                    "max_length": int(string_stats[1]) if string_stats[1] is not None else None,
-                    "avg_length": float(string_stats[2]) if string_stats[2] is not None else None
-                })
+                    if median_result and median_result[0] is not None:
+                        stats["median"] = float(median_result[0])
+                except Exception as e:
+                    print(f"Warning: Could not calculate median for {column_name}: {e}")
+                    stats["median"] = None
 
-            # Top 10 most common values (if distinct count is reasonable)
-            if distinct_count <= 1000:
-                top_values = conn.execute(f"""
-                    SELECT "{column_name}", COUNT(*) as count
-                    FROM {table_name}
-                    WHERE "{column_name}" IS NOT NULL
-                    GROUP BY "{column_name}"
-                    ORDER BY count DESC
-                    LIMIT 10
-                """).fetchall()
+            elif 'varchar' in data_type.lower() or 'text' in data_type.lower() or 'char' in data_type.lower():
+                # String statistics
+                string_stats = conn.execute(text(f"""
+                    SELECT
+                        MIN(CHAR_LENGTH(`{column_name}`)) as min_length,
+                        MAX(CHAR_LENGTH(`{column_name}`)) as max_length,
+                        AVG(CHAR_LENGTH(`{column_name}`)) as avg_length
+                    FROM `{table_name}`
+                    WHERE `{column_name}` IS NOT NULL
+                """)).fetchone()
 
-                stats["top_values"] = [
-                    {"value": str(val[0]), "count": int(val[1])}
-                    for val in top_values
-                ]
+                if string_stats:
+                    stats.update({
+                        "min_length": int(string_stats[0]) if string_stats[0] is not None else None,
+                        "max_length": int(string_stats[1]) if string_stats[1] is not None else None,
+                        "avg_length": float(string_stats[2]) if string_stats[2] is not None else None
+                    })
 
-        elif data_type == 'DATE':
-            # Date statistics
-            date_stats = conn.execute(f"""
-                SELECT
-                    MIN("{column_name}") as min_date,
-                    MAX("{column_name}") as max_date
-                FROM {table_name}
-                WHERE "{column_name}" IS NOT NULL
-            """).fetchone()
+                # Top 10 most common values (if distinct count is reasonable)
+                if distinct_count <= 1000:
+                    top_values = conn.execute(text(f"""
+                        SELECT `{column_name}`, COUNT(*) as count
+                        FROM `{table_name}`
+                        WHERE `{column_name}` IS NOT NULL
+                        GROUP BY `{column_name}`
+                        ORDER BY count DESC
+                        LIMIT 10
+                    """)).fetchall()
 
-            if date_stats:
-                stats.update({
-                    "min_date": str(date_stats[0]) if date_stats[0] is not None else None,
-                    "max_date": str(date_stats[1]) if date_stats[1] is not None else None
-                })
+                    stats["top_values"] = [
+                        {"value": str(val[0]), "count": int(val[1])}
+                        for val in top_values
+                    ]
 
-        elif data_type == 'BOOLEAN':
-            # Boolean statistics
-            bool_stats = conn.execute(f"""
-                SELECT
-                    SUM(CASE WHEN "{column_name}" = TRUE THEN 1 ELSE 0 END) as true_count,
-                    SUM(CASE WHEN "{column_name}" = FALSE THEN 1 ELSE 0 END) as false_count
-                FROM {table_name}
-                WHERE "{column_name}" IS NOT NULL
-            """).fetchone()
+            elif 'date' in data_type.lower() or 'datetime' in data_type.lower():
+                # Date statistics
+                date_stats = conn.execute(text(f"""
+                    SELECT
+                        MIN(`{column_name}`) as min_date,
+                        MAX(`{column_name}`) as max_date
+                    FROM `{table_name}`
+                    WHERE `{column_name}` IS NOT NULL
+                """)).fetchone()
 
-            if bool_stats:
-                stats.update({
-                    "true_count": int(bool_stats[0]) if bool_stats[0] is not None else 0,
-                    "false_count": int(bool_stats[1]) if bool_stats[1] is not None else 0
-                })
+                if date_stats:
+                    stats.update({
+                        "min_date": str(date_stats[0]) if date_stats[0] is not None else None,
+                        "max_date": str(date_stats[1]) if date_stats[1] is not None else None
+                    })
+
+            elif 'tinyint(1)' in data_type.lower() or data_type.lower() == 'boolean':
+                # Boolean statistics (MySQL uses TINYINT(1) for boolean)
+                bool_stats = conn.execute(text(f"""
+                    SELECT
+                        SUM(CASE WHEN `{column_name}` = 1 THEN 1 ELSE 0 END) as true_count,
+                        SUM(CASE WHEN `{column_name}` = 0 THEN 1 ELSE 0 END) as false_count
+                    FROM `{table_name}`
+                    WHERE `{column_name}` IS NOT NULL
+                """)).fetchone()
+
+                if bool_stats:
+                    stats.update({
+                        "true_count": int(bool_stats[0]) if bool_stats[0] is not None else 0,
+                        "false_count": int(bool_stats[1]) if bool_stats[1] is not None else 0
+                    })
 
         return stats
 
@@ -209,14 +231,12 @@ def extract_comprehensive_metadata(table_name: str, include_stats: bool = True) 
     Extract comprehensive metadata including column-level statistics
 
     Args:
-        table_name: Name of the DuckDB table
+        table_name: Name of the MySQL table
         include_stats: Whether to include detailed column statistics (slower)
 
     Returns:
         Complete metadata dictionary with all information
     """
-    conn = get_db_connection()
-
     # 1. Basic metadata
     basic_metadata = extract_basic_metadata(table_name)
 
@@ -314,27 +334,31 @@ def save_metadata_snapshot(dataset_id: str, metadata: Dict[str, Any]) -> bool:
     Save a metadata snapshot for historical tracking
     This could be used to track how datasets evolve over time
     """
-    conn = get_db_connection()
+    engine = get_db_engine()
 
     try:
-        # Create metadata_snapshots table if it doesn't exist
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS metadata_snapshots (
-                snapshot_id VARCHAR PRIMARY KEY,
-                dataset_id VARCHAR NOT NULL,
-                snapshot_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                metadata_json JSON NOT NULL
-            )
-        """)
+        with engine.connect() as conn:
+            # Create metadata_snapshots table if it doesn't exist
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS metadata_snapshots (
+                    snapshot_id VARCHAR(36) PRIMARY KEY,
+                    dataset_id VARCHAR(36) NOT NULL,
+                    snapshot_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    metadata_json JSON NOT NULL,
+                    INDEX idx_metadata_snapshots_dataset_id (dataset_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """))
 
-        # Insert snapshot
-        import uuid
-        snapshot_id = str(uuid.uuid4())
+            # Insert snapshot
+            import uuid
+            snapshot_id = str(uuid.uuid4())
 
-        conn.execute("""
-            INSERT INTO metadata_snapshots (snapshot_id, dataset_id, metadata_json)
-            VALUES (?, ?, ?)
-        """, [snapshot_id, dataset_id, json.dumps(metadata)])
+            conn.execute(text("""
+                INSERT INTO metadata_snapshots (snapshot_id, dataset_id, metadata_json)
+                VALUES (:snapshot_id, :dataset_id, :metadata_json)
+            """), {"snapshot_id": snapshot_id, "dataset_id": dataset_id, "metadata_json": json.dumps(metadata)})
+
+            conn.commit()
 
         return True
 
@@ -344,24 +368,25 @@ def save_metadata_snapshot(dataset_id: str, metadata: Dict[str, Any]) -> bool:
 
 def get_metadata_history(dataset_id: str) -> List[Dict]:
     """Get historical metadata snapshots for a dataset"""
-    conn = get_db_connection()
+    engine = get_db_engine()
 
     try:
-        results = conn.execute("""
-            SELECT snapshot_id, snapshot_time, metadata_json
-            FROM metadata_snapshots
-            WHERE dataset_id = ?
-            ORDER BY snapshot_time DESC
-        """, [dataset_id]).fetchall()
+        with engine.connect() as conn:
+            results = conn.execute(text("""
+                SELECT snapshot_id, snapshot_time, metadata_json
+                FROM metadata_snapshots
+                WHERE dataset_id = :dataset_id
+                ORDER BY snapshot_time DESC
+            """), {"dataset_id": dataset_id}).fetchall()
 
-        return [
-            {
-                "snapshot_id": row[0],
-                "snapshot_time": row[1].isoformat(),
-                "metadata": json.loads(row[2])
-            }
-            for row in results
-        ]
+            return [
+                {
+                    "snapshot_id": row[0],
+                    "snapshot_time": row[1].isoformat() if row[1] else None,
+                    "metadata": json.loads(row[2])
+                }
+                for row in results
+            ]
 
     except Exception as e:
         print(f"Error getting metadata history: {e}")

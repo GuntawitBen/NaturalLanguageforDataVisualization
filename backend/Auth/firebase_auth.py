@@ -64,7 +64,7 @@ async def verify_firebase_token(authorization: Optional[str] = Header(None)) -> 
             auth_provider=auth_provider
         )
 
-        # Sync user to DuckDB (for dataset ownership)
+        # Sync user to MySQL (for dataset ownership)
         sync_user_from_firebase(
             user_id=uid,
             email=email,

@@ -17,6 +17,8 @@ from database.db_utils import (
     get_conversation,
     update_conversation_title
 )
+from database.db_init import get_db_engine
+from sqlalchemy import text
 
 
 class SessionManager:
@@ -318,8 +320,7 @@ def build_schema_context(dataset_id: str) -> Optional[SchemaContext]:
     columns = []
 
     # Get sample values for string columns from database
-    from database.db_init import get_db_connection
-    conn = get_db_connection()
+    engine = get_db_engine()
 
     for col_data in columns_info:
         col_name = col_data['name']
@@ -328,17 +329,18 @@ def build_schema_context(dataset_id: str) -> Optional[SchemaContext]:
         sample_values = None
 
         # Get sample values for VARCHAR columns
-        if col_type.upper() == 'VARCHAR':
+        if 'varchar' in col_type.lower() or 'text' in col_type.lower():
             try:
                 max_samples = TOKEN_CONFIG["max_sample_values"]
-                result = conn.execute(f"""
-                    SELECT DISTINCT "{col_name}"
-                    FROM {table_name}
-                    WHERE "{col_name}" IS NOT NULL
-                    LIMIT {max_samples}
-                """).fetchall()
+                with engine.connect() as conn:
+                    result = conn.execute(text(f"""
+                        SELECT DISTINCT `{col_name}`
+                        FROM `{table_name}`
+                        WHERE `{col_name}` IS NOT NULL
+                        LIMIT :max_samples
+                    """), {"max_samples": max_samples}).fetchall()
 
-                sample_values = [str(row[0]) for row in result if row[0]]
+                    sample_values = [str(row[0]) for row in result if row[0]]
             except Exception as e:
                 print(f"[WARNING] Failed to get sample values for {col_name}: {e}")
 

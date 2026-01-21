@@ -164,7 +164,7 @@ async def upload_csv(
         # Get dataset metadata
         dataset = get_dataset(dataset_id)
 
-        # Clean up uploaded file (data is now in DuckDB)
+        # Clean up uploaded file (data is now in MySQL)
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -436,7 +436,7 @@ async def finalize_dataset(
         # Get dataset metadata
         dataset = get_dataset(dataset_id)
 
-        # Clean up temp file (data is now in DuckDB)
+        # Clean up temp file (data is now in MySQL)
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 

@@ -1,42 +1,54 @@
 """
-Database initialization and connection management for DuckDB
+Database initialization and connection management for MySQL
 """
-import duckdb
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import QueuePool
 import os
 from pathlib import Path
 
-# Database file path
-DB_PATH = os.getenv("DUCKDB_PATH", "./database/nlp_viz.duckdb")
+# Schema path
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
-# Global connection (singleton pattern)
-_connection = None
+# Global engine (singleton pattern)
+_engine = None
+
+def get_db_engine():
+    """
+    Get or create a SQLAlchemy engine with connection pooling
+    Returns the same engine instance across the application
+    """
+    global _engine
+
+    if _engine is None:
+        mysql_url = (
+            f"mysql+pymysql://{os.getenv('MYSQL_USER')}:{os.getenv('MYSQL_PASSWORD')}"
+            f"@{os.getenv('MYSQL_HOST', 'localhost')}:{os.getenv('MYSQL_PORT', '3306')}"
+            f"/{os.getenv('MYSQL_DATABASE')}"
+        )
+        _engine = create_engine(
+            mysql_url,
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
+        print(f"[OK] Created MySQL connection pool")
+
+    return _engine
 
 def get_db_connection():
     """
-    Get or create a DuckDB connection (singleton)
-    Returns the same connection instance across the application
+    Get a database connection from the pool
+    Returns a connection that should be used within a context manager or closed manually
     """
-    global _connection
-
-    if _connection is None:
-        # Create database directory if it doesn't exist
-        db_dir = os.path.dirname(DB_PATH)
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir)
-
-        # Connect to DuckDB (creates file if doesn't exist)
-        _connection = duckdb.connect(DB_PATH)
-        print(f"[OK] Connected to DuckDB at: {DB_PATH}")
-
-    return _connection
+    return get_db_engine().connect()
 
 def init_database():
     """
     Initialize the database by executing the schema.sql file
     Creates all tables and indexes if they don't exist
     """
-    conn = get_db_connection()
+    engine = get_db_engine()
 
     try:
         # Read and execute schema SQL
@@ -54,25 +66,29 @@ def init_database():
         cleaned_sql = '\n'.join(lines)
         statements = [s.strip() for s in cleaned_sql.split(';') if s.strip()]
 
-        for i, statement in enumerate(statements):
-            if statement:
-                try:
-                    print(f"[DEBUG] Executing statement {i+1}/{len(statements)}")
-                    conn.execute(statement)
-                except Exception as e:
-                    print(f"[ERROR] Failed statement: {statement[:150]}...")
-                    raise
+        with engine.connect() as conn:
+            for i, statement in enumerate(statements):
+                if statement:
+                    try:
+                        print(f"[DEBUG] Executing statement {i+1}/{len(statements)}")
+                        conn.execute(text(statement))
+                    except Exception as e:
+                        print(f"[ERROR] Failed statement: {statement[:150]}...")
+                        raise
+
+            conn.commit()
 
         print("[OK] Database schema initialized successfully")
 
         # Verify tables were created
-        tables = conn.execute("""
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = 'main'
-        """).fetchall()
+        with engine.connect() as conn:
+            tables = conn.execute(text("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+            """)).fetchall()
 
-        print(f"[INFO] Created tables: {[t[0] for t in tables]}")
+            print(f"[INFO] Created tables: {[t[0] for t in tables]}")
 
         return True
 
@@ -81,32 +97,40 @@ def init_database():
         raise
 
 def close_connection():
-    """Close the database connection"""
-    global _connection
-    if _connection:
-        _connection.close()
-        _connection = None
-        print("[OK] Database connection closed")
+    """Close the database engine and all connections"""
+    global _engine
+    if _engine:
+        _engine.dispose()
+        _engine = None
+        print("[OK] Database connection pool closed")
 
 def reset_database():
     """
     WARNING: Drops all tables and reinitializes the database
     Use only for development/testing
     """
-    conn = get_db_connection()
+    engine = get_db_engine()
 
-    # Get all tables
-    tables = conn.execute("""
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = 'main'
-    """).fetchall()
+    with engine.connect() as conn:
+        # Get all tables
+        tables = conn.execute(text("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+        """)).fetchall()
 
-    # Drop all tables
-    for table in tables:
-        table_name = table[0]
-        print(f"Dropping table: {table_name}")
-        conn.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE")
+        # Disable foreign key checks for dropping
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+        # Drop all tables
+        for table in tables:
+            table_name = table[0]
+            print(f"Dropping table: {table_name}")
+            conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
+
+        # Re-enable foreign key checks
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+        conn.commit()
 
     # Reinitialize
     init_database()
@@ -114,5 +138,7 @@ def reset_database():
 
 if __name__ == "__main__":
     # Initialize database when run directly
+    from dotenv import load_dotenv
+    load_dotenv()
     print("Initializing database...")
     init_database()

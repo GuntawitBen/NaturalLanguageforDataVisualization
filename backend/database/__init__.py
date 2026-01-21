@@ -1,7 +1,7 @@
 """
 Database package for Natural Language Data Visualization
 """
-from .db_init import get_db_connection, init_database, close_connection, reset_database
+from .db_init import get_db_connection, get_db_engine, init_database, close_connection, reset_database
 from .db_utils import (
     # User management
     sync_user_from_firebase,
@@ -30,6 +30,7 @@ from .db_utils import (
 __all__ = [
     # Database initialization
     'get_db_connection',
+    'get_db_engine',
     'init_database',
     'close_connection',
     'reset_database',
