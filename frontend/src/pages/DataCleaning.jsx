@@ -380,6 +380,10 @@ export default function DataCleaning() {
 
       const dataset = await response.json();
 
+      // IMPORTANT: Explicitly unblock navigation BEFORE setting finalized and navigating
+      // This ensures the warning is removed before we leave the page
+      unblockNavigation();
+
       // Mark as finalized so cleanup doesn't happen
       setFinalized(true);
 

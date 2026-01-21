@@ -323,7 +323,7 @@ async def cleanup_temp_file(
 @router.post("/preview-temp")
 async def preview_temp_csv(
     temp_file_path: str = Form(...),
-    limit: int = Form(100),
+    limit: int = Form(1000),  # Increased for virtualization support
     current_user_email: str = Depends(get_current_user)
 ):
     """
@@ -566,7 +566,7 @@ async def delete_dataset_endpoint(
 @router.get("/{dataset_id}/preview")
 async def preview_dataset(
     dataset_id: str,
-    limit: int = 10,
+    limit: int = 1000,  # Increased for virtualization support
     current_user_email: str = Depends(get_current_user)
 ):
     """Get a preview of the dataset (first N rows)"""

@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
 import { ArrowLeft, ChevronDown, Send, Sparkles } from 'lucide-react';
+import DataTable from '../components/DataTable';
+import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
 
 export default function DatasetDetails() {
@@ -104,7 +106,7 @@ export default function DatasetDetails() {
       setDataset(metadata);
 
       // Fetch preview data
-      const previewResponse = await fetch(`${API_ENDPOINTS.DATASETS.PREVIEW(datasetId)}?limit=100`, {
+      const previewResponse = await fetch(`${API_ENDPOINTS.DATASETS.PREVIEW(datasetId)}?limit=1000`, {
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
           'Content-Type': 'application/json',
@@ -597,34 +599,36 @@ export default function DatasetDetails() {
       )}
 
       {activeTab === 'raw-data' && (
-        <div className="data-table-container">
-          <div className="table-header">
-            <h2>Raw Data Preview</h2>
-            <p className="table-subtitle">
-              Showing {previewData?.showing_rows} of {dataset?.row_count?.toLocaleString()} rows
-            </p>
+        <div className="data-preview-panel">
+          <div className="panel-header">
+            <div className="header-content">
+              <h3>Data Preview</h3>
+              {previewData && (
+                <div className="data-stats">
+                  <span className="stat-item">
+                    <strong>{previewData.total_rows?.toLocaleString()}</strong> rows
+                  </span>
+                  <span className="stat-separator">×</span>
+                  <span className="stat-item">
+                    <strong>{previewData.columns?.length}</strong> columns
+                  </span>
+                </div>
+              )}
+            </div>
+            {previewData && (
+              <span className="preview-note">
+                Previewing {previewData.showing_rows?.toLocaleString()} of {previewData.total_rows?.toLocaleString()} rows
+              </span>
+            )}
           </div>
 
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  {previewData?.columns?.map((column, index) => (
-                    <th key={index}>{column}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {previewData?.data?.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex}>{cell !== null ? cell : '—'}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={previewData?.data}
+            columns={previewData?.columns}
+            columnsInfo={dataset?.columns_info}
+            loading={loading}
+            error={error}
+          />
         </div>
       )}
     </div>

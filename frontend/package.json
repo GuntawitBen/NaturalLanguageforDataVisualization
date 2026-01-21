@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.18",
     "firebase": "^12.7.0",
     "lucide-react": "^0.553.0",
     "react": "^19.1.1",

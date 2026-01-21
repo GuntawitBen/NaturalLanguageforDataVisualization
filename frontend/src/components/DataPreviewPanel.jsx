@@ -21,7 +21,7 @@ export default function DataPreviewPanel({ tempFilePath, datasetName, sessionTok
     try {
       const formData = new FormData();
       formData.append('temp_file_path', tempFilePath);
-      formData.append('limit', '100');
+      formData.append('limit', '1000'); // Increased for virtualization
 
       const response = await fetch(API_ENDPOINTS.DATASETS.PREVIEW_TEMP, {
         method: 'POST',
@@ -65,7 +65,7 @@ export default function DataPreviewPanel({ tempFilePath, datasetName, sessionTok
         </div>
         {previewData && (
           <span className="preview-note">
-            Showing first {previewData.showing_rows} rows
+            Previewing {previewData.showing_rows.toLocaleString()} of {previewData.row_count.toLocaleString()} rows
           </span>
         )}
       </div>

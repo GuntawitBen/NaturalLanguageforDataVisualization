@@ -2,8 +2,10 @@
 .data-table-wrapper {
   overflow-x: auto;
   overflow-y: auto;
+  height: 500px; /* Fixed height for virtualization */
   max-height: 100%;
   flex: 1;
+  position: relative;
 }
 
 /* Data Table */
