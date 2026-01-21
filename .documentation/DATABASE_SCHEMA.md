@@ -2,9 +2,9 @@
 
 ## Overview
 
-The application uses **DuckDB** for analytical data storage and querying. The database stores user datasets, conversation history, query logs, and saved visualizations.
+The application uses **MySQL 8.0** for data storage and querying. The database stores user datasets, conversation history, query logs, and saved visualizations.
 
-**Database File**: `backend/database/nlp_viz.duckdb`
+**Database**: MySQL running via Docker (see `docker-compose.yml`)
 
 ---
 
@@ -290,17 +290,23 @@ result = conn.execute("""
 backend/
 └── database/
     ├── __init__.py           # Package exports
-    ├── schema.sql            # Database schema definition
-    ├── db_init.py            # Database initialization
+    ├── schema.sql            # MySQL schema definition
+    ├── db_init.py            # Database initialization (SQLAlchemy)
     ├── db_utils.py           # Utility functions
-    └── nlp_viz.duckdb        # DuckDB database file (created automatically)
+    └── view_db.py            # Database viewer utility
 ```
 
 ---
 
 ## Initialization
 
-To initialize the database:
+**1. Start MySQL with Docker:**
+
+```bash
+docker-compose up -d
+```
+
+**2. Initialize the database schema:**
 
 ```bash
 cd backend
@@ -313,6 +319,8 @@ Or from Python:
 from database import init_database
 init_database()
 ```
+
+The application also auto-initializes on startup via `main.py`.
 
 ---
 
@@ -329,10 +337,15 @@ reset_database()
 
 ## Environment Variables
 
-Add to your `.env` file:
+Add to your `backend/.env` file:
 
 ```env
-DUCKDB_PATH=./database/nlp_viz.duckdb
+# MySQL Configuration (must match docker-compose.yml)
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=nlp_viz_user
+MYSQL_PASSWORD=nlp_viz_password
+MYSQL_DATABASE=nlp_viz
 ```
 
 ---
