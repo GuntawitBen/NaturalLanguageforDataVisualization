@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationGuard } from '../contexts/NavigationGuardContext';
@@ -34,8 +34,9 @@ export default function DataCleaning() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [operationInProgress, setOperationInProgress] = useState(false);
 
-  // Chat interface state
-  const [chatMessages, setChatMessages] = useState([]);
+  // Problem history for card navigation
+  const [problemHistory, setProblemHistory] = useState([]);
+  const [viewingIndex, setViewingIndex] = useState(-1); // -1 = current problem, 0+ = history index
 
   // Preview refresh trigger
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
@@ -168,7 +169,8 @@ export default function DataCleaning() {
 
     setSessionLoading(true);
     setSessionError(null);
-    setChatMessages([]);
+    setProblemHistory([]);
+    setViewingIndex(-1);
 
     try {
       const response = await fetch(API_ENDPOINTS.CLEANING.START_SESSION, {
@@ -195,21 +197,11 @@ export default function DataCleaning() {
       setSessionState(data.session_state);
       setCurrentProblem(data.first_problem);
 
-      // Add summary message
-      addChatMessage({
-        id: 'summary',
-        content: data.summary
-      });
-
-      // If we have problems, add a message introducing the workflow
-      if (data.first_problem) {
-        addChatMessage({
-          id: 'workflow-intro',
-          content: `Let's go through each issue one by one. For each problem, I'll provide you with cleaning options along with their pros and cons to help you decide.`
-        });
-        setSessionComplete(false);
-      } else {
+      // Check if session is already complete (no problems)
+      if (!data.first_problem) {
         setSessionComplete(true);
+      } else {
+        setSessionComplete(false);
       }
 
       setSessionLoading(false);
@@ -224,6 +216,12 @@ export default function DataCleaning() {
   const handleApplyOperation = async (optionId, customValue = null) => {
     if (!cleaningSessionId || operationInProgress) return;
 
+    // If viewing history, switch to current problem first
+    if (viewingIndex >= 0) {
+      setViewingIndex(-1);
+      return;
+    }
+
     setOperationInProgress(true);
 
     try {
@@ -235,6 +233,12 @@ export default function DataCleaning() {
       if (customValue !== null) {
         body.custom_parameters = { value: customValue };
       }
+
+      // Store current problem in history before applying
+      const problemToStore = {
+        ...currentProblem,
+        appliedOptionId: optionId
+      };
 
       const response = await fetch(API_ENDPOINTS.CLEANING.APPLY_OPERATION, {
         method: 'POST',
@@ -252,23 +256,15 @@ export default function DataCleaning() {
 
       const result = await response.json();
 
-      // Add success message
-      addChatMessage({
-        id: `operation-${Date.now()}`,
-        content: `${result.message}`
-      });
+      // Add solved problem to history
+      setProblemHistory(prev => [...prev, problemToStore]);
 
       // Update state
       setCurrentProblem(result.next_problem);
       setSessionComplete(result.session_complete);
 
-      // If session complete, add completion message
-      if (result.session_complete) {
-        addChatMessage({
-          id: 'complete',
-          content: `All problems have been addressed! Your dataset is now ready. You can proceed to finalize and save your cleaned dataset.`
-        });
-      }
+      // Reset to current problem view
+      setViewingIndex(-1);
 
       setOperationInProgress(false);
 
@@ -276,75 +272,13 @@ export default function DataCleaning() {
       setPreviewRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Failed to apply operation:', err);
-      addChatMessage({
-        id: `error-${Date.now()}`,
-        type: 'error',
-        content: `Error: ${err.message}`
-      });
       setOperationInProgress(false);
     }
   };
 
-  // Undo last operation
-  const handleUndoLast = async () => {
-    if (!cleaningSessionId || operationInProgress) return;
-
-    setOperationInProgress(true);
-
-    try {
-      const response = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: cleaningSessionId
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to undo operation');
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Add undo message
-        addChatMessage({
-          id: `undo-${Date.now()}`,
-          content: `↩️ ${result.message}`
-        });
-
-        // Update state
-        setCurrentProblem(result.next_problem);
-        setSessionComplete(result.session_complete);
-      } else {
-        addChatMessage({
-          id: `undo-error-${Date.now()}`,
-          content: `ℹ️ ${result.message}`
-        });
-      }
-
-      setOperationInProgress(false);
-
-      // Force preview refresh by incrementing the refresh key
-      setPreviewRefreshKey(prev => prev + 1);
-    } catch (err) {
-      console.error('Failed to undo operation:', err);
-      addChatMessage({
-        id: `error-${Date.now()}`,
-        type: 'error',
-        content: `❌ Error: ${err.message}`
-      });
-      setOperationInProgress(false);
-    }
-  };
-
-  // Helper to add chat messages
-  const addChatMessage = (message) => {
-    setChatMessages(prev => [...prev, message]);
+  // Navigate between problems (history and current)
+  const handleNavigate = (index) => {
+    setViewingIndex(index);
   };
 
   // Auto-trigger cleaning session when entering Stage 2
@@ -387,8 +321,8 @@ export default function DataCleaning() {
       // Mark as finalized so cleanup doesn't happen
       setFinalized(true);
 
-      // Navigate to dataset details page
-      navigate(`/datasets/${dataset.dataset_id}`);
+      // Navigate to datasets list page
+      navigate('/datasets');
     } catch (err) {
       console.error('Error finalizing dataset:', err);
       setError(err.message);
@@ -460,21 +394,22 @@ export default function DataCleaning() {
         {/* Stage 2: Data Cleaning with Split View */}
         {currentStage === 2 && (
           <div className="stage-panel stage-cleaning">
-            <div className="stage-header">
-              <h2>Stage 2: Interactive Data Cleaning</h2>
-              <p>Review data quality issues and apply cleaning operations</p>
-            </div>
+            {/*<div className="stage-header">*/}
+            {/*  <h2>Stage 2: Interactive Data Cleaning</h2>*/}
+            {/*  <p>Review data quality issues and apply cleaning operations</p>*/}
+            {/*</div>*/}
             <div className="split-view-container">
               <div className="split-view-panel left-panel">
                 <CleaningPanel
-                  sessionState={sessionState}
                   currentProblem={currentProblem}
-                  chatMessages={chatMessages}
+                  problemHistory={problemHistory}
+                  viewingIndex={viewingIndex}
+                  onNavigate={handleNavigate}
                   onApplyOperation={handleApplyOperation}
-                  onUndoLast={handleUndoLast}
                   operationInProgress={operationInProgress}
                   sessionLoading={sessionLoading}
                   sessionError={sessionError}
+                  sessionComplete={sessionComplete}
                 />
               </div>
               <div className="split-view-panel right-panel">

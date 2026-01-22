@@ -1,5 +1,4 @@
-import React from 'react';
-import CleaningOptionCard from './CleaningOptionCard';
+import React, { useState } from 'react';
 import './ProblemCard.css';
 
 export default function ProblemCard({
@@ -7,30 +6,67 @@ export default function ProblemCard({
   options,
   onSelectOption,
   disabled,
-  currentIndex,
-  totalProblems,
-  recommendation
+  recommendation,
+  isHistorical,
+  appliedOptionId
 }) {
+  const [customValues, setCustomValues] = useState({});
+
+  // Get letter for option index (A, B, C, etc.)
+  const getLetter = (index) => String.fromCharCode(65 + index);
+
   // Determine severity badge color
   const getSeverityClass = (severity) => {
-    switch (severity) {
-      case 'critical':
-        return 'severity-critical';
-      case 'warning':
-        return 'severity-warning';
-      case 'info':
-        return 'severity-info';
-      default:
-        return '';
+      switch (severity) {
+          case 'critical':
+              return 'severity-critical';
+          case 'warning':
+              return 'severity-warning';
+          case 'info':
+              return 'severity-info';
+          default:
+              return '';
+      }
+  };
+
+        // Sort options: recommended first
+  const sortedOptions = [...options].sort((a, b) => {
+    if (recommendation?.recommended_option_id === a.option_id) return -1;
+    if (recommendation?.recommended_option_id === b.option_id) return 1;
+    return 0;
+  });
+
+  const handleOptionClick = (option) => {
+    if (disabled || isHistorical) return;
+
+    // For options requiring input, don't apply on card click
+    if (option.requires_input) return;
+
+    onSelectOption(option.option_id, null);
+  };
+
+  const handleCustomApply = (option, e) => {
+    e.stopPropagation();
+    if (disabled || isHistorical) return;
+
+    const value = customValues[option.option_id] || '';
+    if (value.trim()) {
+      onSelectOption(option.option_id, value);
+    }
+  };
+
+  const handleCustomValueChange = (optionId, value) => {
+    setCustomValues(prev => ({ ...prev, [optionId]: value }));
+  };
+
+  const handleKeyDown = (option, e) => {
+    if (e.key === 'Enter' && option.requires_input) {
+      handleCustomApply(option, e);
     }
   };
 
   return (
     <div className="problem-card">
-      <div className="problem-progress">
-        Problem {currentIndex + 1} of {totalProblems}
-      </div>
-
       <div className="problem-header">
         <span className={`severity-badge ${getSeverityClass(problem.severity)}`}>
           {problem.severity}
@@ -39,12 +75,6 @@ export default function ProblemCard({
       </div>
 
       <p className="problem-description">{problem.description}</p>
-
-      {problem.affected_columns && problem.affected_columns.length > 0 && (
-        <div className="affected-columns">
-          <strong>Affected Columns:</strong> {problem.affected_columns.join(', ')}
-        </div>
-      )}
 
       <div className="visualization-impact">
         <div className="impact-label">
@@ -55,29 +85,80 @@ export default function ProblemCard({
       </div>
 
       <div className="cleaning-options-section">
-        <h5 className="options-heading">Choose a cleaning approach:</h5>
+        <h5 className="options-heading">
+          {isHistorical ? 'Applied approach:' : 'Choose an approach:'}
+        </h5>
         <div className="cleaning-options">
-          {/* Sort options: recommended first */}
-          {[...options]
-            .sort((a, b) => {
-              if (recommendation?.recommended_option_id === a.option_id) return -1;
-              if (recommendation?.recommended_option_id === b.option_id) return 1;
-              return 0;
-            })
-            .map((option) => (
-              <CleaningOptionCard
+          {sortedOptions.map((option, index) => {
+            const isRecommended = recommendation?.recommended_option_id === option.option_id;
+            const isApplied = isHistorical && appliedOptionId === option.option_id;
+            const letter = getLetter(index);
+
+            return (
+              <div
                 key={option.option_id}
-                option={option}
-                onSelect={(value) => onSelectOption(option.option_id, value)}
-                disabled={disabled}
-                isRecommended={recommendation?.recommended_option_id === option.option_id}
-                recommendationReason={
-                  recommendation?.recommended_option_id === option.option_id
-                    ? recommendation.reason
-                    : null
-                }
-              />
-            ))}
+                className={`option-card ${isRecommended ? 'recommended' : ''} ${isApplied ? 'applied' : ''} ${disabled ? 'disabled' : ''} ${isHistorical && !isApplied ? 'faded' : ''}`}
+                onClick={() => handleOptionClick(option)}
+                role="button"
+                tabIndex={disabled || isHistorical ? -1 : 0}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !option.requires_input) {
+                    handleOptionClick(option);
+                  }
+                }}
+              >
+                <div className="option-letter">{letter}</div>
+
+                <div className="option-content">
+                  <div className="option-header">
+                    <span className="option-name">{option.option_name}</span>
+                    {isRecommended && (
+                      <span className="recommended-badge">Recommended</span>
+                    )}
+                    {isApplied && (
+                      <span className="applied-badge">Applied</span>
+                    )}
+                  </div>
+
+                  {isRecommended && recommendation?.reason && (
+                    <p className="recommendation-reason">{recommendation.reason}</p>
+                  )}
+
+                  <div className="option-pros-cons">
+                    <div className="pros">
+                      <span className="pros-icon">+</span>
+                      <span>{option.pros}</span>
+                    </div>
+                    <div className="cons">
+                      <span className="cons-icon">-</span>
+                      <span>{option.cons}</span>
+                    </div>
+                  </div>
+
+                  {option.requires_input && !isHistorical && (
+                    <div className="option-input-section" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        className="option-input"
+                        placeholder="Enter value..."
+                        value={customValues[option.option_id] || ''}
+                        onChange={(e) => handleCustomValueChange(option.option_id, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(option, e)}
+                        disabled={disabled}
+                      />
+                      <button
+                        className="option-apply-btn"
+                        onClick={(e) => handleCustomApply(option, e)}
+                        disabled={disabled || !customValues[option.option_id]?.trim()}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

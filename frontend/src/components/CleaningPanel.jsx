@@ -1,135 +1,176 @@
 import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ProblemCard from './ProblemCard';
 import './CleaningPanel.css';
 
 export default function CleaningPanel({
-  sessionState,
   currentProblem,
-  chatMessages,
+  problemHistory,
+  viewingIndex,
+  onNavigate,
   onApplyOperation,
-  onUndoLast,
   operationInProgress,
   sessionLoading,
-  sessionError
+  sessionError,
+  sessionComplete
 }) {
+  // Calculate total problems and current position
+  const solvedCount = problemHistory?.length || 0;
+  const hasCurrentProblem = currentProblem !== null;
+  const totalDots = hasCurrentProblem ? solvedCount + 1 : solvedCount;
+
+  // viewingIndex: -1 means viewing current problem, 0+ means viewing history
+  const isViewingHistory = viewingIndex >= 0;
+  const currentViewIndex = isViewingHistory ? viewingIndex : solvedCount;
+
+  // Get the problem to display
+  const displayProblem = isViewingHistory
+    ? problemHistory[viewingIndex]
+    : currentProblem;
+
+  // Navigation handlers
+  const canGoPrev = currentViewIndex > 0;
+  const canGoNext = isViewingHistory && (viewingIndex < solvedCount - 1 || hasCurrentProblem);
+
+  const handlePrev = () => {
+    if (!canGoPrev) return;
+    if (isViewingHistory) {
+      onNavigate(viewingIndex - 1);
+    } else {
+      onNavigate(solvedCount - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (!canGoNext) return;
+    if (viewingIndex === solvedCount - 1 && hasCurrentProblem) {
+      onNavigate(-1); // Go to current problem
+    } else {
+      onNavigate(viewingIndex + 1);
+    }
+  };
+
+  // Progress label
+  const getProgressLabel = () => {
+    if (sessionComplete) return 'All issues resolved';
+    if (isViewingHistory) {
+      return `Viewing problem ${viewingIndex + 1} of ${totalDots}`;
+    }
+    return `Problem ${solvedCount + 1} of ${currentProblem?.total_problems || totalDots}`;
+  };
+
   return (
     <div className="cleaning-panel">
-      <div className="panel-header">
-        <h3>Interactive Data Cleaning</h3>
-        {sessionState && !sessionLoading && (
-          <span className="progress-badge">
-            {currentProblem
-              ? `Problem ${currentProblem.current_index + 1} of ${currentProblem.total_problems}`
-              : 'Complete'
-            }
-          </span>
-        )}
-        {sessionLoading && (
-          <span className="status-badge loading">Starting...</span>
-        )}
-      </div>
+      {/* Navigation Header */}
+      <div className="card-flipper-header">
+        <button
+          className="nav-btn prev"
+          onClick={handlePrev}
+          disabled={!canGoPrev || operationInProgress}
+          aria-label="Previous problem"
+        >
+          <ChevronLeft size={20} />
+          <span>Prev</span>
+        </button>
 
-      <div className="chat-container">
-        <div className="chat-messages">
-          {/* Loading State */}
-          {sessionLoading && (
-            <div className="chat-message">
-              <div className="message-content">
-                <div className="message-text">
-                  <strong>Hi! 👋</strong>
-                  <br /><br />
-                  I'm your data cleaning assistant. Let me analyze your dataset for quality issues...
-                </div>
-                <div className="typing-indicator" style={{ marginTop: '1rem' }}>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {sessionError && !sessionLoading && (
-            <div className="chat-message">
-              <div className="message-content error-message">
-                <div className="message-text">
-                  <strong>Oops! Something went wrong 😔</strong>
-                  <br /><br />
-                  I encountered an error while starting the cleaning session:
-                  <br /><br />
-                  <em>{sessionError}</em>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Chat Messages */}
-          {!sessionLoading && !sessionError && chatMessages.map((message) => (
-            <div key={message.id} className={`chat-message ${message.type || ''}`}>
-              <div className="message-content">
-                <div className="message-text">
-                  {message.content.split('\n').map((line, idx) => {
-                    // Simple markdown-like rendering
-                    let processedLine = line;
-
-                    // Bold **text**
-                    processedLine = processedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                    // Bullets •
-                    if (processedLine.trim().startsWith('•')) {
-                      processedLine = `<div class="bullet-item">${processedLine}</div>`;
-                    }
-
-                    return (
-                      <div key={idx} dangerouslySetInnerHTML={{ __html: processedLine || '<br/>' }} />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Current Problem Card */}
-          {currentProblem && !sessionLoading && !sessionError && (
-            <ProblemCard
-              problem={currentProblem.problem}
-              options={currentProblem.options}
-              onSelectOption={onApplyOperation}
-              disabled={operationInProgress}
-              currentIndex={currentProblem.current_index}
-              totalProblems={currentProblem.total_problems}
-              recommendation={currentProblem.recommendation}
-            />
-          )}
-
-          {/* Operation in progress indicator */}
-          {operationInProgress && (
-            <div className="chat-message">
-              <div className="message-content">
-                <div className="message-text">
-                  <strong>Applying operation...</strong>
-                </div>
-                <div className="typing-indicator" style={{ marginTop: '0.5rem' }}>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
+        <div className="progress-section">
+          <span className="progress-label">{getProgressLabel()}</span>
+          {totalDots > 0 && (
+            <div className="progress-dots">
+              {Array.from({ length: totalDots }).map((_, index) => {
+                const isSolved = index < solvedCount;
+                const isCurrent = index === currentViewIndex;
+                return (
+                  <button
+                    key={index}
+                    className={`progress-dot ${isSolved ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
+                    onClick={() => {
+                      if (index < solvedCount) {
+                        onNavigate(index);
+                      } else if (hasCurrentProblem) {
+                        onNavigate(-1);
+                      }
+                    }}
+                    disabled={operationInProgress}
+                    aria-label={`Go to problem ${index + 1}`}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Undo Button */}
-        {sessionState?.operation_history && sessionState.operation_history.length > 0 && !operationInProgress && (
-          <div className="chat-actions">
-            <button
-              onClick={onUndoLast}
-              className="undo-button"
-              disabled={operationInProgress}
-            >
-              ← Undo Last Operation
-            </button>
+        <button
+          className="nav-btn next"
+          onClick={handleNext}
+          disabled={!canGoNext || operationInProgress}
+          aria-label="Next problem"
+        >
+          <span>Next</span>
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
+      {/* Card Container */}
+      <div className="card-container">
+        {/* Loading State */}
+        {sessionLoading && (
+          <div className="loading-state">
+            <div className="loading-content">
+              <h4>Analyzing your dataset...</h4>
+              <p>Looking for data quality issues</p>
+              <div className="loading-spinner">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {sessionError && !sessionLoading && (
+          <div className="error-state">
+            <div className="error-content">
+              <h4>Something went wrong</h4>
+              <p>{sessionError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Problem Card */}
+        {displayProblem && !sessionLoading && !sessionError && (
+          <ProblemCard
+            problem={displayProblem.problem}
+            options={displayProblem.options}
+            onSelectOption={onApplyOperation}
+            disabled={operationInProgress || isViewingHistory}
+            recommendation={displayProblem.recommendation}
+            isHistorical={isViewingHistory}
+            appliedOptionId={isViewingHistory ? displayProblem.appliedOptionId : null}
+          />
+        )}
+
+        {/* Session Complete State */}
+        {sessionComplete && !displayProblem && !sessionLoading && !sessionError && (
+          <div className="complete-state">
+            <div className="complete-content">
+              <div className="complete-icon">✓</div>
+              <h4>All issues resolved!</h4>
+              <p>Your dataset is now ready for visualization. Click "Complete & Save" to proceed.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Operation in progress overlay */}
+        {operationInProgress && (
+          <div className="operation-overlay">
+            <div className="loading-spinner">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p>Applying...</p>
           </div>
         )}
       </div>
