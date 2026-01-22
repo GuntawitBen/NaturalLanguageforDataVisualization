@@ -144,12 +144,21 @@ class CleaningAgent:
             session.cached_options = options
             session.cached_recommendation = recommendation
 
+        # Calculate addressed problem IDs for progress-based numbering
+        addressed_problem_ids = {op.problem_id for op in session.operation_history}
+
+        # Progress-based numbering:
+        # - current_index = number of problems already addressed
+        # - total_problems = problems addressed + unaddressed problems remaining
+        problems_addressed = len(session.operation_history)
+        unaddressed_count = sum(1 for p in session.problems if p.problem_id not in addressed_problem_ids)
+
         # Create ProblemWithOptions with recommendation
         problem_with_options = ProblemWithOptions(
             problem=current_problem,
             options=options,
-            current_index=session.current_problem_index,
-            total_problems=len(session.problems),
+            current_index=problems_addressed,  # Number already handled
+            total_problems=problems_addressed + unaddressed_count,  # Total scope
             recommendation=recommendation
         )
 
