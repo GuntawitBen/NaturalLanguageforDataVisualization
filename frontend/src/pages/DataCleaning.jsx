@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationGuard } from '../contexts/NavigationGuardContext';
@@ -24,6 +24,19 @@ export default function DataCleaning() {
   const [finalizing, setFinalizing] = useState(false);
   const [finalized, setFinalized] = useState(false);
   const [error, setError] = useState(null);
+
+  // Refs for state that needs to be accessed in cleanup/unload events
+  const finalizedRef = useRef(false);
+  const isFinalizingRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    finalizedRef.current = finalized;
+  }, [finalized]);
+
+  useEffect(() => {
+    isFinalizingRef.current = finalizing;
+  }, [finalizing]);
 
   // Cleaning session state
   const [cleaningSessionId, setCleaningSessionId] = useState(null);
@@ -67,7 +80,10 @@ export default function DataCleaning() {
 
   // Cleanup temp file function
   const cleanupTempFile = useCallback(() => {
-    if (tempFilePath && !finalized) {
+    // DO NOT cleanup if we are in the process of finalizing or already finalized
+    // This prevents the race condition when the cleanup triggers during navigation/unload
+    if (tempFilePath && !finalizedRef.current && !isFinalizingRef.current) {
+      console.log('Cleaning up temp file:', tempFilePath);
       try {
         const formData = new FormData();
         formData.append('temp_file_path', tempFilePath);
@@ -80,14 +96,20 @@ export default function DataCleaning() {
           },
           body: formData,
           keepalive: true,
-        }).catch(() => {
-          // Silently fail - best effort cleanup
+        }).catch((err) => {
+          console.warn('Silent cleanup fail:', err);
         });
       } catch (err) {
         console.warn('Failed to cleanup temp file:', err);
       }
+    } else {
+      console.log('Cleanup skipped:', {
+        hasPath: !!tempFilePath,
+        finalized: finalizedRef.current,
+        isFinalizing: isFinalizingRef.current
+      });
     }
-  }, [tempFilePath, sessionToken, finalized]);
+  }, [tempFilePath, sessionToken]);
 
   // Cleanup temp file when component unmounts (if not finalized)
   useEffect(() => {
@@ -253,7 +275,6 @@ export default function DataCleaning() {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to apply operation');
       }
-
       const result = await response.json();
 
       // Add solved problem to history
@@ -276,6 +297,52 @@ export default function DataCleaning() {
     }
   };
 
+  // Undo the last operation
+  const handleUndoOperation = async () => {
+    if (!cleaningSessionId || operationInProgress || problemHistory.length === 0) return;
+
+    setOperationInProgress(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: cleaningSessionId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to undo operation');
+      }
+
+      const result = await response.json();
+
+      // Remove last problem from history
+      setProblemHistory(prev => prev.slice(0, -1));
+
+      // Update state with results from undo
+      setCurrentProblem(result.next_problem);
+      setSessionComplete(result.session_complete);
+
+      // Reset to current problem view
+      setViewingIndex(-1);
+
+      setOperationInProgress(false);
+
+      // Force preview refresh
+      setPreviewRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to undo operation:', err);
+      setOperationInProgress(false);
+      setError(err.message);
+    }
+  };
+
   // Navigate between problems (history and current)
   const handleNavigate = (index) => {
     setViewingIndex(index);
@@ -290,6 +357,7 @@ export default function DataCleaning() {
 
   const handleComplete = async () => {
     setFinalizing(true);
+    isFinalizingRef.current = true; // Update ref immediately
     setError(null);
 
     try {
@@ -318,8 +386,8 @@ export default function DataCleaning() {
       // This ensures the warning is removed before we leave the page
       unblockNavigation();
 
-      // Mark as finalized so cleanup doesn't happen
       setFinalized(true);
+      finalizedRef.current = true; // Update ref immediately
 
       // Navigate to datasets list page
       navigate('/datasets');
@@ -327,6 +395,7 @@ export default function DataCleaning() {
       console.error('Error finalizing dataset:', err);
       setError(err.message);
       setFinalizing(false);
+      isFinalizingRef.current = false; // Reset ref on error
     }
   };
 
@@ -406,6 +475,7 @@ export default function DataCleaning() {
                   viewingIndex={viewingIndex}
                   onNavigate={handleNavigate}
                   onApplyOperation={handleApplyOperation}
+                  onUndoOperation={handleUndoOperation}
                   operationInProgress={operationInProgress}
                   sessionLoading={sessionLoading}
                   sessionError={sessionError}

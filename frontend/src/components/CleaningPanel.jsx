@@ -9,6 +9,7 @@ export default function CleaningPanel({
   viewingIndex,
   onNavigate,
   onApplyOperation,
+  onUndoOperation,
   operationInProgress,
   sessionLoading,
   sessionError,
@@ -110,6 +111,21 @@ export default function CleaningPanel({
           <ChevronRight size={20} />
         </button>
       </div>
+
+      {/* Undo Button Section (only if there are solved problems) */}
+      {solvedCount > 0 && (
+        <div className="undo-section">
+          <button
+            className="undo-btn"
+            onClick={onUndoOperation}
+            disabled={operationInProgress}
+            title="Undo last action and return to previous problem"
+          >
+            <ChevronLeft size={16} />
+            Previous Step (Undo)
+          </button>
+        </div>
+      )}
 
       {/* Card Container */}
       <div className="card-container">
