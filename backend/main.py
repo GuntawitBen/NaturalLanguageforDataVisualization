@@ -58,11 +58,15 @@ except Exception as e:
 
 try:
     from database import init_database
+    from database.db_init import test_db_connection, get_db_status, get_db_engine, DatabaseConnectionError
     print("[OK] Database module imported successfully")
 except Exception as e:
     print(f"[ERROR] Failed to import database module: {e}")
     import traceback
     traceback.print_exc()
+    init_database = None
+    test_db_connection = None
+    get_db_status = lambda: (False, "Database module failed to import")
 
 load_dotenv()
 print("=" * 50)
@@ -73,11 +77,30 @@ print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') els
 print("=" * 50)
 
 # Initialize database on startup (check MySQL connection and tables)
-def check_mysql_connection():
-    """Check MySQL connection and initialize tables if needed"""
+def check_mysql_connection() -> bool:
+    """
+    Check MySQL connection and initialize tables if needed.
+    Returns True if connection successful, False otherwise.
+    Does NOT raise exceptions - allows app to start without database.
+    """
     from sqlalchemy import text
-    from database.db_init import get_db_engine
 
+    if test_db_connection is None:
+        print("\n[ERROR] Database module not available")
+        return False
+
+    # Test connection with retry logic
+    if not test_db_connection(retry_count=3, retry_delay=2.0):
+        connected, error_msg = get_db_status()
+        print(f"\n{'='*60}")
+        print("[WARNING] Application starting WITHOUT database connection")
+        print(f"[WARNING] Error: {error_msg}")
+        print("[INFO] Database-dependent features will be unavailable")
+        print("[INFO] Make sure MySQL is running: docker-compose up -d")
+        print(f"{'='*60}\n")
+        return False
+
+    # Connection successful, check if tables need initialization
     try:
         engine = get_db_engine()
         with engine.connect() as conn:
@@ -91,12 +114,14 @@ def check_mysql_connection():
                 print("[OK] Database initialized successfully\n")
             else:
                 print("\n[INFO] Database tables already exist. Skipping initialization.\n")
+        return True
     except Exception as e:
-        print(f"\n[ERROR] Database connection failed: {e}")
-        print("[INFO] Make sure MySQL is running (docker-compose up -d)\n")
-        raise RuntimeError(f"Database connection failed: {e}")
+        print(f"\n[ERROR] Failed to initialize database tables: {e}")
+        print("[INFO] Database connection works but schema initialization failed\n")
+        return False
 
-check_mysql_connection()
+# Run connection check (non-blocking - app will start even if DB is down)
+_db_available = check_mysql_connection()
 
 # Background cleanup task for cleaning agent
 async def cleanup_task():
@@ -184,6 +209,80 @@ async def root():
         "docs": "/docs",
         "redoc": "/redoc"
     }
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint that reports database connection status.
+    Returns 200 even if database is down (for load balancer health checks),
+    but includes detailed status information.
+    """
+    db_connected, db_error = get_db_status()
+
+    # Try to verify current connection if we think we're connected
+    if db_connected:
+        try:
+            from sqlalchemy import text
+            engine = get_db_engine()
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except Exception as e:
+            from database.db_init import set_db_status
+            set_db_status(False, f"Connection lost: {str(e)}")
+            db_connected = False
+            db_error = f"Connection lost: {str(e)}"
+
+    return {
+        "status": "healthy" if db_connected else "degraded",
+        "database": {
+            "connected": db_connected,
+            "error": db_error
+        },
+        "version": "1.0.0"
+    }
+
+
+@app.get("/health/db")
+async def database_health():
+    """
+    Database-specific health check.
+    Returns 503 if database is not connected.
+    """
+    from fastapi import HTTPException
+
+    db_connected, db_error = get_db_status()
+
+    if not db_connected:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "unavailable",
+                "error": db_error or "Database not connected",
+                "hint": "Make sure MySQL is running: docker-compose up -d"
+            }
+        )
+
+    # Verify connection is still alive
+    try:
+        from sqlalchemy import text
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+        return {
+            "status": "connected",
+            "message": "Database connection is healthy"
+        }
+    except Exception as e:
+        from database.db_init import set_db_status
+        set_db_status(False, f"Connection lost: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "unavailable",
+                "error": f"Connection lost: {str(e)}"
+            }
+        )
 
 # Include routers
 app.include_router(signin_router)
