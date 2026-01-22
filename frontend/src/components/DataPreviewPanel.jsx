@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../config';
 import DataTable from './DataTable';
 import './DataPreviewPanel.css';
 
-export default function DataPreviewPanel({ tempFilePath, datasetName, sessionToken, refreshKey }) {
+export default function DataPreviewPanel({ tempFilePath, datasetName, sessionToken, refreshKey, hasUnsavedChanges }) {
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -77,6 +77,12 @@ export default function DataPreviewPanel({ tempFilePath, datasetName, sessionTok
         loading={loading}
         error={error}
       />
+
+      {hasUnsavedChanges && (
+        <div className="unsaved-changes-floating">
+          <span className="unsaved-changes-badge">Unsaved changes</span>
+        </div>
+      )}
     </div>
   );
 }

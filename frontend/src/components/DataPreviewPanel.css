@@ -4,6 +4,7 @@
   flex-direction: column;
   height: 100%;
   background: white;
+  position: relative;
 }
 
 /* Panel Header */
@@ -30,6 +31,43 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: #1a202c;
+}
+
+/* Unsaved Changes Badge */
+.unsaved-changes-badge {
+  padding: 0.25rem 0.625rem;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  animation: pulseWarning 2s ease-in-out infinite;
+}
+
+@keyframes pulseWarning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Floating Unsaved Changes */
+.unsaved-changes-floating {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+  background: #f7fafc;
+  border-top: 1px solid #e2e8f0;
 }
 
 /* Data Stats */

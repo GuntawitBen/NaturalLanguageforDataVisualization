@@ -844,8 +844,8 @@
 .split-view-container {
   display: flex;
   gap: 0;
-  height: calc(100vh - 450px); /* Full height minus header, stepper, and navigation */
-  min-height: 600px;
+  height: calc(100vh - 350px); /* Full height minus header, stepper, and navigation */
+  min-height: 700px;
 }
 
 .split-view-panel {

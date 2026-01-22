@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import ProblemCard from './ProblemCard';
 import './CleaningPanel.css';
 
@@ -9,8 +9,11 @@ export default function CleaningPanel({
   viewingIndex,
   onNavigate,
   onApplyOperation,
+  onConfirmOperation,
+  onDiscardOperation,
   onUndoOperation,
   operationInProgress,
+  pendingOperation,
   sessionLoading,
   sessionError,
   sessionComplete
@@ -31,7 +34,6 @@ export default function CleaningPanel({
 
   // Navigation handlers
   const canGoPrev = currentViewIndex > 0;
-  const canGoNext = isViewingHistory && (viewingIndex < solvedCount - 1 || hasCurrentProblem);
 
   const handlePrev = () => {
     if (!canGoPrev) return;
@@ -42,74 +44,11 @@ export default function CleaningPanel({
     }
   };
 
-  const handleNext = () => {
-    if (!canGoNext) return;
-    if (viewingIndex === solvedCount - 1 && hasCurrentProblem) {
-      onNavigate(-1); // Go to current problem
-    } else {
-      onNavigate(viewingIndex + 1);
-    }
-  };
-
-  // Progress label
-  const getProgressLabel = () => {
-    if (sessionComplete) return 'All issues resolved';
-    if (isViewingHistory) {
-      return `Viewing problem ${viewingIndex + 1} of ${totalDots}`;
-    }
-    return `Problem ${solvedCount + 1} of ${currentProblem?.total_problems || totalDots}`;
-  };
-
   return (
     <div className="cleaning-panel">
-      {/* Navigation Header */}
+      {/* Header */}
       <div className="card-flipper-header">
-        <button
-          className="nav-btn prev"
-          onClick={handlePrev}
-          disabled={!canGoPrev || operationInProgress}
-          aria-label="Previous problem"
-        >
-          <ChevronLeft size={20} />
-          <span>Prev</span>
-        </button>
-
-        <div className="progress-section">
-          <span className="progress-label">{getProgressLabel()}</span>
-          {totalDots > 0 && (
-            <div className="progress-dots">
-              {Array.from({ length: totalDots }).map((_, index) => {
-                const isSolved = index < solvedCount;
-                const isCurrent = index === currentViewIndex;
-                return (
-                  <button
-                    key={index}
-                    className={`progress-dot ${isSolved ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
-                    onClick={() => {
-                      if (index < solvedCount) {
-                        onNavigate(index);
-                      } else if (hasCurrentProblem) {
-                        onNavigate(-1);
-                      }
-                    }}
-                    disabled={operationInProgress}
-                    aria-label={`Go to problem ${index + 1}`}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <button
-          className="nav-btn next"
-          onClick={handleNext}
-          disabled={!canGoNext || operationInProgress}
-          aria-label="Next problem"
-        >
-          <span>Next</span>
-          <ChevronRight size={20} />
-        </button>
+        <h3 className="panel-title">Data Cleaning</h3>
       </div>
 
       {/* Undo Button Section (only if there are solved problems) */}
@@ -160,10 +99,17 @@ export default function CleaningPanel({
             problem={displayProblem.problem}
             options={displayProblem.options}
             onSelectOption={onApplyOperation}
+            onConfirmOperation={onConfirmOperation}
+            onDiscardOperation={onDiscardOperation}
             disabled={operationInProgress || isViewingHistory}
             recommendation={displayProblem.recommendation}
             isHistorical={isViewingHistory}
             appliedOptionId={isViewingHistory ? displayProblem.appliedOptionId : null}
+            pendingOptionId={pendingOperation?.optionId}
+            problemNumber={currentViewIndex + 1}
+            totalProblems={isViewingHistory ? totalDots : (currentProblem?.total_problems || totalDots)}
+            onPrevious={handlePrev}
+            canGoPrevious={canGoPrev}
           />
         )}
 

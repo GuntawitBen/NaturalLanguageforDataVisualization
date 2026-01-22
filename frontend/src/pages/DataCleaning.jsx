@@ -46,6 +46,7 @@ export default function DataCleaning() {
   const [sessionError, setSessionError] = useState(null);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [operationInProgress, setOperationInProgress] = useState(false);
+  const [operationType, setOperationType] = useState(null); // 'applying', 'discarding', 'undoing'
 
   // Problem history for card navigation
   const [problemHistory, setProblemHistory] = useState([]);
@@ -53,6 +54,9 @@ export default function DataCleaning() {
 
   // Preview refresh trigger
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+
+  // Pending operation state (operation applied but not confirmed)
+  const [pendingOperation, setPendingOperation] = useState(null);
 
   const stages = [
     { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
@@ -234,7 +238,7 @@ export default function DataCleaning() {
     }
   };
 
-  // Apply selected cleaning operation
+  // Apply selected cleaning operation (preview only, not confirmed yet)
   const handleApplyOperation = async (optionId, customValue = null) => {
     if (!cleaningSessionId || operationInProgress) return;
 
@@ -245,7 +249,61 @@ export default function DataCleaning() {
     }
 
     setOperationInProgress(true);
+    setOperationType('applying');
 
+    // If there's already a pending operation, undo it first
+    if (pendingOperation) {
+      try {
+        console.log('Undoing previous operation before applying new one');
+        const undoResponse = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ session_id: cleaningSessionId })
+        });
+
+        if (!undoResponse.ok) {
+          console.error('Failed to undo previous operation');
+          setPendingOperation(null);
+          setOperationInProgress(false);
+          setPreviewRefreshKey(prev => prev + 1);
+          return;
+        }
+
+        const undoResult = await undoResponse.json();
+        console.log('Undo result:', undoResult);
+
+        // Update current problem with restored options
+        if (undoResult.next_problem) {
+          setCurrentProblem(undoResult.next_problem);
+          // Check if the clicked option exists in the restored problem
+          const restoredOption = undoResult.next_problem.options?.find(
+            opt => opt.option_id === optionId
+          );
+          if (!restoredOption) {
+            console.log('Option ID changed after undo. Available options:',
+              undoResult.next_problem.options?.map(o => o.option_id));
+            // Option doesn't exist anymore, user needs to click again
+            setPendingOperation(null);
+            setOperationInProgress(false);
+            setPreviewRefreshKey(prev => prev + 1);
+            return;
+          }
+        }
+
+        // Clear pending operation
+        setPendingOperation(null);
+      } catch (err) {
+        console.error('Failed to undo previous operation:', err);
+        setPendingOperation(null);
+        setOperationInProgress(false);
+        return;
+      }
+    }
+
+    // Now apply the new operation
     try {
       const body = {
         session_id: cleaningSessionId,
@@ -255,12 +313,6 @@ export default function DataCleaning() {
       if (customValue !== null) {
         body.custom_parameters = { value: customValue };
       }
-
-      // Store current problem in history before applying
-      const problemToStore = {
-        ...currentProblem,
-        appliedOptionId: optionId
-      };
 
       const response = await fetch(API_ENDPOINTS.CLEANING.APPLY_OPERATION, {
         method: 'POST',
@@ -272,20 +324,20 @@ export default function DataCleaning() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to apply operation');
+        const errorText = await response.text();
+        console.error('Apply operation failed:', response.status, errorText);
+        throw new Error(`Failed to apply operation: ${response.status}`);
       }
+
       const result = await response.json();
 
-      // Add solved problem to history
-      setProblemHistory(prev => [...prev, problemToStore]);
-
-      // Update state
-      setCurrentProblem(result.next_problem);
-      setSessionComplete(result.session_complete);
-
-      // Reset to current problem view
-      setViewingIndex(-1);
+      // Set pending operation with the result (not confirmed yet)
+      setPendingOperation({
+        optionId,
+        customValue,
+        nextProblem: result.next_problem,
+        sessionComplete: result.session_complete
+      });
 
       setOperationInProgress(false);
 
@@ -293,6 +345,70 @@ export default function DataCleaning() {
       setPreviewRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Failed to apply operation:', err);
+      setPendingOperation(null);
+      setOperationInProgress(false);
+    }
+  };
+
+  // Confirm the pending operation and move to next problem
+  const handleConfirmOperation = () => {
+    if (!pendingOperation) return;
+
+    // Store current problem in history
+    const problemToStore = {
+      ...currentProblem,
+      appliedOptionId: pendingOperation.optionId
+    };
+    setProblemHistory(prev => [...prev, problemToStore]);
+
+    // Update state with the stored result from apply operation
+    setCurrentProblem(pendingOperation.nextProblem);
+    setSessionComplete(pendingOperation.sessionComplete);
+
+    // Clear pending operation
+    setPendingOperation(null);
+
+    // Reset to current problem view
+    setViewingIndex(-1);
+  };
+
+  // Discard the pending operation
+  const handleDiscardOperation = async () => {
+    if (!cleaningSessionId || operationInProgress || !pendingOperation) return;
+
+    setOperationInProgress(true);
+
+    try {
+      const response = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ session_id: cleaningSessionId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to discard operation');
+      }
+
+      const result = await response.json();
+
+      // Update current problem with restored problem (has new option_ids)
+      if (result.next_problem) {
+        setCurrentProblem(result.next_problem);
+      }
+
+      // Clear pending operation
+      setPendingOperation(null);
+
+      setOperationInProgress(false);
+
+      // Force preview refresh
+      setPreviewRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Failed to discard operation:', err);
       setOperationInProgress(false);
     }
   };
@@ -475,8 +591,11 @@ export default function DataCleaning() {
                   viewingIndex={viewingIndex}
                   onNavigate={handleNavigate}
                   onApplyOperation={handleApplyOperation}
+                  onConfirmOperation={handleConfirmOperation}
+                  onDiscardOperation={handleDiscardOperation}
                   onUndoOperation={handleUndoOperation}
                   operationInProgress={operationInProgress}
+                  pendingOperation={pendingOperation}
                   sessionLoading={sessionLoading}
                   sessionError={sessionError}
                   sessionComplete={sessionComplete}
@@ -488,6 +607,7 @@ export default function DataCleaning() {
                   datasetName={datasetName}
                   sessionToken={sessionToken}
                   refreshKey={previewRefreshKey}
+                  hasUnsavedChanges={!!pendingOperation}
                 />
               </div>
             </div>
