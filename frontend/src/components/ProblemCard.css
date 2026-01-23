@@ -75,7 +75,7 @@
 
 .problem-progress-fill {
   height: 100%;
-  background: #4299e1;
+  background: #48bb78;
   border-radius: 3px;
   transition: width 0.3s ease;
 }
@@ -278,7 +278,8 @@
 }
 
 .option-card.recommended {
-  background: linear-gradient(to bottom, #f0fff4, white);
+  background: linear-gradient(to bottom, #c6f6d5, #f0fff4);
+  border-color: #68d391;
 }
 
 .option-card.recommended:hover:not(.disabled):not(.faded) {
@@ -464,8 +465,8 @@
 }
 
 .recommended-badge {
-  background: #c6f6d5;
-  color: #276749;
+  background: #48bb78;
+  color: #ffffff;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
   font-size: 0.6875rem;
@@ -522,8 +523,8 @@
 
 .option-apply-btn {
   padding: 0.5rem 1rem;
-  background: #4299e1;
-  color: white;
+  background: #FFFFFF;
+  color: black;
   border: none;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -533,7 +534,7 @@
 }
 
 .option-apply-btn:hover:not(:disabled) {
-  background: #3182ce;
+  background: lightgrey;
 }
 
 .option-apply-btn:disabled {

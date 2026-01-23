@@ -72,7 +72,7 @@ export default function ProblemCard({
           <button
             className="problem-prev-btn"
             onClick={onPrevious}
-            disabled={!canGoPrevious || disabled}
+            disabled={!canGoPrevious || disabled || pendingOptionId}
             aria-label="Previous problem"
           >
             <ChevronLeft size={16} />
@@ -179,12 +179,12 @@ export default function ProblemCard({
                         value={customValues[option.option_id] || ''}
                         onChange={(e) => handleCustomValueChange(option.option_id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(option, e)}
-                        disabled={disabled}
+                        disabled={disabled || pendingOptionId}
                       />
                       <button
                         className="option-apply-btn"
                         onClick={(e) => handleCustomApply(option, e)}
-                        disabled={disabled || !customValues[option.option_id]?.trim()}
+                        disabled={disabled || !customValues[option.option_id]?.trim() || pendingOptionId}
                       >
                         Apply
                       </button>

@@ -930,7 +930,7 @@
   font-size: 1.75rem;
   font-weight: 700;
   color: #fff;
-  text-transform: uppercase;
+  /*text-transform: uppercase;*/
   letter-spacing: 2px;
   animation: fadeInUp 0.4s ease-out 0.4s both;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

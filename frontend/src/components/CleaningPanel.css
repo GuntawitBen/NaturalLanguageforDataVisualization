@@ -66,7 +66,7 @@
 .progress-label {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #718096;
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
@@ -103,7 +103,7 @@
 }
 
 .progress-dot.active {
-  background: #4299e1;
+  background: #000000;
   transform: scale(1.3);
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.3);
 }
@@ -158,7 +158,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4299e1;
+  background: #000000;
   animation: loadingBounce 1.4s infinite;
 }
 

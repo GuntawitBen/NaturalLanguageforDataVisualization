@@ -107,7 +107,7 @@ export default function CleaningPanel({
               <span></span>
               <span></span>
             </div>
-            <p>Applying...</p>
+            {/*<p>Applying...</p>*/}
           </div>
         )}
       </div>
