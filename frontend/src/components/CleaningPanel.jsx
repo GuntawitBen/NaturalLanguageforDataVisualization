@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
 import ProblemCard from './ProblemCard';
 import './CleaningPanel.css';
 
@@ -32,17 +31,8 @@ export default function CleaningPanel({
     ? problemHistory[viewingIndex]
     : currentProblem;
 
-  // Navigation handlers
-  const canGoPrev = currentViewIndex > 0;
-
-  const handlePrev = () => {
-    if (!canGoPrev) return;
-    if (isViewingHistory) {
-      onNavigate(viewingIndex - 1);
-    } else {
-      onNavigate(solvedCount - 1);
-    }
-  };
+  // Navigation handlers - Prev button now triggers undo
+  const canGoPrev = solvedCount > 0 && !operationInProgress;
 
   return (
     <div className="cleaning-panel">
@@ -50,21 +40,6 @@ export default function CleaningPanel({
       <div className="card-flipper-header">
         <h3 className="panel-title">Data Cleaning</h3>
       </div>
-
-      {/* Undo Button Section (only if there are solved problems) */}
-      {solvedCount > 0 && (
-        <div className="undo-section">
-          <button
-            className="undo-btn"
-            onClick={onUndoOperation}
-            disabled={operationInProgress}
-            title="Undo last action and return to previous problem"
-          >
-            <ChevronLeft size={16} />
-            Previous Step (Undo)
-          </button>
-        </div>
-      )}
 
       {/* Card Container */}
       <div className="card-container">
@@ -108,7 +83,7 @@ export default function CleaningPanel({
             pendingOptionId={pendingOperation?.optionId}
             problemNumber={currentViewIndex + 1}
             totalProblems={isViewingHistory ? totalDots : (currentProblem?.total_problems || totalDots)}
-            onPrevious={handlePrev}
+            onPrevious={onUndoOperation}
             canGoPrevious={canGoPrev}
           />
         )}

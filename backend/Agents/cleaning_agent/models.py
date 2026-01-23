@@ -133,3 +133,8 @@ class ApplyOperationRequest(BaseModel):
 class UndoLastRequest(BaseModel):
     """Request to undo the last operation"""
     session_id: str
+
+
+class ConfirmOperationRequest(BaseModel):
+    """Request to confirm a pending operation and advance to next problem"""
+    session_id: str

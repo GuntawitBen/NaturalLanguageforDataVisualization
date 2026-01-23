@@ -58,6 +58,9 @@ export default function DataCleaning() {
   // Pending operation state (operation applied but not confirmed)
   const [pendingOperation, setPendingOperation] = useState(null);
 
+  // Success animation state
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+
   const stages = [
     { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
     { id: 2, name: 'Data Cleaning', description: 'Review inspection results and preview your data' }
@@ -329,14 +332,13 @@ export default function DataCleaning() {
         throw new Error(`Failed to apply operation: ${response.status}`);
       }
 
-      const result = await response.json();
+      // Note: apply_operation no longer returns next_problem
+      // That will be fetched when user confirms via /confirm-operation
 
-      // Set pending operation with the result (not confirmed yet)
+      // Set pending operation (just track which option was applied)
       setPendingOperation({
         optionId,
-        customValue,
-        nextProblem: result.next_problem,
-        sessionComplete: result.session_complete
+        customValue
       });
 
       setOperationInProgress(false);
@@ -351,25 +353,59 @@ export default function DataCleaning() {
   };
 
   // Confirm the pending operation and move to next problem
-  const handleConfirmOperation = () => {
+  const handleConfirmOperation = async () => {
     if (!pendingOperation) return;
 
-    // Store current problem in history
-    const problemToStore = {
-      ...currentProblem,
-      appliedOptionId: pendingOperation.optionId
-    };
-    setProblemHistory(prev => [...prev, problemToStore]);
+    // Show success animation
+    setShowSuccessAnimation(true);
 
-    // Update state with the stored result from apply operation
-    setCurrentProblem(pendingOperation.nextProblem);
-    setSessionComplete(pendingOperation.sessionComplete);
+    // After animation completes, confirm operation and get next problem
+    setTimeout(async () => {
+      // Store current problem in history
+      const problemToStore = {
+        ...currentProblem,
+        appliedOptionId: pendingOperation.optionId
+      };
+      setProblemHistory(prev => [...prev, problemToStore]);
 
-    // Clear pending operation
-    setPendingOperation(null);
+      // Call confirm-operation endpoint to advance to next problem
+      // This is when GPT recommendation is generated for the next problem
+      try {
+        const response = await fetch(API_ENDPOINTS.CLEANING.CONFIRM_OPERATION, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ session_id: cleaningSessionId })
+        });
 
-    // Reset to current problem view
-    setViewingIndex(-1);
+        if (response.ok) {
+          const result = await response.json();
+          // Update state with the next problem (includes recommendation)
+          setCurrentProblem(result.next_problem);
+          setSessionComplete(result.session_complete);
+        } else {
+          console.error('Failed to confirm operation');
+          // Session might still be in a good state, just no next problem info
+          setCurrentProblem(null);
+          setSessionComplete(true);
+        }
+      } catch (err) {
+        console.error('Failed to confirm operation:', err);
+        setCurrentProblem(null);
+        setSessionComplete(true);
+      }
+
+      // Clear pending operation
+      setPendingOperation(null);
+
+      // Reset to current problem view
+      setViewingIndex(-1);
+
+      // Hide success animation
+      setShowSuccessAnimation(false);
+    }, 1200); // Animation duration
   };
 
   // Discard the pending operation
@@ -585,6 +621,20 @@ export default function DataCleaning() {
             {/*</div>*/}
             <div className="split-view-container">
               <div className="split-view-panel left-panel">
+                {/* Success Animation Overlay */}
+                {showSuccessAnimation && (
+                  <div className="success-animation-overlay">
+                    <div className="success-content">
+                      <div className="success-checkmark">
+                        <svg className="checkmark-svg" viewBox="0 0 52 52">
+                          <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                          <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                      </div>
+                      <span className="success-text">Applied</span>
+                    </div>
+                  </div>
+                )}
                 <CleaningPanel
                   currentProblem={currentProblem}
                   problemHistory={problemHistory}

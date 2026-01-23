@@ -40,8 +40,10 @@ export const API_ENDPOINTS = {
   CLEANING: {
     START_SESSION: `${API_BASE_URL}/agents/cleaning/start-session`,
     APPLY_OPERATION: `${API_BASE_URL}/agents/cleaning/apply-operation`,
+    CONFIRM_OPERATION: `${API_BASE_URL}/agents/cleaning/confirm-operation`,
     UNDO_LAST: `${API_BASE_URL}/agents/cleaning/undo-last`,
     GET_SESSION: (id) => `${API_BASE_URL}/agents/cleaning/session/${id}`,
+    GET_RECOMMENDATION: (id) => `${API_BASE_URL}/agents/cleaning/session/${id}/recommendation`,
     HEALTH: `${API_BASE_URL}/agents/cleaning/health`,
   },
 

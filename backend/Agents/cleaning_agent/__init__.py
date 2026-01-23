@@ -13,7 +13,8 @@ from .models import (
     StartSessionRequest,
     StartSessionResponse,
     ApplyOperationRequest,
-    UndoLastRequest
+    UndoLastRequest,
+    ConfirmOperationRequest
 )
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "StartSessionRequest",
     "StartSessionResponse",
     "ApplyOperationRequest",
-    "UndoLastRequest"
+    "UndoLastRequest",
+    "ConfirmOperationRequest"
 ]

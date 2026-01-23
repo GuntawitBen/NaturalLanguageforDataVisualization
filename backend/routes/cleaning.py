@@ -12,8 +12,10 @@ from Agents.cleaning_agent import (
     StartSessionResponse,
     ApplyOperationRequest,
     UndoLastRequest,
+    ConfirmOperationRequest,
     OperationResult,
-    SessionState
+    SessionState,
+    ProblemWithOptions
 )
 
 router = APIRouter(prefix="/agents/cleaning", tags=["Cleaning Agent"])
@@ -93,20 +95,23 @@ async def apply_cleaning_operation(
     current_user_email: str = Depends(get_current_user)
 ):
     """
-    Apply a selected cleaning operation.
+    Apply a selected cleaning operation (preview only, not confirmed).
 
     This endpoint:
     1. Saves a backup of the current DataFrame
     2. Applies the selected cleaning operation
     3. Updates the temp file
-    4. Returns the next problem (if any)
+    4. Does NOT advance to next problem (that happens on confirm)
+
+    The operation is applied but not "confirmed" - user can still discard it.
+    Call /confirm-operation to confirm and advance to the next problem.
 
     Args:
         request: ApplyOperationRequest with session_id and option_id
         current_user_email: Authenticated user email
 
     Returns:
-        OperationResult with stats and next problem
+        OperationResult with stats (next_problem will be None)
     """
     try:
         # Apply operation
@@ -130,6 +135,47 @@ async def apply_cleaning_operation(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to apply operation: {str(e)}"
+        )
+
+
+@router.post("/confirm-operation", response_model=OperationResult)
+async def confirm_cleaning_operation(
+    request: ConfirmOperationRequest,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Confirm a pending operation and advance to the next problem.
+
+    This endpoint:
+    1. Updates the problems state (re-detects problems after the applied operation)
+    2. Advances to the next unaddressed problem
+    3. Returns the next problem WITH GPT recommendation
+
+    This is when GPT is called to generate recommendations for the next problem.
+
+    Args:
+        request: ConfirmOperationRequest with session_id
+        current_user_email: Authenticated user email
+
+    Returns:
+        OperationResult with next problem (including GPT recommendation) and session_complete status
+    """
+    try:
+        result = cleaning_agent.confirm_and_advance(session_id=request.session_id)
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        # Log error for debugging
+        print(f"[ERROR] Failed to confirm operation: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to confirm operation: {str(e)}"
         )
 
 
@@ -204,6 +250,41 @@ async def get_session_state(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get session state: {str(e)}"
+        )
+
+
+@router.get("/session/{session_id}/recommendation")
+async def get_current_recommendation(
+    session_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Get GPT recommendation for the current problem.
+    Called after user confirms to fetch recommendation for the next problem.
+
+    Args:
+        session_id: Session ID
+        current_user_email: Authenticated user email
+
+    Returns:
+        ProblemWithOptions with recommendation, or null if no current problem
+    """
+    try:
+        result = cleaning_agent.get_current_recommendation(session_id=session_id)
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        # Log error for debugging
+        print(f"[ERROR] Failed to get recommendation: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get recommendation: {str(e)}"
         )
 
 

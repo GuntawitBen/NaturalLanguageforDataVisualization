@@ -38,6 +38,8 @@ class SessionData:
         # Cache for current problem's options (to maintain consistent option_ids)
         self.cached_options: Optional[List] = None
         self.cached_recommendation = None
+        # Cache recommendations per problem_id (preserved across operations)
+        self.recommendation_cache: Dict[str, any] = {}
 
     def get_current_stats(self) -> DatasetStats:
         """Get current dataset statistics"""
@@ -224,6 +226,10 @@ class SessionManager:
         """
         Undo the last operation by restoring from backup.
 
+        This is used for "Discard" - reverting a pending (unconfirmed) operation.
+        It does NOT re-detect problems since we're just going back to the previous state.
+        The problems list and cache remain valid.
+
         Args:
             session_id: Session ID
 
@@ -258,10 +264,11 @@ class SessionManager:
 
             # Remove last operation from history
             session.operation_history.pop()
-            
-            # Re-sync problems state with the restored DataFrame
-            self.update_problems_after_operation(session_id)
-            
+
+            # Do NOT re-detect problems - we're just reverting to previous state
+            # The problems list, cached_options, and cached_recommendation remain valid
+            # This prevents unnecessary GPT calls when user discards a pending operation
+
             return True
         except Exception as e:
             print(f"Error undoing operation: {e}")
@@ -275,6 +282,11 @@ class SessionManager:
         session = self.get_session(session_id)
         if not session:
             return
+
+        # Save current problem ID to check if we're staying on the same problem
+        old_problem_id = None
+        if session.current_problem_index < len(session.problems):
+            old_problem_id = session.problems[session.current_problem_index].problem_id
 
         # 1. Get problem IDs that have been addressed (have an operation in history)
         addressed_problem_ids = set()
@@ -320,9 +332,17 @@ class SessionManager:
                 break
 
         session.updated_at = datetime.now().isoformat()
-        # Clear cached options
-        session.cached_options = None
-        session.cached_recommendation = None
+
+        # Get new problem ID after update
+        new_problem_id = None
+        if session.current_problem_index < len(session.problems):
+            new_problem_id = session.problems[session.current_problem_index].problem_id
+
+        # Only clear cache if we moved to a DIFFERENT problem
+        # Keep the recommendation if we're on the same problem (e.g., after undo)
+        if old_problem_id != new_problem_id:
+            session.cached_options = None
+            session.cached_recommendation = None
 
     def delete_session(self, session_id: str):
         """Delete a session and cleanup backups"""

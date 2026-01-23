@@ -112,12 +112,13 @@ class CleaningAgent:
             summary=summary
         )
 
-    def get_next_problem(self, session_id: str) -> Optional[ProblemWithOptions]:
+    def get_next_problem(self, session_id: str, include_recommendation: bool = True) -> Optional[ProblemWithOptions]:
         """
         Get the next problem with cleaning options.
 
         Args:
             session_id: Session ID
+            include_recommendation: Whether to include GPT recommendation (default True)
 
         Returns:
             ProblemWithOptions or None if no more problems
@@ -132,17 +133,36 @@ class CleaningAgent:
 
         # Get current problem
         current_problem = session.problems[session.current_problem_index]
+        problem_id = current_problem.problem_id
 
         # Use cached options if available, otherwise generate new ones
         if session.cached_options is not None:
             options = session.cached_options
-            recommendation = session.cached_recommendation
         else:
-            # Generate cleaning options with GPT recommendation
-            options, recommendation = self._generate_options_for_problem(current_problem, session.df)
+            # Generate cleaning options without recommendation first
+            options, _ = self._generate_options_for_problem(
+                current_problem, session.df, include_recommendation=False
+            )
             # Cache the options for consistent option_ids
             session.cached_options = options
-            session.cached_recommendation = recommendation
+
+        # Handle recommendation separately using per-problem cache
+        recommendation = None
+        if include_recommendation:
+            # Check per-problem recommendation cache first
+            if problem_id in session.recommendation_cache:
+                recommendation = session.recommendation_cache[problem_id]
+            elif session.cached_recommendation is not None:
+                recommendation = session.cached_recommendation
+            else:
+                # Generate recommendation if not cached
+                _, recommendation = self._generate_options_for_problem(
+                    current_problem, session.df, include_recommendation=True
+                )
+                # Cache the recommendation both ways
+                session.cached_recommendation = recommendation
+                if recommendation:
+                    session.recommendation_cache[problem_id] = recommendation
 
         # Calculate addressed problem IDs for progress-based numbering
         addressed_problem_ids = {op.problem_id for op in session.operation_history}
@@ -214,33 +234,72 @@ class CleaningAgent:
             problem_id=current_problem.problem_id
         )
 
-        # Update problems state
-        session_manager.update_problems_after_operation(session_id)
-
-        # Get next problem
-        next_problem = self.get_next_problem(session_id)
-
-        # Determine if session is complete
-        session_complete = next_problem is None
+        # Note: We do NOT update problems state or fetch next problem here
+        # That happens when user confirms the operation via confirm_and_advance()
 
         return OperationResult(
             success=True,
             message=f"Applied: {selected_option.option_name}",
             stats_before=stats_before,
             stats_after=operation_record.stats_after,
+            next_problem=None,  # Next problem fetched on confirm, not on apply
+            session_complete=False  # Will be determined on confirm
+        )
+
+    def confirm_and_advance(self, session_id: str) -> OperationResult:
+        """
+        Confirm the pending operation and advance to the next problem.
+        Called when user clicks "Confirm Changes".
+
+        This method:
+        1. Updates the problems state (re-detects problems after the applied operation)
+        2. Advances to the next unaddressed problem
+        3. Returns the next problem WITH GPT recommendation
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            OperationResult with next problem (including recommendation) and session_complete status
+        """
+        session = session_manager.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session not found: {session_id}")
+
+        # Get current stats
+        stats = session.get_current_stats()
+
+        # Now update problems state (re-detect problems, advance to next)
+        session_manager.update_problems_after_operation(session_id)
+
+        # Get next problem WITH recommendation (this is when GPT is called)
+        next_problem = self.get_next_problem(session_id, include_recommendation=True)
+
+        # Determine if session is complete
+        session_complete = next_problem is None
+
+        return OperationResult(
+            success=True,
+            message="Operation confirmed",
+            stats_before=stats,
+            stats_after=stats,
             next_problem=next_problem,
             session_complete=session_complete
         )
 
     def undo_last(self, session_id: str) -> OperationResult:
         """
-        Undo the last operation.
+        Undo the last operation (used for "Discard" button).
+
+        This reverts a pending (unconfirmed) operation back to the previous state.
+        It does NOT re-detect problems or call GPT - it uses cached data since
+        we're just going back to the exact state we were in before.
 
         Args:
             session_id: Session ID
 
         Returns:
-            OperationResult with restored stats
+            OperationResult with restored stats and current problem (with cached recommendation)
         """
         session = session_manager.get_session(session_id)
         if not session:
@@ -249,7 +308,7 @@ class CleaningAgent:
         # Get stats before undo
         stats_before = session.get_current_stats()
 
-        # Undo operation
+        # Undo operation (restores DataFrame, removes from history, keeps cache)
         success = session_manager.undo_last_operation(session_id)
 
         if not success:
@@ -265,12 +324,13 @@ class CleaningAgent:
         # Get stats after undo
         stats_after = session.get_current_stats()
 
-        # Get current problem
-        next_problem = self.get_next_problem(session_id)
+        # Get current problem with cached recommendation (no GPT call)
+        # The cache is still valid since we just reverted to previous state
+        next_problem = self.get_next_problem(session_id, include_recommendation=True)
 
         return OperationResult(
             success=True,
-            message="Last operation undone successfully",
+            message="Operation discarded",
             stats_before=stats_before,
             stats_after=stats_after,
             next_problem=next_problem,
@@ -293,17 +353,65 @@ class CleaningAgent:
 
         return session.to_session_state()
 
+    def get_current_recommendation(self, session_id: str) -> Optional[ProblemWithOptions]:
+        """
+        Get the current problem with GPT recommendation.
+        Called after user confirms to fetch recommendation for the current problem.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            ProblemWithOptions with recommendation, or None if no current problem
+        """
+        session = session_manager.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session not found: {session_id}")
+
+        # Check if we have a current problem
+        if session.current_problem_index >= len(session.problems):
+            return None
+
+        # Get current problem
+        current_problem = session.problems[session.current_problem_index]
+        problem_id = current_problem.problem_id
+
+        # Check if we already have cached recommendation (per-problem cache first)
+        if problem_id in session.recommendation_cache:
+            return self.get_next_problem(session_id, include_recommendation=True)
+
+        if session.cached_recommendation is not None:
+            # Cache it per-problem too
+            session.recommendation_cache[problem_id] = session.cached_recommendation
+            return self.get_next_problem(session_id, include_recommendation=True)
+
+        # Generate recommendation now
+        options, recommendation = self._generate_options_for_problem(
+            current_problem, session.df, include_recommendation=True
+        )
+
+        # Update cache with recommendation
+        session.cached_options = options
+        session.cached_recommendation = recommendation
+        if recommendation:
+            session.recommendation_cache[problem_id] = recommendation
+
+        # Return full problem with options and recommendation
+        return self.get_next_problem(session_id, include_recommendation=True)
+
     def _generate_options_for_problem(
         self,
         problem: Problem,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        include_recommendation: bool = True
     ) -> Tuple[List, Any]:
         """
-        Generate cleaning options for a problem with GPT recommendation.
+        Generate cleaning options for a problem with optional GPT recommendation.
 
         Args:
             problem: Problem object
             df: Current DataFrame
+            include_recommendation: Whether to include GPT recommendation (default True)
 
         Returns:
             Tuple of (List of CleaningOption objects, Optional GPTRecommendation)
@@ -312,7 +420,7 @@ class CleaningAgent:
 
         # Special handling for format inconsistency - generate dynamic options
         if problem_type_key == "format_inconsistency":
-            return self._generate_format_inconsistency_options(problem, df)
+            return self._generate_format_inconsistency_options(problem, df, include_recommendation)
 
         # Get operation templates for this problem type
         operation_templates = CLEANING_OPERATIONS.get(problem_type_key, {})
@@ -355,9 +463,9 @@ class CleaningAgent:
         # Generate options using static pros/cons from config
         options = self._create_static_options(template_list, problem)
 
-        # Generate GPT recommendation if enabled
+        # Generate GPT recommendation if enabled and requested
         recommendation = None
-        if self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
+        if include_recommendation and self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
             try:
                 from .models import GPTRecommendation, DatasetStats
 
@@ -470,7 +578,8 @@ class CleaningAgent:
     def _generate_format_inconsistency_options(
         self,
         problem: Problem,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        include_recommendation: bool = True
     ) -> Tuple[List, Any]:
         """
         Generate dynamic options for format inconsistency problems.
@@ -481,6 +590,7 @@ class CleaningAgent:
         Args:
             problem: Problem object with format inconsistency details
             df: Current DataFrame
+            include_recommendation: Whether to include GPT recommendation (default True)
 
         Returns:
             Tuple of (List of CleaningOption objects, Optional GPTRecommendation)
@@ -588,9 +698,9 @@ class CleaningAgent:
         )
         options.append(option)
 
-        # Generate GPT recommendation if enabled
+        # Generate GPT recommendation if enabled and requested
         recommendation = None
-        if self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
+        if include_recommendation and self.enable_gpt_recommendations and self.openai_client and len(options) > 1:
             try:
                 from .models import DatasetStats
 
