@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import ProblemCard from './ProblemCard';
 import './CleaningPanel.css';
 
@@ -15,7 +16,9 @@ export default function CleaningPanel({
   pendingOperation,
   sessionLoading,
   sessionError,
-  sessionComplete
+  sessionComplete,
+  onComplete,
+  finalizing
 }) {
   // Calculate total problems and current position
   const solvedCount = problemHistory?.length || 0;
@@ -33,6 +36,33 @@ export default function CleaningPanel({
 
   // Navigation handlers - Prev button now triggers undo
   const canGoPrev = solvedCount > 0 && !operationInProgress;
+
+  // Card swipe animation state
+  const [animationClass, setAnimationClass] = useState('');
+  const prevIndexRef = useRef(currentViewIndex);
+  const prevSolvedCountRef = useRef(solvedCount);
+
+  useEffect(() => {
+    const prevSolvedCount = prevSolvedCountRef.current;
+
+    // Detect if we moved forward (next problem / confirm) or backward (undo / prev)
+    if (solvedCount > prevSolvedCount) {
+      // Moving to next problem (confirmed an operation)
+      // Only swipe in from right - the "Applied" animation already covers the exit
+      setAnimationClass('swipe-in-right');
+      setTimeout(() => setAnimationClass(''), 300);
+    } else if (solvedCount < prevSolvedCount) {
+      // Moving back (undo operation) - full swipe out then in
+      setAnimationClass('swipe-out-right');
+      setTimeout(() => {
+        setAnimationClass('swipe-in-left');
+        setTimeout(() => setAnimationClass(''), 300);
+      }, 200);
+    }
+
+    prevIndexRef.current = currentViewIndex;
+    prevSolvedCountRef.current = solvedCount;
+  }, [currentViewIndex, solvedCount]);
 
   return (
     <div className="cleaning-panel">
@@ -70,31 +100,45 @@ export default function CleaningPanel({
 
         {/* Problem Card */}
         {displayProblem && !sessionLoading && !sessionError && (
-          <ProblemCard
-            problem={displayProblem.problem}
-            options={displayProblem.options}
-            onSelectOption={onApplyOperation}
-            onConfirmOperation={onConfirmOperation}
-            onDiscardOperation={onDiscardOperation}
-            disabled={operationInProgress || isViewingHistory}
-            recommendation={displayProblem.recommendation}
-            isHistorical={isViewingHistory}
-            appliedOptionId={isViewingHistory ? displayProblem.appliedOptionId : null}
-            pendingOptionId={pendingOperation?.optionId}
-            problemNumber={currentViewIndex + 1}
-            totalProblems={isViewingHistory ? totalDots : (currentProblem?.total_problems || totalDots)}
-            onPrevious={onUndoOperation}
-            canGoPrevious={canGoPrev}
-          />
+          <div className={`card-swipe-container ${animationClass}`}>
+            <ProblemCard
+              problem={displayProblem.problem}
+              options={displayProblem.options}
+              onSelectOption={onApplyOperation}
+              onConfirmOperation={onConfirmOperation}
+              onDiscardOperation={onDiscardOperation}
+              disabled={operationInProgress || isViewingHistory}
+              recommendation={displayProblem.recommendation}
+              isHistorical={isViewingHistory}
+              appliedOptionId={isViewingHistory ? displayProblem.appliedOptionId : null}
+              pendingOptionId={pendingOperation?.optionId}
+              problemNumber={currentViewIndex + 1}
+              totalProblems={isViewingHistory ? totalDots : (currentProblem?.total_problems || totalDots)}
+              onPrevious={onUndoOperation}
+              canGoPrevious={canGoPrev}
+            />
+          </div>
         )}
 
         {/* Session Complete State */}
         {sessionComplete && !displayProblem && !sessionLoading && !sessionError && (
-          <div className="complete-state">
-            <div className="complete-content">
-              <div className="complete-icon">✓</div>
-              <h4>All issues resolved!</h4>
-              <p>Your dataset is now ready for visualization. Click "Complete & Save" to proceed.</p>
+          <div className="complete-state-overlay">
+            <div className="complete-state-content">
+              <div className="complete-checkmark">
+                <svg className="complete-checkmark-svg" viewBox="0 0 52 52">
+                  <circle className="complete-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                  <path className="complete-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+              </div>
+              <span className="complete-text">All Issues Resolved</span>
+              <button
+                onClick={onComplete}
+                className="complete-save-btn"
+                disabled={finalizing || operationInProgress}
+              >
+                {finalizing ? 'Processing...' : 'Complete & Save'}
+                <CheckCircle2 size={20} />
+              </button>
             </div>
           </div>
         )}

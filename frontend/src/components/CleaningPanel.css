@@ -117,8 +117,75 @@
 .card-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.25rem;
   position: relative;
+}
+
+/* Card Swipe Animation */
+.card-swipe-container {
+  width: 100%;
+  height: 100%;
+}
+
+.card-swipe-container.swipe-out-left {
+  animation: swipeOutLeft 0.2s ease-in forwards;
+}
+
+.card-swipe-container.swipe-out-right {
+  animation: swipeOutRight 0.2s ease-in forwards;
+}
+
+.card-swipe-container.swipe-in-right {
+  animation: swipeInRight 0.3s ease-out forwards;
+}
+
+.card-swipe-container.swipe-in-left {
+  animation: swipeInLeft 0.3s ease-out forwards;
+}
+
+@keyframes swipeOutLeft {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes swipeOutRight {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes swipeInRight {
+  0% {
+    transform: translateX(50%) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes swipeInLeft {
+  0% {
+    transform: translateX(-50%) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
 }
 
 /* Loading State */
@@ -216,50 +283,137 @@
   color: #742a2a;
 }
 
-/* Complete State */
-.complete-state {
+/* Complete State Overlay */
+.complete-state-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(72, 187, 120, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  min-height: 300px;
-}
-
-.complete-content {
-  text-align: center;
-  background: #f0fff4;
-  padding: 2rem;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
   border-radius: 12px;
-  border: 1px solid #c6f6d5;
-  max-width: 400px;
 }
 
-.complete-icon {
-  width: 48px;
-  height: 48px;
-  background: #48bb78;
-  color: white;
+.complete-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.complete-checkmark {
+  width: 80px;
+  height: 80px;
+}
+
+.complete-checkmark-svg {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
+  display: block;
+  stroke-width: 2;
+  stroke: #fff;
+  stroke-miterlimit: 10;
+  box-shadow: inset 0px 0px 0px rgba(255, 255, 255, 0.3);
+  animation: completeScaleIn 0.3s ease-in-out 0.1s both;
+}
+
+.complete-checkmark-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 2;
+  stroke-miterlimit: 10;
+  stroke: #fff;
+  fill: none;
+  animation: completeStroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.complete-checkmark-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  stroke-width: 3;
+  stroke-linecap: round;
+  animation: completeStroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+.complete-text {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+  animation: completeFadeInUp 0.4s ease-out 0.4s both;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.complete-save-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 auto 1rem;
-}
-
-.complete-content h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 1.125rem;
-  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: #fff;
   color: #22543d;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: completeFadeInUp 0.4s ease-out 0.6s both;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.complete-content p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #276749;
-  line-height: 1.5;
+.complete-save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.complete-save-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@keyframes completeStroke {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes completeScaleIn {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes completeFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Operation Overlay */

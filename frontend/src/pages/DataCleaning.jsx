@@ -359,17 +359,16 @@ export default function DataCleaning() {
     // Show success animation
     setShowSuccessAnimation(true);
 
-    // After animation completes, confirm operation and get next problem
-    setTimeout(async () => {
-      // Store current problem in history
-      const problemToStore = {
-        ...currentProblem,
-        appliedOptionId: pendingOperation.optionId
-      };
-      setProblemHistory(prev => [...prev, problemToStore]);
+    // Store current problem in history immediately
+    const problemToStore = {
+      ...currentProblem,
+      appliedOptionId: pendingOperation.optionId
+    };
 
-      // Call confirm-operation endpoint to advance to next problem
-      // This is when GPT recommendation is generated for the next problem
+    // Run animation timer and backend fetch in parallel
+    const minAnimationTime = new Promise(resolve => setTimeout(resolve, 800));
+
+    const fetchNextProblem = async () => {
       try {
         const response = await fetch(API_ENDPOINTS.CLEANING.CONFIRM_OPERATION, {
           method: 'POST',
@@ -381,31 +380,27 @@ export default function DataCleaning() {
         });
 
         if (response.ok) {
-          const result = await response.json();
-          // Update state with the next problem (includes recommendation)
-          setCurrentProblem(result.next_problem);
-          setSessionComplete(result.session_complete);
+          return await response.json();
         } else {
           console.error('Failed to confirm operation');
-          // Session might still be in a good state, just no next problem info
-          setCurrentProblem(null);
-          setSessionComplete(true);
+          return { next_problem: null, session_complete: true };
         }
       } catch (err) {
         console.error('Failed to confirm operation:', err);
-        setCurrentProblem(null);
-        setSessionComplete(true);
+        return { next_problem: null, session_complete: true };
       }
+    };
 
-      // Clear pending operation
-      setPendingOperation(null);
+    // Wait for both animation and fetch to complete
+    const [, result] = await Promise.all([minAnimationTime, fetchNextProblem()]);
 
-      // Reset to current problem view
-      setViewingIndex(-1);
-
-      // Hide success animation
-      setShowSuccessAnimation(false);
-    }, 1200); // Animation duration
+    // Update state after both complete
+    setProblemHistory(prev => [...prev, problemToStore]);
+    setCurrentProblem(result.next_problem);
+    setSessionComplete(result.session_complete);
+    setPendingOperation(null);
+    setViewingIndex(-1);
+    setShowSuccessAnimation(false);
   };
 
   // Discard the pending operation
@@ -649,6 +644,8 @@ export default function DataCleaning() {
                   sessionLoading={sessionLoading}
                   sessionError={sessionError}
                   sessionComplete={sessionComplete}
+                  onComplete={handleNext}
+                  finalizing={finalizing}
                 />
               </div>
               <div className="split-view-panel right-panel">
@@ -665,32 +662,34 @@ export default function DataCleaning() {
         )}
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="stage-navigation">
-        {currentStage === 1 ? (
-          <button
-            onClick={handleNext}
-            className="nav-button primary"
-            disabled={!tempFilePath}
-          >
-            Next
-            <ArrowRight size={20} />
-          </button>
-        ) : (
-          <button
-            onClick={handleNext}
-            className="nav-button success"
-            disabled={finalizing || operationInProgress || !sessionComplete}
-            title={
-              operationInProgress ? 'Please wait for operation to complete' :
-                !sessionComplete ? 'Please resolve all data quality issues first' : ''
-            }
-          >
-            {finalizing ? 'Processing...' : 'Complete & Save'}
-            <CheckCircle2 size={20} />
-          </button>
-        )}
-      </div>
+      {/* Navigation Buttons - Only show on stage 1, or stage 2 when not complete */}
+      {(currentStage === 1 || (currentStage === 2 && !sessionComplete)) && (
+        <div className="stage-navigation">
+          {currentStage === 1 ? (
+            <button
+              onClick={handleNext}
+              className="nav-button primary"
+              disabled={!tempFilePath}
+            >
+              Next
+              <ArrowRight size={20} />
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              className="nav-button success"
+              disabled={finalizing || operationInProgress || !sessionComplete}
+              title={
+                operationInProgress ? 'Please wait for operation to complete' :
+                  !sessionComplete ? 'Please resolve all data quality issues first' : ''
+              }
+            >
+              {finalizing ? 'Processing...' : 'Complete & Save'}
+              <CheckCircle2 size={20} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
