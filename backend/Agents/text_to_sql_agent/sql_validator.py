@@ -71,6 +71,9 @@ class SQLValidator:
         errors: List[ValidationError] = []
         warnings: List[ValidationError] = []
 
+        # Preprocess SQL: remove double quotes for case-insensitive validation
+        sql = self._remove_double_quotes(sql)
+
         # Check query length
         if len(sql) > self.config["max_query_length"]:
             errors.append(ValidationError(
@@ -409,6 +412,24 @@ class SQLValidator:
         if len(identifier) == 2 and identifier[0].isalpha() and identifier[1].isdigit():
             return True
         return False
+
+    def _remove_double_quotes(self, sql: str) -> str:
+        """
+        Remove double quotes from SQL query for case-insensitive validation.
+        Double quotes are used for quoted identifiers which enforce case sensitivity.
+        By removing them, we allow case-insensitive matching.
+
+        Args:
+            sql: SQL query with potential double-quoted identifiers
+
+        Returns:
+            SQL query with double quotes removed from identifiers
+        """
+        # Remove double quotes that wrap identifiers (e.g., "ColumnName" -> ColumnName)
+        # This regex matches double-quoted strings that look like identifiers
+        # and replaces them with just the identifier content
+        result = re.sub(r'"([^"]+)"', r'\1', sql)
+        return result
 
 
 def create_validator(schema: SchemaContext) -> SQLValidator:
