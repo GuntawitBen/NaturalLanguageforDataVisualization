@@ -398,22 +398,6 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
           {/*  />*/}
           {/*</div>*/}
 
-          {/* Upload Progress */}
-          {uploading && (
-            <div className="upload-progress">
-              <div className="progress-info">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Action Buttons */}
           <div className="form-actions">
             <button
@@ -426,19 +410,23 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
             <button
               onClick={handleUpload}
               disabled={uploading || !datasetName}
-              className="btn btn-primary"
+              className={`btn btn-primary btn-upload ${uploading ? 'uploading' : ''}`}
+              style={uploading ? { '--progress': `${uploadProgress}%` } : {}}
             >
-              {uploading ? (
-                <>
-                  <Loader className="btn-icon spinning" size={18} />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="btn-icon" size={18} />
-                  Upload Dataset
-                </>
-              )}
+              <span className="btn-upload-content">
+                {uploading ? (
+                  <>
+                    <Loader className="btn-icon spinning" size={18} />
+                    <span>{uploadProgress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="btn-icon" size={18} />
+                    <span>Upload Dataset</span>
+                  </>
+                )}
+              </span>
+              {uploading && <span className="btn-upload-progress" />}
             </button>
           </div>
         </div>

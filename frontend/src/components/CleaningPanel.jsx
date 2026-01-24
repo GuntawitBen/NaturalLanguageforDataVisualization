@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight, AlertTriangle } from 'lucide-react';
 import ProblemCard from './ProblemCard';
 import './CleaningPanel.css';
 
@@ -36,6 +36,10 @@ export default function CleaningPanel({
 
   // Navigation handlers - Prev button now triggers undo
   const canGoPrev = solvedCount > 0 && !operationInProgress;
+
+  // Intro card state - show intro when problems are first loaded
+  const [showIntro, setShowIntro] = useState(true);
+  const totalProblems = currentProblem?.total_problems || 0;
 
   // Card swipe animation state
   const [animationClass, setAnimationClass] = useState('');
@@ -98,8 +102,33 @@ export default function CleaningPanel({
           </div>
         )}
 
+        {/* Intro Card */}
+        {showIntro && displayProblem && !sessionLoading && !sessionError && solvedCount === 0 && (
+          <div className="intro-card">
+            <div className="intro-card-content">
+              <div className="intro-icon">
+                <AlertTriangle size={48} />
+              </div>
+              <h2 className="intro-title">
+                Detected <span className="problem-count">{totalProblems}</span> {totalProblems === 1 ? 'Issue' : 'Issues'}
+              </h2>
+              <p className="intro-description">
+                We found some data quality issues that need your attention.
+                Review each problem and choose how to resolve it.
+              </p>
+              <button
+                className="intro-start-btn"
+                onClick={() => setShowIntro(false)}
+              >
+                Start Cleaning
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Problem Card */}
-        {displayProblem && !sessionLoading && !sessionError && (
+        {displayProblem && !sessionLoading && !sessionError && (!showIntro || solvedCount > 0) && (
           <div className={`card-swipe-container ${animationClass}`}>
             <ProblemCard
               problem={displayProblem.problem}

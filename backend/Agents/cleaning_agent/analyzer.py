@@ -324,13 +324,17 @@ class CleaningAgent:
         # Get stats after undo
         stats_after = session.get_current_stats()
 
-        # Get current problem with cached recommendation (no GPT call)
-        # The cache is still valid since we just reverted to previous state
+        # Re-calculate which problem to show after undo
+        # Since the operation was removed from history, the previous problem
+        # is no longer "addressed" and should appear again
+        session_manager.update_problems_after_operation(session_id)
+
+        # Get the problem (which should now be the previous one we undid)
         next_problem = self.get_next_problem(session_id, include_recommendation=True)
 
         return OperationResult(
             success=True,
-            message="Operation discarded",
+            message="Operation undone",
             stats_before=stats_before,
             stats_after=stats_after,
             next_problem=next_problem,
