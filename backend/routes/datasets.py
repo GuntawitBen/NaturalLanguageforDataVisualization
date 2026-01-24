@@ -528,13 +528,13 @@ async def query_dataset_endpoint(
 @router.delete("/{dataset_id}")
 async def delete_dataset_endpoint(
     dataset_id: str,
-    hard_delete: bool = False,
+    hard_delete: bool = True,
     current_user_email: str = Depends(get_current_user)
 ):
     """
-    Delete a dataset (soft delete by default)
+    Delete a dataset (hard delete by default)
 
-    - **hard_delete**: If true, permanently removes the dataset and data
+    - **hard_delete**: If false, only marks as deleted without removing data
     """
     try:
         # Verify dataset exists and user has access
