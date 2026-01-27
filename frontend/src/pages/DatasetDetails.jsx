@@ -367,6 +367,11 @@ export default function DatasetDetails() {
             };
           }
 
+          // Add visualization recommendations if present
+          if (msg.visualization_recommendations) {
+            uiMessage.visualization_recommendations = msg.visualization_recommendations;
+          }
+
           restoredMessages.push(uiMessage);
         }
       }
@@ -455,12 +460,13 @@ export default function DatasetDetails() {
         };
       }
 
-      // Add assistant response with results included
+      // Add assistant response with results and viz recommendations included
       setSqlMessages(prev => [...prev, {
         role: 'assistant',
         content: data.message || 'Query executed.',
         sql_query: data.sql_query || null,
         results: results,
+        visualization_recommendations: data.visualization_recommendations || null, // PROACTIVE
         error: data.status === 'error',
       }]);
     } catch (err) {
@@ -731,6 +737,35 @@ export default function DatasetDetails() {
                                       })}
                                     </tbody>
                                   </table>
+                                </div>
+                              </div>
+                            )}
+                            {msg.visualization_recommendations && msg.visualization_recommendations.length > 0 && (
+                              <div className="visualization-recommendations">
+                                <h4>Proactive Chart Recommendations</h4>
+                                <div className="viz-rec-list">
+                                  {msg.visualization_recommendations.map((rec, rIndex) => (
+                                    <div key={rIndex} className="viz-rec-card">
+                                      <div className="viz-rec-header">
+                                        <span className="viz-type-badge">{rec.chart_type}</span>
+                                        <h5>{rec.title}</h5>
+                                      </div>
+                                      <p className="viz-rec-desc">{rec.description}</p>
+                                      <div className="viz-rec-details">
+                                        <span><strong>X:</strong> {rec.x_axis}</span>
+                                        <span><strong>Y:</strong> {rec.y_axis}</span>
+                                      </div>
+                                      <button
+                                        className="view-chart-btn"
+                                        onClick={() => {
+                                          // For now just alert, but could navigate to dashboard or show modal
+                                          alert(`Chart suggested: ${rec.title}\\nType: ${rec.chart_type}\\nX: ${rec.x_axis}\\nY: ${rec.y_axis}`);
+                                        }}
+                                      >
+                                        View Recommendation
+                                      </button>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             )}

@@ -15,6 +15,7 @@ from .openai_client import TextToSQLOpenAIClient
 from .state_manager import session_manager, build_schema_context
 from .config import SQL_CONFIG, VALIDATION_CONFIG
 from .sql_validator import SQLValidator, ValidationResult
+from ..chart_rec_agent import chart_rec_agent
 
 from database.db_utils import get_dataset, query_dataset
 
@@ -247,7 +248,37 @@ class TextToSQLAgent:
             "data": results_data,
             "row_count": result.get("row_count", 0)
         }
-        session_manager.add_message(session_id, "assistant", response_msg, sql_query, query_result_for_db)
+        
+        # Get chart recommendations
+        # Map columns in result to their types from schema context
+        columns_info = []
+        for col_name in result.get("columns", []):
+            col_type = "unknown"
+            # Try to find type in schema
+            for schema_col in session.schema.columns:
+                if schema_col.name == col_name:
+                    col_type = schema_col.type
+                    break
+            columns_info.append({"name": col_name, "type": col_type})
+
+        viz_response = chart_rec_agent.get_recommendations(
+            user_question=message,
+            sql_query=sql_query,
+            columns_info=columns_info,
+            sample_data=results_data
+        )
+        
+        viz_recommendations = [rec.model_dump() for rec in viz_response.recommendations] if viz_response else None
+
+        # Add assistant message with SQL and VIZ recommendations to session and DB
+        session_manager.add_message(
+            session_id, 
+            "assistant", 
+            response_msg, 
+            sql_query, 
+            query_result_for_db,
+            visualization_recommendations=viz_recommendations # PROACTIVE PERSISTENCE
+        )
 
         return ChatResponse(
             status="success",
@@ -255,7 +286,8 @@ class TextToSQLAgent:
             sql_query=sql_query,
             results=results_data,
             columns=result.get("columns", []),
-            row_count=result.get("row_count", 0)
+            row_count=result.get("row_count", 0),
+            visualization_recommendations=viz_recommendations
         )
 
     def _execute_sql(self, dataset_id: str, sql_query: str) -> Dict[str, Any]:

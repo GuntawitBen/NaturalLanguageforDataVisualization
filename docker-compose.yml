@@ -1,18 +1,55 @@
 version: '3.8'
+
 services:
   mysql:
     image: mysql:8.0
     container_name: nlp_viz_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: nlp_viz
-      MYSQL_USER: nlp_viz_user
-      MYSQL_PASSWORD: nlp_viz_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nlp_viz}
+      MYSQL_USER: ${MYSQL_USER:-nlp_viz_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nlp_viz_password}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nlp_viz_network
+
+  backend:
+    build: ./backend
+    container_name: nlp_viz_backend
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER:-nlp_viz_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-nlp_viz_password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-nlp_viz}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - FRONTEND_URL=http://localhost:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mysql
+    networks:
+      - nlp_viz_network
+
+  frontend:
+    build: ./frontend
+    container_name: nlp_viz_frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - nlp_viz_network
 
 volumes:
   mysql_data:
+
+networks:
+  nlp_viz_network:
+    driver: bridge

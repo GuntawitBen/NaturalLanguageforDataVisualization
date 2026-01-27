@@ -4,7 +4,7 @@ Session and state management for the Text-to-SQL agent.
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from threading import Lock
 
 from .models import SessionState, SchemaContext, Message, ColumnInfo
@@ -119,7 +119,8 @@ class SessionManager:
         role: str,
         content: str,
         sql_query: Optional[str] = None,
-        query_result: any = None
+        query_result: any = None,
+        visualization_recommendations: Optional[List[Dict[str, Any]]] = None # Add this
     ) -> bool:
         """
         Add a message to a session's conversation history.
@@ -143,7 +144,8 @@ class SessionManager:
             message = Message(
                 role=role,
                 content=content,
-                sql_query=sql_query
+                sql_query=sql_query,
+                visualization_recommendations=visualization_recommendations
             )
             session.messages.append(message)
 
@@ -166,7 +168,8 @@ class SessionManager:
                     role=role,
                     content=content,
                     query_sql=sql_query,
-                    query_result=query_result
+                    query_result=query_result,
+                    visualization_config=visualization_recommendations # Pass it here
                 )
                 # Set conversation title from first user message
                 if role == "user" and len(session.messages) == 1:
@@ -282,6 +285,7 @@ class SessionManager:
                 role=msg['role'],
                 content=msg['content'],
                 sql_query=msg.get('query_sql'),
+                visualization_recommendations=msg.get('visualization_config'), # Load it back
                 timestamp=msg.get('created_at', datetime.now())
             ))
 

@@ -3,7 +3,7 @@ Pydantic models for the Text-to-SQL agent.
 """
 
 import warnings
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
@@ -34,6 +34,7 @@ class Message(BaseModel):
     role: str  # "user" or "assistant"
     content: str
     sql_query: Optional[str] = None
+    visualization_recommendations: Optional[List[Dict[str, Any]]] = None
     timestamp: datetime = None
 
     def __init__(self, **data):
@@ -86,6 +87,7 @@ class ChatResponse(BaseModel):
     row_count: Optional[int] = None
     error_details: Optional[str] = None
     recommendations: Optional[List[str]] = None  # List of recommended questions
+    visualization_recommendations: Optional[List[Dict[str, Any]]] = None  # Chart recommendations
 
 
 class GPTSQLResponse(BaseModel):
