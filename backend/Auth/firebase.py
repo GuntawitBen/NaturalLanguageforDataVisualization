@@ -11,10 +11,25 @@ load_dotenv()
 def init_firebase():
     """Initialize Firebase Admin SDK"""
     try:
-        cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "./firebase-credentials.json")
-        cred = credentials.Certificate(cred_path)
+        # Try to get credentials from JSON string (Best for Cloud/Docker)
+        firebase_creds_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+        
+        if firebase_creds_json:
+            import json
+            cred_dict = json.loads(firebase_creds_json)
+            cred = credentials.Certificate(cred_dict)
+            print("Firebase initialized from environment variable JSON")
+        else:
+            # Fallback to file path (Best for Local Dev)
+            cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "./firebase-credentials.json")
+            if not os.path.exists(cred_path):
+                print(f"[WARNING] Firebase credentials file not found at: {cred_path}")
+                return None
+                
+            cred = credentials.Certificate(cred_path)
+            print(f"Firebase initialized from file: {cred_path}")
+
         firebase_admin.initialize_app(cred)
-        print("Firebase initialized successfully")
         return firestore.client()
     except Exception as e:
         print(f"Firebase initialization failed: {e}")
