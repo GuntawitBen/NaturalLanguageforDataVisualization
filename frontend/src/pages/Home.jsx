@@ -298,8 +298,24 @@ export default function Home() {
     return (
       <div className="home-page">
         <div className="loading-state">
-          <div className="loader"></div>
-          <span>Loading...</span>
+          <div className="loading-terminal">
+            <div className="terminal-header">
+              <span className="terminal-dot red"></span>
+              <span className="terminal-dot yellow"></span>
+              <span className="terminal-dot green"></span>
+              <span className="terminal-title">dashboard_init.exe</span>
+            </div>
+            <div className="terminal-body">
+              <div className="terminal-line">
+                <span className="prompt">$</span>
+                <span className="command">initializing dashboard...</span>
+                <span className="cursor"></span>
+              </div>
+              <div className="loading-bar">
+                <div className="loading-progress"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

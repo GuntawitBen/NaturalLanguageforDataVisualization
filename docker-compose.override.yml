@@ -1,0 +1,57 @@
+# Docker Compose Override for Local Development
+# This file is automatically merged with docker-compose.yml when you run:
+#   docker-compose up
+#
+# It mounts your local code as volumes for hot-reloading
+
+services:
+  mysql:
+    # Health check to ensure MySQL is ready before backend starts
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      # Mount local code for hot-reloading
+      - ./backend:/app
+      # Prevent overwriting installed packages
+      - /app/__pycache__
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER:-nlp_viz_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-nlp_viz_password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-nlp_viz}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FRONTEND_URL=http://localhost:5173
+      # No SSL for local MySQL
+      # MYSQL_SSL_MODE is NOT set
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # Override command for development with auto-reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Mount local code for hot-reloading
+      - ./frontend:/app
+      # Prevent overwriting node_modules
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    # Override to use dev server instead of preview
+    command: npm run dev -- --host

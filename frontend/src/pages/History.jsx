@@ -367,12 +367,24 @@ export default function History() {
     return (
       <div className="history-page">
         <div className="loading-state">
-          <div className="loader-ring">
-            <div></div>
-            <div></div>
-            <div></div>
+          <div className="loading-terminal">
+            <div className="terminal-header">
+              <span className="terminal-dot red"></span>
+              <span className="terminal-dot yellow"></span>
+              <span className="terminal-dot green"></span>
+              <span className="terminal-title">history_loader.exe</span>
+            </div>
+            <div className="terminal-body">
+              <div className="terminal-line">
+                <span className="prompt">$</span>
+                <span className="command">fetching query history...</span>
+                <span className="cursor"></span>
+              </div>
+              <div className="loading-bar">
+                <div className="loading-progress"></div>
+              </div>
+            </div>
           </div>
-          <p>Loading your query history...</p>
         </div>
       </div>
     );
