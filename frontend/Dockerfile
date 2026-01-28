@@ -11,8 +11,12 @@ RUN npm install
 # Copy project
 COPY . .
 
-# Expose port (Vite default is 5173)
+# Build the application
+RUN npm run build
+
+# Expose port (We keep 5173 to avoid requiring DO config changes)
 EXPOSE 5173
 
-# Run dev server - usually better for dev environments
-CMD ["npm", "run", "dev", "--", "--host"]
+# Run preview server - serves the built `dist` folder
+# We force it to port 5173 to match the EXPOSE instruction
+CMD ["npm", "run", "preview", "--", "--port", "5173", "--host"]
