@@ -62,6 +62,8 @@ export const API_ENDPOINTS = {
 
   // Health check
   HELLO: `${API_BASE_URL}/api/hello`,
+  HEALTH: `${API_BASE_URL}/health`,
+  HEALTH_DB: `${API_BASE_URL}/health/db`,
 };
 
 export default {

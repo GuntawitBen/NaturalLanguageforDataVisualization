@@ -2,7 +2,36 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
-import { ArrowLeft, ChevronDown, Send, Sparkles, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  Send,
+  Sparkles,
+  Plus,
+  MessageSquare,
+  Trash2,
+  Database,
+  BarChart3,
+  Grid3X3,
+  HardDrive,
+  Calendar,
+  FileText,
+  Terminal,
+  Zap,
+  Activity,
+  Table,
+  MessageCircle,
+  LayoutDashboard,
+  Clock,
+  ChevronRight,
+  X,
+  Code,
+  Play,
+  Loader2,
+  AlertCircle,
+  Eye,
+  TrendingUp
+} from 'lucide-react';
 import DataTable from '../components/DataTable';
 import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
@@ -13,17 +42,16 @@ export default function DatasetDetails() {
   const location = useLocation();
   const { sessionToken } = useAuth();
 
-  // Check if we're resuming a session from history
   const resumedSessionId = location.state?.resumedSessionId;
   const [dataset, setDataset] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('conversations');
-  const [showInfoDropdown, setShowInfoDropdown] = useState(false);
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
 
   // Conversations tab state
-  const [conversationsView, setConversationsView] = useState('list'); // 'list' | 'chat'
+  const [conversationsView, setConversationsView] = useState('list');
   const [conversations, setConversations] = useState([]);
   const [conversationsLoading, setConversationsLoading] = useState(false);
 
@@ -38,7 +66,6 @@ export default function DatasetDetails() {
   const messagesEndRef = useRef(null);
   const recommendPromptIndex = useRef(0);
 
-  // Cycling prompts for the Recommend button
   const recommendPrompts = [
     "Recommend some interesting questions I should explore about this data.",
     "What patterns or trends might be hidden in this dataset?",
@@ -51,17 +78,14 @@ export default function DatasetDetails() {
     fetchDatasetDetails();
   }, [datasetId]);
 
-  // Track current session ID in a ref for cleanup
   const currentSessionRef = useRef(null);
   useEffect(() => {
     currentSessionRef.current = sqlSessionId;
   }, [sqlSessionId]);
 
-  // Cleanup session only on page unload or component unmount
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (currentSessionRef.current) {
-        // Use sendBeacon for reliable cleanup
         navigator.sendBeacon(
           API_ENDPOINTS.TEXT_TO_SQL.END_SESSION(currentSessionRef.current),
           JSON.stringify({ method: 'DELETE' })
@@ -73,26 +97,22 @@ export default function DatasetDetails() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Only cleanup on actual unmount (leaving the page), not when switching sessions
       if (currentSessionRef.current) {
         endSqlSession(currentSessionRef.current);
       }
     };
-  }, []); // Empty dependency - only runs on mount/unmount
+  }, []);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [sqlMessages]);
 
-  // Fetch conversations when conversations tab is opened (list view)
   useEffect(() => {
     if (activeTab === 'conversations' && conversationsView === 'list') {
       fetchDatasetConversations();
     }
   }, [activeTab, conversationsView]);
 
-  // Handle resumedSessionId from navigation - go to conversations chat view
   useEffect(() => {
     if (resumedSessionId) {
       setActiveTab('conversations');
@@ -100,7 +120,6 @@ export default function DatasetDetails() {
     }
   }, [resumedSessionId]);
 
-  // Start session when entering chat view in conversations tab
   useEffect(() => {
     if (activeTab === 'conversations' && conversationsView === 'chat' && !sqlSessionId && !sqlSessionStarted.current) {
       if (resumedSessionId) {
@@ -131,44 +150,29 @@ export default function DatasetDetails() {
   };
 
   const handleNewChat = async () => {
-    // Reset any existing session
     if (sqlSessionId) {
       await endSqlSession(sqlSessionId);
     }
-
-    // Reset chat state
     setSqlSessionId(null);
     setSqlMessages([]);
     sqlSessionStarted.current = false;
-
-    // Switch to chat view
     setConversationsView('chat');
-
-    // Start new session directly (don't rely on useEffect which may not trigger)
     startSqlSession();
   };
 
   const handleSelectConversation = async (sessionId) => {
-    // Reset current session state
     if (sqlSessionId && sqlSessionId !== sessionId) {
       await endSqlSession(sqlSessionId);
     }
-
     setSqlSessionId(null);
     setSqlMessages([]);
     sqlSessionStarted.current = false;
-
-    // Set up for resuming and switch to chat view
-    // We'll use a ref or state to track which session to resume
     setConversationsView('chat');
-
-    // Resume the session
     resumeSqlSession(sessionId);
   };
 
   const handleDeleteConversation = async (sessionId) => {
     if (!window.confirm('Delete this conversation?')) return;
-
     try {
       const response = await fetch(API_ENDPOINTS.TEXT_TO_SQL.DELETE_HISTORY(sessionId), {
         method: 'DELETE',
@@ -177,10 +181,7 @@ export default function DatasetDetails() {
           'Content-Type': 'application/json',
         },
       });
-
       if (!response.ok) throw new Error('Failed to delete');
-
-      // Remove from local state
       setConversations(prev => prev.filter(c => c.session_id !== sessionId));
     } catch (err) {
       console.error('Error deleting:', err);
@@ -190,7 +191,6 @@ export default function DatasetDetails() {
 
   const handleBackToList = () => {
     setConversationsView('list');
-    // Refresh conversations list
     fetchDatasetConversations();
   };
 
@@ -210,12 +210,26 @@ export default function DatasetDetails() {
     return date.toLocaleDateString();
   };
 
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i];
+  };
+
+  const formatNumber = (num) => {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toLocaleString();
+  };
+
   const fetchDatasetDetails = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch dataset metadata
       const metadataResponse = await fetch(API_ENDPOINTS.DATASETS.GET(datasetId), {
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
@@ -230,7 +244,6 @@ export default function DatasetDetails() {
       const metadata = await metadataResponse.json();
       setDataset(metadata);
 
-      // Fetch preview data
       const previewResponse = await fetch(`${API_ENDPOINTS.DATASETS.PREVIEW(datasetId)}?limit=1000`, {
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
@@ -278,11 +291,9 @@ export default function DatasetDetails() {
       }
 
       setSqlSessionId(data.session_id);
-
-      // Add welcome message
       setSqlMessages([{
         role: 'assistant',
-        content: `Hi! I'm here to help you explore your data. Ask me any question, or click the "Recommend" button to get suggestions for interesting things to explore!`,
+        content: `Session initialized. I'm ready to help you explore your data. Ask me anything or click "Recommend" for suggestions.`,
       }]);
     } catch (err) {
       console.error('Error starting SQL session:', err);
@@ -305,7 +316,6 @@ export default function DatasetDetails() {
     setSqlError(null);
 
     try {
-      // First, resume the session on the backend
       const resumeResponse = await fetch(API_ENDPOINTS.TEXT_TO_SQL.RESUME_SESSION(sessionId), {
         method: 'POST',
         headers: {
@@ -318,7 +328,6 @@ export default function DatasetDetails() {
         throw new Error('Failed to resume session');
       }
 
-      // Then, fetch the conversation history
       const historyResponse = await fetch(API_ENDPOINTS.TEXT_TO_SQL.GET_HISTORY(sessionId), {
         method: 'GET',
         headers: {
@@ -332,20 +341,14 @@ export default function DatasetDetails() {
       }
 
       const historyData = await historyResponse.json();
-
-      // Set the session ID
       setSqlSessionId(sessionId);
 
-      // Convert history messages to UI format
       const restoredMessages = [];
-
-      // Add a "session restored" message first
       restoredMessages.push({
         role: 'assistant',
-        content: 'Session restored. Here is your previous conversation:',
+        content: 'Session restored. Previous conversation loaded:',
       });
 
-      // Add all previous messages
       if (historyData.messages && historyData.messages.length > 0) {
         for (const msg of historyData.messages) {
           const uiMessage = {
@@ -353,12 +356,10 @@ export default function DatasetDetails() {
             content: msg.content,
           };
 
-          // Add SQL query if present
           if (msg.sql_query) {
             uiMessage.sql_query = msg.sql_query;
           }
 
-          // Add results if present
           if (msg.query_result && msg.query_result.data && msg.query_result.columns) {
             uiMessage.results = {
               columns: msg.query_result.columns,
@@ -367,7 +368,6 @@ export default function DatasetDetails() {
             };
           }
 
-          // Add visualization recommendations if present
           if (msg.visualization_recommendations) {
             uiMessage.visualization_recommendations = msg.visualization_recommendations;
           }
@@ -376,15 +376,12 @@ export default function DatasetDetails() {
         }
       }
 
-      // Add a continuation prompt
       restoredMessages.push({
         role: 'assistant',
-        content: 'You can continue asking questions about your data.',
+        content: 'Ready to continue. What would you like to explore?',
       });
 
       setSqlMessages(restoredMessages);
-
-      // Clear the location state to prevent re-resuming on refresh
       window.history.replaceState({}, document.title);
 
     } catch (err) {
@@ -416,8 +413,6 @@ export default function DatasetDetails() {
     const userMessage = message.trim();
     setSqlInputValue('');
     setSqlSending(true);
-
-    // Add user message immediately
     setSqlMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
@@ -438,9 +433,7 @@ export default function DatasetDetails() {
       }
 
       const data = await response.json();
-      console.log('[TextToSQL] Response:', data);
 
-      // Handle recommendations - include them in the message
       if (data.status === 'recommendations' && data.recommendations) {
         setSqlMessages(prev => [...prev, {
           role: 'assistant',
@@ -450,7 +443,6 @@ export default function DatasetDetails() {
         return;
       }
 
-      // Build results object if available
       let results = null;
       if (data.results && Array.isArray(data.results) && data.results.length > 0 && data.columns) {
         results = {
@@ -460,13 +452,12 @@ export default function DatasetDetails() {
         };
       }
 
-      // Add assistant response with results and viz recommendations included
       setSqlMessages(prev => [...prev, {
         role: 'assistant',
         content: data.message || 'Query executed.',
         sql_query: data.sql_query || null,
         results: results,
-        visualization_recommendations: data.visualization_recommendations || null, // PROACTIVE
+        visualization_recommendations: data.visualization_recommendations || null,
         error: data.status === 'error',
       }]);
     } catch (err) {
@@ -496,24 +487,47 @@ export default function DatasetDetails() {
     sendSqlMessage(question);
   };
 
+  // Loading State
   if (loading) {
     return (
       <div className="dataset-details-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading dataset...</p>
+        <div className="loading-state">
+          <div className="loading-terminal">
+            <div className="terminal-header">
+              <span className="terminal-dot red"></span>
+              <span className="terminal-dot yellow"></span>
+              <span className="terminal-dot green"></span>
+              <span className="terminal-title">loading_dataset.exe</span>
+            </div>
+            <div className="terminal-body">
+              <div className="terminal-line">
+                <span className="prompt">$</span>
+                <span className="command">fetch --dataset {datasetId?.slice(0, 8)}...</span>
+                <span className="cursor"></span>
+              </div>
+              <div className="loading-bar">
+                <div className="loading-progress"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Error State
   if (error) {
     return (
       <div className="dataset-details-page">
-        <div className="error-container">
-          <p className="error-message">Error: {error}</p>
-          <button onClick={() => navigate(-1)} className="back-button">
-            Back
+        <div className="error-state">
+          <div className="error-icon">
+            <AlertCircle size={32} />
+          </div>
+          <h2>Connection Failed</h2>
+          <p className="error-code">ERROR: {error}</p>
+          <button onClick={() => navigate(-1)} className="back-btn">
+            <ArrowLeft size={16} />
+            Go Back
           </button>
         </div>
       </div>
@@ -522,362 +536,468 @@ export default function DatasetDetails() {
 
   return (
     <div className="dataset-details-page">
-      {/* Header */}
-      <div className="details-header">
-        <button onClick={() => navigate(-1)} className="back-button">
-          <ArrowLeft size={20} />
-          Back
+      {/* Scan Line Effect */}
+      <div className="scan-line"></div>
+
+      {/* Header Section */}
+      <header className="page-header">
+        <button className="back-btn" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} />
+          <span>Back</span>
         </button>
 
-        <div className="dataset-title-row">
-          <div className="dataset-info">
-            <h1>{dataset?.dataset_name}</h1>
-            <p className="dataset-filename">{dataset?.original_filename}</p>
+        <div className="header-main">
+          <div className="header-icon">
+            <Database size={24} />
+            <div className="icon-pulse"></div>
           </div>
-
-          <button
-            className={`info-dropdown-toggle ${showInfoDropdown ? 'open' : ''}`}
-            onClick={() => setShowInfoDropdown(!showInfoDropdown)}
-          >
-            <ChevronDown size={20} />
-          </button>
+          <div className="header-text">
+            <h1>
+              <span className="text-muted">~/datasets/</span>
+              {dataset?.dataset_name}
+              <span className="header-cursor">_</span>
+            </h1>
+            <p className="header-filename">
+              <FileText size={12} />
+              {dataset?.original_filename}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {showInfoDropdown && (
-        <div className="info-dropdown">
-          <div className="info-dropdown-item">
-            <span className="info-label">Dataset Name</span>
-            <span className="info-value">{dataset?.dataset_name}</span>
+        <button
+          className={`info-toggle ${showInfoPanel ? 'active' : ''}`}
+          onClick={() => setShowInfoPanel(!showInfoPanel)}
+        >
+          <ChevronDown size={20} />
+        </button>
+      </header>
+
+      {/* Info Panel */}
+      {showInfoPanel && (
+        <div className="info-panel">
+          <div className="info-stat">
+            <div className="info-stat-icon">
+              <BarChart3 size={18} />
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-value">{formatNumber(dataset?.row_count)}</span>
+              <span className="info-stat-label">Rows</span>
+            </div>
           </div>
-          <div className="info-dropdown-item">
-            <span className="info-label">Original Filename</span>
-            <span className="info-value">{dataset?.original_filename}</span>
+          <div className="info-stat">
+            <div className="info-stat-icon blue">
+              <Grid3X3 size={18} />
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-value">{dataset?.column_count}</span>
+              <span className="info-stat-label">Columns</span>
+            </div>
           </div>
-          <div className="info-dropdown-item">
-            <span className="info-label">Rows</span>
-            <span className="info-value">{dataset?.row_count?.toLocaleString()}</span>
+          <div className="info-stat">
+            <div className="info-stat-icon purple">
+              <HardDrive size={18} />
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-value">{formatFileSize(dataset?.file_size_bytes)}</span>
+              <span className="info-stat-label">Size</span>
+            </div>
           </div>
-          <div className="info-dropdown-item">
-            <span className="info-label">Columns</span>
-            <span className="info-value">{dataset?.column_count}</span>
-          </div>
-          <div className="info-dropdown-item">
-            <span className="info-label">File Size</span>
-            <span className="info-value">{dataset?.file_size_bytes ? `${(dataset.file_size_bytes / 1024).toFixed(2)} KB` : '—'}</span>
-          </div>
-          <div className="info-dropdown-item">
-            <span className="info-label">Uploaded</span>
-            <span className="info-value">{dataset?.upload_date ? new Date(dataset.upload_date).toLocaleDateString() : '—'}</span>
+          <div className="info-stat">
+            <div className="info-stat-icon green">
+              <Calendar size={18} />
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-value">
+                {dataset?.upload_date ? new Date(dataset.upload_date).toLocaleDateString() : '—'}
+              </span>
+              <span className="info-stat-label">Uploaded</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* Navigation Tabs */}
-      <div className="details-tabs">
+      <nav className="tabs-nav">
         <button
-          className={`tab-button ${activeTab === 'conversations' ? 'active' : ''}`}
+          className={`tab-btn ${activeTab === 'conversations' ? 'active' : ''}`}
           onClick={() => setActiveTab('conversations')}
         >
-          Conversations
+          <MessageCircle size={16} />
+          <span>Conversations</span>
+          {conversations.length > 0 && (
+            <span className="tab-badge">{conversations.length}</span>
+          )}
         </button>
         <button
-          className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
+          className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
         >
-          Dashboard
+          <LayoutDashboard size={16} />
+          <span>Dashboard</span>
         </button>
         <button
-          className={`tab-button ${activeTab === 'raw-data' ? 'active' : ''}`}
+          className={`tab-btn ${activeTab === 'raw-data' ? 'active' : ''}`}
           onClick={() => setActiveTab('raw-data')}
         >
-          Raw Data
+          <Table size={16} />
+          <span>Raw Data</span>
         </button>
-      </div>
+      </nav>
 
       {/* Tab Content */}
-      {activeTab === 'conversations' && (
-        <div className="tab-content conversations-container">
-          {conversationsView === 'list' ? (
-            /* Conversations List View */
-            <div className="conversations-list-container">
-              <div className="conversations-header">
-                <h3>Conversations</h3>
-                <button className="new-chat-button" onClick={handleNewChat}>
-                  <Plus size={18} />
-                  New Chat
-                </button>
-              </div>
-
-              {conversationsLoading && (
-                <div className="conversations-loading">
-                  <div className="spinner"></div>
-                  <p>Loading conversations...</p>
-                </div>
-              )}
-
-              {!conversationsLoading && conversations.length === 0 && (
-                <div className="conversations-empty">
-                  <MessageSquare size={48} />
-                  <h4>No conversations yet</h4>
-                  <p>Start a new chat to explore your data</p>
-                  <button className="new-chat-button" onClick={handleNewChat}>
+      <div className="tab-content">
+        {/* Conversations Tab */}
+        {activeTab === 'conversations' && (
+          <div className="conversations-tab">
+            {conversationsView === 'list' ? (
+              <div className="conversations-list-view">
+                <div className="conversations-header">
+                  <div className="conversations-title">
+                    <MessageSquare size={20} />
+                    <h2>Conversations</h2>
+                    <span className="count-badge">{conversations.length}</span>
+                  </div>
+                  <button className="new-chat-btn" onClick={handleNewChat}>
                     <Plus size={18} />
-                    Start New Chat
+                    <span>New Chat</span>
+                    <div className="btn-shine"></div>
                   </button>
                 </div>
-              )}
 
-              {!conversationsLoading && conversations.length > 0 && (
-                <div className="conversations-list">
-                  {conversations.map(conv => (
-                    <div
-                      key={conv.session_id}
-                      className="conversation-item"
-                      onClick={() => handleSelectConversation(conv.session_id)}
-                    >
-                      <div className="conversation-item-content">
-                        <h4>{conv.title || conv.first_question || 'Untitled conversation'}</h4>
-                        <span className="conversation-meta">
-                          {conv.message_count} message{conv.message_count !== 1 ? 's' : ''} · {formatRelativeTime(conv.updated_at)}
-                        </span>
+                {conversationsLoading ? (
+                  <div className="conversations-loading">
+                    <Loader2 size={24} className="spin" />
+                    <span>Loading conversations...</span>
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="conversations-empty">
+                    <div className="empty-visual">
+                      <div className="empty-rings">
+                        <div className="ring ring-1"></div>
+                        <div className="ring ring-2"></div>
+                        <div className="ring ring-3"></div>
                       </div>
-                      <button
-                        className="delete-conversation-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteConversation(conv.session_id);
-                        }}
-                        title="Delete conversation"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="empty-icon">
+                        <MessageSquare size={32} />
+                      </div>
                     </div>
-                  ))}
+                    <h3>No Conversations</h3>
+                    <p>Start a new chat to explore your data with AI</p>
+                    <button className="empty-cta" onClick={handleNewChat}>
+                      <Plus size={18} />
+                      <span>Start New Chat</span>
+                      <Sparkles size={16} className="sparkle" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="conversations-list">
+                    {conversations.map((conv, index) => (
+                      <div
+                        key={conv.session_id}
+                        className="conversation-card"
+                        style={{ '--index': index }}
+                        onClick={() => handleSelectConversation(conv.session_id)}
+                      >
+                        <div className="conversation-icon">
+                          <MessageCircle size={18} />
+                        </div>
+                        <div className="conversation-content">
+                          <h4>{conv.title || conv.first_question || 'Untitled conversation'}</h4>
+                          <div className="conversation-meta">
+                            <span className="meta-item">
+                              <MessageSquare size={12} />
+                              {conv.message_count} messages
+                            </span>
+                            <span className="meta-item">
+                              <Clock size={12} />
+                              {formatRelativeTime(conv.updated_at)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="conversation-actions">
+                          <button
+                            className="action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectConversation(conv.session_id);
+                            }}
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                          <button
+                            className="action-btn danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConversation(conv.session_id);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="chat-view">
+                <div className="chat-header">
+                  <button className="back-to-list" onClick={handleBackToList}>
+                    <ArrowLeft size={16} />
+                    <span>Back to Conversations</span>
+                  </button>
+                  <div className="session-status">
+                    <Activity size={14} />
+                    <span>Session Active</span>
+                  </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            /* Chat View */
-            <div className="sql-chat-container">
-              <button className="back-to-list-button" onClick={handleBackToList}>
-                <ArrowLeft size={18} />
-                Back to Conversations
-              </button>
 
-              {sqlSessionLoading ? (
-                <div className="sql-loading">
-                  <div className="spinner"></div>
-                  <p>Starting session...</p>
-                </div>
-              ) : sqlError ? (
-                <div className="sql-error">
-                  <p>Error: {sqlError}</p>
-                  <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }} className="retry-button">
-                    Retry
-                  </button>
-                </div>
-              ) : !sqlSessionId ? (
-                <div className="sql-error">
-                  <p>Session not started</p>
-                  <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }} className="retry-button">
-                    Start Session
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Chat Messages */}
-                  <div className="sql-messages">
-                    {sqlMessages.map((msg, index) => {
-                      if (!msg) return null;
-                      return (
-                        <div key={index} className={`sql-message ${msg.role || 'assistant'}`}>
-                          <div className="message-content">
-                            <p>{msg.content || ''}</p>
-                            {msg.sql_query && (
-                              <div className="sql-code-block">
-                                <div className="sql-code-header">
-                                  <span>SQL Query</span>
+                {sqlSessionLoading ? (
+                  <div className="chat-loading">
+                    <div className="loading-terminal small">
+                      <div className="terminal-line">
+                        <span className="prompt">$</span>
+                        <span className="command">initializing session...</span>
+                        <span className="cursor"></span>
+                      </div>
+                    </div>
+                  </div>
+                ) : sqlError ? (
+                  <div className="chat-error">
+                    <AlertCircle size={24} />
+                    <p>{sqlError}</p>
+                    <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }}>
+                      <Zap size={14} />
+                      Retry
+                    </button>
+                  </div>
+                ) : !sqlSessionId ? (
+                  <div className="chat-error">
+                    <Terminal size={24} />
+                    <p>Session not initialized</p>
+                    <button onClick={() => { sqlSessionStarted.current = false; startSqlSession(); }}>
+                      <Play size={14} />
+                      Start Session
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="chat-messages">
+                      {sqlMessages.map((msg, index) => {
+                        if (!msg) return null;
+                        return (
+                          <div key={index} className={`message ${msg.role || 'assistant'} ${msg.error ? 'error' : ''}`}>
+                            <div className="message-bubble">
+                              <p className="message-text">{msg.content || ''}</p>
+
+                              {msg.sql_query && (
+                                <div className="sql-block">
+                                  <div className="sql-header">
+                                    <Code size={14} />
+                                    <span>SQL Query</span>
+                                  </div>
+                                  <pre><code>{msg.sql_query}</code></pre>
                                 </div>
-                                <pre><code>{msg.sql_query}</code></pre>
-                              </div>
-                            )}
-                            {msg.results && msg.results.data && msg.results.columns && (
-                              <div className="sql-results-inline">
-                                <div className="sql-results-header-inline">
-                                  <span>Results</span>
-                                  <span className="results-count-inline">
-                                    {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
-                                  </span>
+                              )}
+
+                              {msg.results && msg.results.data && msg.results.columns && (
+                                <div className="results-block">
+                                  <div className="results-header">
+                                    <Table size={14} />
+                                    <span>Results</span>
+                                    <span className="results-count">
+                                      {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  <div className="results-table-wrapper">
+                                    <table className="results-table">
+                                      <thead>
+                                        <tr>
+                                          {msg.results.columns.map((col, colIndex) => (
+                                            <th key={colIndex}>{col}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {msg.results.data.map((row, rowIndex) => {
+                                          if (!row || typeof row !== 'object') return null;
+                                          return (
+                                            <tr key={rowIndex}>
+                                              {msg.results.columns.map((col, cellIndex) => {
+                                                const cell = row[col];
+                                                return (
+                                                  <td key={cellIndex}>
+                                                    {cell !== null && cell !== undefined ? String(cell) : '—'}
+                                                  </td>
+                                                );
+                                              })}
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
-                                <div className="sql-results-table-wrapper-inline">
-                                  <table className="sql-results-table">
-                                    <thead>
-                                      <tr>
-                                        {msg.results.columns.map((col, colIndex) => (
-                                          <th key={colIndex}>{col}</th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {msg.results.data.map((row, rowIndex) => {
-                                        if (!row || typeof row !== 'object') return null;
-                                        return (
-                                          <tr key={rowIndex}>
-                                            {msg.results.columns.map((col, cellIndex) => {
-                                              const cell = row[col];
-                                              return (
-                                                <td key={cellIndex}>
-                                                  {cell !== null && cell !== undefined ? String(cell) : '—'}
-                                                </td>
-                                              );
-                                            })}
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-                            {msg.visualization_recommendations && msg.visualization_recommendations.length > 0 && (
-                              <div className="visualization-recommendations">
-                                <h4>Proactive Chart Recommendations</h4>
-                                <div className="viz-rec-list">
-                                  {msg.visualization_recommendations.map((rec, rIndex) => (
-                                    <div key={rIndex} className="viz-rec-card">
-                                      <div className="viz-rec-header">
-                                        <span className="viz-type-badge">{rec.chart_type}</span>
-                                        <h5>{rec.title}</h5>
+                              )}
+
+                              {msg.visualization_recommendations && msg.visualization_recommendations.length > 0 && (
+                                <div className="viz-recommendations">
+                                  <div className="viz-header">
+                                    <TrendingUp size={14} />
+                                    <span>Chart Recommendations</span>
+                                  </div>
+                                  <div className="viz-grid">
+                                    {msg.visualization_recommendations.map((rec, rIndex) => (
+                                      <div key={rIndex} className="viz-card">
+                                        <div className="viz-card-header">
+                                          <span className="viz-type">{rec.chart_type}</span>
+                                          <h5>{rec.title}</h5>
+                                        </div>
+                                        <p className="viz-desc">{rec.description}</p>
+                                        <div className="viz-axes">
+                                          <span><strong>X:</strong> {rec.x_axis}</span>
+                                          <span><strong>Y:</strong> {rec.y_axis}</span>
+                                        </div>
+                                        <button
+                                          className="viz-view-btn"
+                                          onClick={() => {
+                                            alert(`Chart: ${rec.title}\nType: ${rec.chart_type}\nX: ${rec.x_axis}\nY: ${rec.y_axis}`);
+                                          }}
+                                        >
+                                          <Eye size={14} />
+                                          View
+                                        </button>
                                       </div>
-                                      <p className="viz-rec-desc">{rec.description}</p>
-                                      <div className="viz-rec-details">
-                                        <span><strong>X:</strong> {rec.x_axis}</span>
-                                        <span><strong>Y:</strong> {rec.y_axis}</span>
-                                      </div>
-                                      <button
-                                        className="view-chart-btn"
-                                        onClick={() => {
-                                          // For now just alert, but could navigate to dashboard or show modal
-                                          alert(`Chart suggested: ${rec.title}\\nType: ${rec.chart_type}\\nX: ${rec.x_axis}\\nY: ${rec.y_axis}`);
-                                        }}
-                                      >
-                                        View Recommendation
-                                      </button>
-                                    </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {msg.recommendations && msg.recommendations.length > 0 && (
+                                <div className="suggestion-list">
+                                  {msg.recommendations.map((question, qIndex) => (
+                                    <button
+                                      key={qIndex}
+                                      className="suggestion-btn"
+                                      onClick={() => handleRecommendationClick(question)}
+                                      disabled={sqlSending}
+                                    >
+                                      <ChevronRight size={14} />
+                                      {question}
+                                    </button>
                                   ))}
                                 </div>
-                              </div>
-                            )}
-                            {msg.recommendations && msg.recommendations.length > 0 && (
-                              <div className="message-recommendations">
-                                {msg.recommendations.map((question, qIndex) => (
-                                  <button
-                                    key={qIndex}
-                                    className="recommendation-option"
-                                    onClick={() => handleRecommendationClick(question)}
-                                    disabled={sqlSending}
-                                  >
-                                    {question}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {sqlSending && (
+                        <div className="message assistant">
+                          <div className="message-bubble">
+                            <div className="typing-indicator">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </div>
                           </div>
                         </div>
-                      );
-                    })}
-                    {sqlSending && (
-                      <div className="sql-message assistant">
-                        <div className="message-content">
-                          <div className="typing-indicator">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+
+                    <form className="chat-input-form" onSubmit={handleSqlSubmit}>
+                      <button
+                        type="button"
+                        className="recommend-btn"
+                        onClick={handleRecommend}
+                        disabled={sqlSending || !sqlSessionId}
+                      >
+                        <Sparkles size={18} />
+                        <span>Recommend</span>
+                      </button>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="Ask a question about your data..."
+                          value={sqlInputValue}
+                          onChange={(e) => setSqlInputValue(e.target.value)}
+                          disabled={sqlSending || !sqlSessionId}
+                        />
+                        {sqlInputValue && (
+                          <button
+                            type="button"
+                            className="clear-input"
+                            onClick={() => setSqlInputValue('')}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  {/* Input Form */}
-                  <form className="sql-input-form" onSubmit={handleSqlSubmit}>
-                    <button
-                      type="button"
-                      className="sql-recommend-button"
-                      onClick={handleRecommend}
-                      disabled={sqlSending || !sqlSessionId}
-                      title="Get a recommendation"
-                    >
-                      <Sparkles size={20} />
-                      <span>Recommend</span>
-                    </button>
-                    <input
-                      type="text"
-                      className="sql-input"
-                      placeholder="Ask a question about your data..."
-                      value={sqlInputValue}
-                      onChange={(e) => setSqlInputValue(e.target.value)}
-                      disabled={sqlSending || !sqlSessionId}
-                    />
-                    <button
-                      type="submit"
-                      className="sql-send-button"
-                      disabled={sqlSending || !sqlInputValue.trim() || !sqlSessionId}
-                    >
-                      <Send size={20} />
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'dashboard' && (
-        <div className="tab-content">
-          <div className="placeholder-content">
-            <h2>Dashboard</h2>
-            <p>View your data dashboard</p>
+                      <button
+                        type="submit"
+                        className="send-btn"
+                        disabled={sqlSending || !sqlInputValue.trim() || !sqlSessionId}
+                      >
+                        <Send size={18} />
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'raw-data' && (
-        <div className="data-preview-panel">
-          <div className="panel-header">
-            <div className="header-content">
-              <h3>Data Preview</h3>
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="dashboard-tab">
+            <div className="dashboard-placeholder">
+              <div className="placeholder-icon">
+                <LayoutDashboard size={48} />
+              </div>
+              <h2>Dashboard</h2>
+              <p>Visualization dashboard coming soon</p>
+            </div>
+          </div>
+        )}
+
+        {/* Raw Data Tab */}
+        {activeTab === 'raw-data' && (
+          <div className="raw-data-tab">
+            <div className="data-header">
+              <div className="data-title">
+                <Table size={20} />
+                <h2>Data Preview</h2>
+              </div>
               {previewData && (
                 <div className="data-stats">
-                  <span className="stat-item">
-                    <strong>{previewData.total_rows?.toLocaleString()}</strong> rows
+                  <span className="data-stat">
+                    <strong>{formatNumber(previewData.total_rows)}</strong> rows
                   </span>
-                  <span className="stat-separator">×</span>
-                  <span className="stat-item">
+                  <span className="data-separator">×</span>
+                  <span className="data-stat">
                     <strong>{previewData.columns?.length}</strong> columns
+                  </span>
+                  <span className="data-note">
+                    Showing {formatNumber(previewData.showing_rows)} of {formatNumber(previewData.total_rows)}
                   </span>
                 </div>
               )}
             </div>
-            {previewData && (
-              <span className="preview-note">
-                Previewing {previewData.showing_rows?.toLocaleString()} of {previewData.total_rows?.toLocaleString()} rows
-              </span>
-            )}
+            <div className="data-table-container">
+              <DataTable
+                data={previewData?.data}
+                columns={previewData?.columns}
+                columnsInfo={dataset?.columns_info}
+                loading={loading}
+                error={error}
+              />
+            </div>
           </div>
-
-          <DataTable
-            data={previewData?.data}
-            columns={previewData?.columns}
-            columnsInfo={dataset?.columns_info}
-            loading={loading}
-            error={error}
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

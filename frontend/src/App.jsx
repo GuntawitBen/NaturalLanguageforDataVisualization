@@ -3,10 +3,33 @@ import './App.css';
 import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NavigationGuardProvider } from './contexts/NavigationGuardContext';
+import { DatabaseHealthProvider, useDatabaseHealth } from './contexts/DatabaseHealthContext';
 import AppRoutes from './routes';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
+import DatabaseError from './pages/DatabaseError';
 import { useEffect } from 'react';
+
+function DatabaseHealthGate({ children }) {
+    const { isDbConnected, isChecking } = useDatabaseHealth();
+
+    // Show loading state while checking
+    if (isChecking && isDbConnected === null) {
+        return (
+            <div className="database-loading">
+                <div className="database-loading-spinner"></div>
+                <p>Connecting to server...</p>
+            </div>
+        );
+    }
+
+    // Show error page if database is not connected
+    if (!isDbConnected) {
+        return <DatabaseError />;
+    }
+
+    return children;
+}
 
 function AppContent() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -45,7 +68,7 @@ function AppContent() {
     }, [searchParams, setSearchParams, login, isAuthenticated, navigate]);
 
     return (
-        <>
+        <DatabaseHealthGate>
             {/* Background */}
             <div className="gradient-overlay" />
 
@@ -58,19 +81,21 @@ function AppContent() {
                 {/* Protected routes */}
                 <Route path="/*" element={<AppRoutes />} />
             </Routes>
-        </>
+        </DatabaseHealthGate>
     );
 }
 
 function App() {
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <NavigationGuardProvider>
-                    <AppContent />
-                </NavigationGuardProvider>
-            </BrowserRouter>
-        </AuthProvider>
+        <DatabaseHealthProvider>
+            <AuthProvider>
+                <BrowserRouter>
+                    <NavigationGuardProvider>
+                        <AppContent />
+                    </NavigationGuardProvider>
+                </BrowserRouter>
+            </AuthProvider>
+        </DatabaseHealthProvider>
     );
 }
 

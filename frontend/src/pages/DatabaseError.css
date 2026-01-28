@@ -1,0 +1,164 @@
+/* Database Error Page Styles */
+
+.database-error-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 2rem;
+    box-sizing: border-box;
+    background: var(--color-base);
+    position: relative;
+    z-index: 10;
+}
+
+/* Background effects for error page */
+.database-error-page::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(239, 68, 68, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 45%),
+        radial-gradient(ellipse 50% 50% at 0% 80%, rgba(239, 68, 68, 0.06) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.database-error-container {
+    background: var(--color-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 3rem;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.database-error-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    color: var(--accent-red);
+    animation: pulse-error 2s ease-in-out infinite;
+}
+
+@keyframes pulse-error {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+.database-error-title {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+}
+
+.database-error-message {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.6;
+}
+
+.database-error-details {
+    background: var(--color-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.database-error-details p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem 0;
+}
+
+.database-error-details ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.database-error-details li {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.database-error-details li:last-child {
+    margin-bottom: 0;
+}
+
+.database-error-retry-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-void);
+    background: var(--accent-yellow);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    min-width: 180px;
+}
+
+.database-error-retry-btn:hover:not(:disabled) {
+    background: var(--accent-yellow-bright);
+    box-shadow: var(--shadow-glow-yellow);
+}
+
+.database-error-retry-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.retry-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-void);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.database-error-retry-failed {
+    font-size: 0.85rem;
+    color: var(--accent-red);
+    margin: 1rem 0 0 0;
+    padding: 0.5rem 1rem;
+    background: var(--accent-red-subtle);
+    border-radius: var(--radius-md);
+}
+
+.database-error-footer {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin: 1.5rem 0 0 0;
+}

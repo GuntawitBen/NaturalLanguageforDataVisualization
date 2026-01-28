@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Database, Clock, LogOut, Sparkles } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Home, Database, Clock, LogOut, ChevronDown, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationGuard } from '../contexts/NavigationGuardContext';
 import './Header.css';
@@ -13,7 +13,6 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Get user initials (first letter of first name + first letter of last name)
   const getInitials = () => {
     if (!user?.name) return 'U';
     const nameParts = user.name.trim().split(' ');
@@ -53,7 +52,9 @@ export default function Header() {
   };
 
   return (
-    <header className="app-header">
+    <div className="header-wrapper">
+    <header className="header">
+      {/* Left: Logo */}
       <button
         onClick={(e) => {
           e.preventDefault();
@@ -61,14 +62,18 @@ export default function Header() {
             confirmNavigation(() => navigate('/'));
           }
         }}
-        className="logo"
+        className="header-logo"
       >
-        <Sparkles size={20} className="logo-icon" />
-        <h1>Phebe</h1>
+        <div className="logo-mark">
+          <Zap size={14} />
+        </div>
+        <span className="logo-text">phebe</span>
+        <span className="logo-version">v1.0</span>
       </button>
 
-      <div className="header-container">
-        <nav className="header-nav">
+      {/* Center: Navigation */}
+      <nav className="header-nav">
+        <div className="nav-track">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -81,34 +86,44 @@ export default function Header() {
                     confirmNavigation(() => navigate(item.path));
                   }
                 }}
-                className={`nav-link ${isActive ? 'active' : ''}`}
+                className={`nav-item ${isActive ? 'active' : ''}`}
               >
-                <Icon size={20} />
+                <Icon size={14} strokeWidth={2} />
                 <span>{item.label}</span>
               </button>
             );
           })}
-        </nav>
-      </div>
+        </div>
+      </nav>
 
-      <div className="user-dropdown" ref={dropdownRef}>
+      {/* Right: User Menu */}
+      <div className="header-actions" ref={dropdownRef}>
         <button
-          className="user-button"
+          className={`user-trigger ${dropdownOpen ? 'open' : ''}`}
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          title="Profile"
         >
-          <span className="user-initials">{getInitials()}</span>
+          <div className="user-avatar">
+            <span>{getInitials()}</span>
+          </div>
+          <span className="user-name">{user?.name?.split(' ')[0] || 'User'}</span>
+          <ChevronDown size={14} className="user-chevron" />
         </button>
 
         {dropdownOpen && (
-          <div className="dropdown-menu">
-            <button onClick={handleLogout} className="dropdown-item">
-              <LogOut size={16} />
-              <span>Logout</span>
+          <div className="dropdown">
+            <div className="dropdown-header">
+              <span className="dropdown-label">Signed in as</span>
+              <span className="dropdown-email">{user?.email || 'user@email.com'}</span>
+            </div>
+            <div className="dropdown-divider" />
+            <button onClick={handleLogout} className="dropdown-action logout">
+              <LogOut size={14} />
+              <span>Log out</span>
             </button>
           </div>
         )}
       </div>
     </header>
+    </div>
   );
 }
