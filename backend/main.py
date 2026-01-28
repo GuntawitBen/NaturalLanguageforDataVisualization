@@ -188,7 +188,9 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        FRONTEND_URL
+        FRONTEND_URL,
+        "https://nlviz-frontend-s2jig.ondigitalocean.app",
+        "https://nlviz-frontend-s2jig.ondigitalocean.app/"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
