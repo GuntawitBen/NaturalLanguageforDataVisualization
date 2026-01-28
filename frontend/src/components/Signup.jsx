@@ -239,9 +239,6 @@ export default function Signup() {
             {/* Right side - Technical Dashboard */}
             <div className="register-right">
                 <div className="tech-display">
-                    {/* Scan line overlay */}
-                    <div className="scanline"></div>
-
                     {/* Grid background */}
                     <div className="tech-grid"></div>
 

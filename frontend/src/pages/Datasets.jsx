@@ -226,9 +226,6 @@ export default function Datasets() {
 
   return (
     <div className="datasets-page">
-      {/* Scan line effect */}
-      <div className="scan-line"></div>
-
       {/* Header Section */}
       <header className="page-header">
         <div className="header-left">

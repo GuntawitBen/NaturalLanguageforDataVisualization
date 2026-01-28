@@ -3,7 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationGuard } from '../contexts/NavigationGuardContext';
 import { API_ENDPOINTS } from '../config';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import {
+  Upload,
+  Database,
+  Sparkles,
+  CheckCircle2,
+  ArrowRight,
+  FileText,
+  Zap,
+  Terminal,
+  Activity,
+  Shield,
+  ChevronRight,
+  AlertTriangle,
+  HardDrive,
+  Layers
+} from 'lucide-react';
 import CSVUpload from '../components/CSVUpload';
 import CleaningPanel from '../components/CleaningPanel';
 import DataPreviewPanel from '../components/DataPreviewPanel';
@@ -46,37 +61,32 @@ export default function DataCleaning() {
   const [sessionError, setSessionError] = useState(null);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [operationInProgress, setOperationInProgress] = useState(false);
-  const [operationType, setOperationType] = useState(null); // 'applying', 'discarding', 'undoing'
+  const [operationType, setOperationType] = useState(null);
 
   // Problem history for card navigation
   const [problemHistory, setProblemHistory] = useState([]);
-  const [viewingIndex, setViewingIndex] = useState(-1); // -1 = current problem, 0+ = history index
+  const [viewingIndex, setViewingIndex] = useState(-1);
 
   // Preview refresh trigger
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
-  // Pending operation state (operation applied but not confirmed)
+  // Pending operation state
   const [pendingOperation, setPendingOperation] = useState(null);
 
   // Success animation state
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const stages = [
-    { id: 1, name: 'Upload Dataset', description: 'Upload your CSV file' },
-    { id: 2, name: 'Data Cleaning', description: 'Review inspection results and preview your data' }
+    { id: 1, name: 'Upload', icon: Upload, command: 'upload --file' },
+    { id: 2, name: 'Clean & Validate', icon: Shield, command: 'clean --auto' }
   ];
 
   // Handle successful upload from CSVUpload component
   const handleUploadSuccess = (tempData) => {
-    console.log('Temp upload successful:', tempData);
-
-    // Store temp file info
     setTempFilePath(tempData.temp_file_path);
     setDatasetName(tempData.dataset_name);
     setOriginalFilename(tempData.original_filename);
     setFileSize(tempData.file_size_bytes);
-
-    // Move to next stage
     setCurrentStage(2);
   };
 
@@ -87,15 +97,11 @@ export default function DataCleaning() {
 
   // Cleanup temp file function
   const cleanupTempFile = useCallback(() => {
-    // DO NOT cleanup if we are in the process of finalizing or already finalized
-    // This prevents the race condition when the cleanup triggers during navigation/unload
     if (tempFilePath && !finalizedRef.current && !isFinalizingRef.current) {
-      console.log('Cleaning up temp file:', tempFilePath);
       try {
         const formData = new FormData();
         formData.append('temp_file_path', tempFilePath);
 
-        // Use keepalive to ensure request completes even during page unload
         fetch(API_ENDPOINTS.DATASETS.CLEANUP_TEMP, {
           method: 'DELETE',
           headers: {
@@ -109,23 +115,17 @@ export default function DataCleaning() {
       } catch (err) {
         console.warn('Failed to cleanup temp file:', err);
       }
-    } else {
-      console.log('Cleanup skipped:', {
-        hasPath: !!tempFilePath,
-        finalized: finalizedRef.current,
-        isFinalizing: isFinalizingRef.current
-      });
     }
   }, [tempFilePath, sessionToken]);
 
-  // Cleanup temp file when component unmounts (if not finalized)
+  // Cleanup temp file when component unmounts
   useEffect(() => {
     return () => {
       cleanupTempFile();
     };
   }, [cleanupTempFile]);
 
-  // Block navigation at all stages until finalized (includes browser close/refresh)
+  // Block navigation until finalized
   useEffect(() => {
     if (!finalized) {
       blockNavigation(
@@ -136,36 +136,29 @@ export default function DataCleaning() {
       unblockNavigation();
     }
 
-    // Cleanup on unmount
     return () => {
       unblockNavigation();
     };
   }, [finalized, blockNavigation, unblockNavigation, cleanupTempFile]);
 
   const handleNext = () => {
-    // Stage 1: Upload - can't go next without uploading
     if (currentStage === 1 && !tempFilePath) {
       setError('Please upload a file first');
       return;
     }
 
-    // Stage 2: If cleaning is in progress, show confirmation
     if (currentStage === 2 && operationInProgress) {
       const confirmLeave = window.confirm(
         'An operation is in progress. Are you sure you want to continue?'
       );
-      if (!confirmLeave) {
-        return;
-      }
+      if (!confirmLeave) return;
     }
 
-    // Stage 2 goes directly to completion
     if (currentStage === 2) {
       handleComplete();
       return;
     }
 
-    // Otherwise move to next stage
     if (currentStage < stages.length) {
       setCurrentStage(currentStage + 1);
       setError(null);
@@ -173,14 +166,11 @@ export default function DataCleaning() {
   };
 
   const handleBack = () => {
-    // If cleaning is in progress on Stage 2, show confirmation
     if (currentStage === 2 && operationInProgress) {
       const confirmLeave = window.confirm(
         'An operation is in progress. Are you sure you want to go back?'
       );
-      if (!confirmLeave) {
-        return;
-      }
+      if (!confirmLeave) return;
     }
 
     if (currentStage > 1) {
@@ -221,12 +211,10 @@ export default function DataCleaning() {
 
       const data = await response.json();
 
-      // Store session info
       setCleaningSessionId(data.session_id);
       setSessionState(data.session_state);
       setCurrentProblem(data.first_problem);
 
-      // Check if session is already complete (no problems)
       if (!data.first_problem) {
         setSessionComplete(true);
       } else {
@@ -241,11 +229,10 @@ export default function DataCleaning() {
     }
   };
 
-  // Apply selected cleaning operation (preview only, not confirmed yet)
+  // Apply selected cleaning operation
   const handleApplyOperation = async (optionId, customValue = null) => {
     if (!cleaningSessionId || operationInProgress) return;
 
-    // If viewing history, switch to current problem first
     if (viewingIndex >= 0) {
       setViewingIndex(-1);
       return;
@@ -254,10 +241,8 @@ export default function DataCleaning() {
     setOperationInProgress(true);
     setOperationType('applying');
 
-    // If there's already a pending operation, undo it first
     if (pendingOperation) {
       try {
-        console.log('Undoing previous operation before applying new one');
         const undoResponse = await fetch(API_ENDPOINTS.CLEANING.UNDO_LAST, {
           method: 'POST',
           headers: {
@@ -268,7 +253,6 @@ export default function DataCleaning() {
         });
 
         if (!undoResponse.ok) {
-          console.error('Failed to undo previous operation');
           setPendingOperation(null);
           setOperationInProgress(false);
           setPreviewRefreshKey(prev => prev + 1);
@@ -276,19 +260,13 @@ export default function DataCleaning() {
         }
 
         const undoResult = await undoResponse.json();
-        console.log('Undo result:', undoResult);
 
-        // Update current problem with restored options
         if (undoResult.next_problem) {
           setCurrentProblem(undoResult.next_problem);
-          // Check if the clicked option exists in the restored problem
           const restoredOption = undoResult.next_problem.options?.find(
             opt => opt.option_id === optionId
           );
           if (!restoredOption) {
-            console.log('Option ID changed after undo. Available options:',
-              undoResult.next_problem.options?.map(o => o.option_id));
-            // Option doesn't exist anymore, user needs to click again
             setPendingOperation(null);
             setOperationInProgress(false);
             setPreviewRefreshKey(prev => prev + 1);
@@ -296,17 +274,14 @@ export default function DataCleaning() {
           }
         }
 
-        // Clear pending operation
         setPendingOperation(null);
       } catch (err) {
-        console.error('Failed to undo previous operation:', err);
         setPendingOperation(null);
         setOperationInProgress(false);
         return;
       }
     }
 
-    // Now apply the new operation
     try {
       const body = {
         session_id: cleaningSessionId,
@@ -327,23 +302,11 @@ export default function DataCleaning() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Apply operation failed:', response.status, errorText);
         throw new Error(`Failed to apply operation: ${response.status}`);
       }
 
-      // Note: apply_operation no longer returns next_problem
-      // That will be fetched when user confirms via /confirm-operation
-
-      // Set pending operation (just track which option was applied)
-      setPendingOperation({
-        optionId,
-        customValue
-      });
-
+      setPendingOperation({ optionId, customValue });
       setOperationInProgress(false);
-
-      // Force preview refresh by incrementing the refresh key
       setPreviewRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Failed to apply operation:', err);
@@ -352,20 +315,17 @@ export default function DataCleaning() {
     }
   };
 
-  // Confirm the pending operation and move to next problem
+  // Confirm the pending operation
   const handleConfirmOperation = async () => {
     if (!pendingOperation) return;
 
-    // Show success animation
     setShowSuccessAnimation(true);
 
-    // Store current problem in history immediately
     const problemToStore = {
       ...currentProblem,
       appliedOptionId: pendingOperation.optionId
     };
 
-    // Run animation timer and backend fetch in parallel
     const minAnimationTime = new Promise(resolve => setTimeout(resolve, 800));
 
     const fetchNextProblem = async () => {
@@ -381,20 +341,15 @@ export default function DataCleaning() {
 
         if (response.ok) {
           return await response.json();
-        } else {
-          console.error('Failed to confirm operation');
-          return { next_problem: null, session_complete: true };
         }
+        return { next_problem: null, session_complete: true };
       } catch (err) {
-        console.error('Failed to confirm operation:', err);
         return { next_problem: null, session_complete: true };
       }
     };
 
-    // Wait for both animation and fetch to complete
     const [, result] = await Promise.all([minAnimationTime, fetchNextProblem()]);
 
-    // Update state after both complete
     setProblemHistory(prev => [...prev, problemToStore]);
     setCurrentProblem(result.next_problem);
     setSessionComplete(result.session_complete);
@@ -426,17 +381,12 @@ export default function DataCleaning() {
 
       const result = await response.json();
 
-      // Update current problem with restored problem (has new option_ids)
       if (result.next_problem) {
         setCurrentProblem(result.next_problem);
       }
 
-      // Clear pending operation
       setPendingOperation(null);
-
       setOperationInProgress(false);
-
-      // Force preview refresh
       setPreviewRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Failed to discard operation:', err);
@@ -457,9 +407,7 @@ export default function DataCleaning() {
           'Authorization': `Bearer ${sessionToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: cleaningSessionId
-        })
+        body: JSON.stringify({ session_id: cleaningSessionId })
       });
 
       if (!response.ok) {
@@ -469,19 +417,11 @@ export default function DataCleaning() {
 
       const result = await response.json();
 
-      // Remove last problem from history
       setProblemHistory(prev => prev.slice(0, -1));
-
-      // Update state with results from undo
       setCurrentProblem(result.next_problem);
       setSessionComplete(result.session_complete);
-
-      // Reset to current problem view
       setViewingIndex(-1);
-
       setOperationInProgress(false);
-
-      // Force preview refresh
       setPreviewRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Failed to undo operation:', err);
@@ -490,7 +430,7 @@ export default function DataCleaning() {
     }
   };
 
-  // Navigate between problems (history and current)
+  // Navigate between problems
   const handleNavigate = (index) => {
     setViewingIndex(index);
   };
@@ -504,11 +444,10 @@ export default function DataCleaning() {
 
   const handleComplete = async () => {
     setFinalizing(true);
-    isFinalizingRef.current = true; // Update ref immediately
+    isFinalizingRef.current = true;
     setError(null);
 
     try {
-      // Create form data for finalize endpoint
       const formData = new FormData();
       formData.append('temp_file_path', tempFilePath);
       formData.append('dataset_name', datasetName);
@@ -527,169 +466,284 @@ export default function DataCleaning() {
         throw new Error(errorData.detail || 'Failed to finalize dataset');
       }
 
-      const dataset = await response.json();
-
-      // IMPORTANT: Explicitly unblock navigation BEFORE setting finalized and navigating
-      // This ensures the warning is removed before we leave the page
       unblockNavigation();
-
       setFinalized(true);
-      finalizedRef.current = true; // Update ref immediately
-
-      // Navigate to datasets list page
+      finalizedRef.current = true;
       navigate('/datasets');
     } catch (err) {
       console.error('Error finalizing dataset:', err);
       setError(err.message);
       setFinalizing(false);
-      isFinalizingRef.current = false; // Reset ref on error
+      isFinalizingRef.current = false;
     }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i];
   };
 
   return (
     <div className="data-cleaning-page">
       {/* Header */}
-      <div className="cleaning-header">
-        <h1>Upload & Clean Dataset</h1>
-        <p className="subtitle">
-          {datasetName ? `Preparing: ${datasetName}` : 'Upload and prepare your dataset for analysis'}
-        </p>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="error-banner">
-          <p className="error-message">{error}</p>
+      <header className="page-header">
+        <div className="header-left">
+          <div className="header-icon">
+            <Database size={24} />
+            <div className="icon-pulse"></div>
+          </div>
+          <div className="header-text">
+            <h1>
+              <span className="text-muted">~/</span>data-pipeline
+              <span className="header-cursor">_</span>
+            </h1>
+            <p className="header-subtitle">
+              <Terminal size={12} />
+              <span>Upload and prepare your dataset</span>
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* Progress Stepper */}
-      <div className="progress-stepper">
-        {stages.map((stage, index) => (
-          <div key={stage.id} className="step-container">
-            <div className={`step ${currentStage >= stage.id ? 'active' : ''} ${currentStage > stage.id ? 'completed' : ''}`}>
-              <div className="step-indicator">
-                {currentStage > stage.id ? (
-                  <CheckCircle2 size={32} className="step-icon completed" />
-                ) : (
-                  <div className={`step-number ${currentStage === stage.id ? 'active' : ''}`}>
-                    {stage.id}
+        {tempFilePath && (
+          <div className="file-info-badge">
+            <FileText size={14} />
+            <span className="file-name">{datasetName || originalFilename}</span>
+            <span className="file-size">{formatFileSize(fileSize)}</span>
+          </div>
+        )}
+      </header>
+
+      {/* Pipeline Progress */}
+      <div className="pipeline-progress">
+        <div className="pipeline-track">
+          {stages.map((stage, index) => {
+            const Icon = stage.icon;
+            const isActive = currentStage === stage.id;
+            const isCompleted = currentStage > stage.id;
+
+            return (
+              <div key={stage.id} className="pipeline-stage-wrapper">
+                <div className={`pipeline-stage ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                  <div className="stage-node">
+                    {isCompleted ? (
+                      <CheckCircle2 size={20} />
+                    ) : (
+                      <Icon size={20} />
+                    )}
+                  </div>
+                  <div className="stage-info">
+                    <span className="stage-name">{stage.name}</span>
+                    <code className="stage-command">$ {stage.command}</code>
+                  </div>
+                </div>
+                {index < stages.length - 1 && (
+                  <div className={`pipeline-connector ${isCompleted ? 'completed' : ''}`}>
+                    <ChevronRight size={16} />
                   </div>
                 )}
               </div>
-              <div className="step-info">
-                <h3>{stage.name}</h3>
-                <p>{stage.description}</p>
-              </div>
-            </div>
-            {index < stages.length - 1 && (
-              <div className={`step-connector ${currentStage > stage.id ? 'completed' : ''}`}></div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner">
+          <AlertTriangle size={16} />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Stage Content */}
       <div className="stage-content">
         {/* Stage 1: Upload */}
         {currentStage === 1 && (
-          <div className="stage-panel">
-            <div className="stage-header">
-              <h2>Stage 1: Upload Dataset</h2>
-              <p>Upload your CSV file to begin the data cleaning process</p>
+          <div className="stage-panel upload-stage">
+            <div className="panel-header">
+              <div className="panel-title">
+                <Upload size={18} />
+                <h2>Initialize Data Source</h2>
+              </div>
+              <p className="panel-description">
+                Drop your CSV file to begin the data pipeline
+              </p>
             </div>
-            <div className="stage-body">
+
+            <div className="panel-body">
               <CSVUpload
                 onUploadSuccess={handleUploadSuccess}
                 onUploadError={handleUploadError}
               />
             </div>
+
+            <div className="stage-footer">
+              <div className="supported-formats">
+                <span className="format-label">Supported:</span>
+                <code>.csv</code>
+                <span className="format-divider">|</span>
+                <span className="format-limit">Max 100MB</span>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Stage 2: Data Cleaning with Split View */}
+        {/* Stage 2: Data Cleaning */}
         {currentStage === 2 && (
-          <div className="stage-panel stage-cleaning">
-            {/*<div className="stage-header">*/}
-            {/*  <h2>Stage 2: Interactive Data Cleaning</h2>*/}
-            {/*  <p>Review data quality issues and apply cleaning operations</p>*/}
-            {/*</div>*/}
-            <div className="split-view-container">
-              <div className="split-view-panel left-panel">
+          <div
+            className="stage-panel cleaning-stage"
+            style={{ height: 'calc(100vh - 100px)', minHeight: '850px', maxHeight: 'calc(100vh - 100px)' }}
+          >
+            <div className="split-view" style={{ height: '100%', maxHeight: '100%' }}>
+              {/* Left Panel - Cleaning */}
+              <div
+                className="split-panel left-panel"
+                style={{ maxHeight: '100%', overflow: 'hidden' }}
+              >
+                <div className="panel-header compact">
+                  <div className="panel-title">
+                    <Shield size={16} />
+                    <h3>Data Quality Inspector</h3>
+                  </div>
+                  <div className="panel-status">
+                    {sessionComplete ? (
+                      <span className="status-badge success">
+                        <CheckCircle2 size={12} />
+                        All Clear
+                      </span>
+                    ) : currentProblem ? (
+                      <span className="status-badge warning">
+                        <Activity size={12} />
+                        Issues Found
+                      </span>
+                    ) : sessionLoading ? (
+                      <span className="status-badge loading">
+                        <Zap size={12} />
+                        Scanning...
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
                 {/* Success Animation Overlay */}
                 {showSuccessAnimation && (
-                  <div className="success-animation-overlay">
+                  <div className="success-overlay">
                     <div className="success-content">
                       <div className="success-checkmark">
                         <svg className="checkmark-svg" viewBox="0 0 52 52">
-                          <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                          <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                          <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                          <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
                         </svg>
                       </div>
                       <span className="success-text">Applied</span>
                     </div>
                   </div>
                 )}
-                <CleaningPanel
-                  currentProblem={currentProblem}
-                  problemHistory={problemHistory}
-                  viewingIndex={viewingIndex}
-                  onNavigate={handleNavigate}
-                  onApplyOperation={handleApplyOperation}
-                  onConfirmOperation={handleConfirmOperation}
-                  onDiscardOperation={handleDiscardOperation}
-                  onUndoOperation={handleUndoOperation}
-                  operationInProgress={operationInProgress}
-                  pendingOperation={pendingOperation}
-                  sessionLoading={sessionLoading}
-                  sessionError={sessionError}
-                  sessionComplete={sessionComplete}
-                  onComplete={handleNext}
-                  finalizing={finalizing}
-                />
+
+                <div className="panel-content">
+                  <CleaningPanel
+                    currentProblem={currentProblem}
+                    problemHistory={problemHistory}
+                    viewingIndex={viewingIndex}
+                    onNavigate={handleNavigate}
+                    onApplyOperation={handleApplyOperation}
+                    onConfirmOperation={handleConfirmOperation}
+                    onDiscardOperation={handleDiscardOperation}
+                    onUndoOperation={handleUndoOperation}
+                    operationInProgress={operationInProgress}
+                    pendingOperation={pendingOperation}
+                    sessionLoading={sessionLoading}
+                    sessionError={sessionError}
+                    sessionComplete={sessionComplete}
+                    onComplete={handleNext}
+                    finalizing={finalizing}
+                  />
+                </div>
               </div>
-              <div className="split-view-panel right-panel">
-                <DataPreviewPanel
-                  tempFilePath={tempFilePath}
-                  datasetName={datasetName}
-                  sessionToken={sessionToken}
-                  refreshKey={previewRefreshKey}
-                  hasUnsavedChanges={!!pendingOperation}
-                />
+
+              {/* Right Panel - Preview */}
+              <div className="split-panel right-panel">
+                <div className="panel-header compact">
+                  <div className="panel-title">
+                    <Layers size={16} />
+                    <h3>Data Preview</h3>
+                  </div>
+                  {pendingOperation && (
+                    <span className="status-badge pending">
+                      <Sparkles size={12} />
+                      Pending Changes
+                    </span>
+                  )}
+                </div>
+
+                <div className="panel-content">
+                  <DataPreviewPanel
+                    tempFilePath={tempFilePath}
+                    datasetName={datasetName}
+                    sessionToken={sessionToken}
+                    refreshKey={previewRefreshKey}
+                    hasUnsavedChanges={!!pendingOperation}
+                  />
+                </div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Navigation Buttons - Only show on stage 1, or stage 2 when not complete */}
-      {(currentStage === 1 || (currentStage === 2 && !sessionComplete)) && (
-        <div className="stage-navigation">
+      {/* Action Bar */}
+      <div className="action-bar">
+        <div className="action-info">
+          {currentStage === 2 && (
+            <div className="progress-stats">
+              <span className="stat">
+                <CheckCircle2 size={14} />
+                {problemHistory.length} resolved
+              </span>
+              {!sessionComplete && currentProblem && (
+                <span className="stat pending">
+                  <AlertTriangle size={14} />
+                  Issues remaining
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="action-buttons">
           {currentStage === 1 ? (
             <button
               onClick={handleNext}
-              className="nav-button primary"
+              className="action-btn primary"
               disabled={!tempFilePath}
             >
-              Next
-              <ArrowRight size={20} />
+              <span>Continue</span>
+              <ArrowRight size={18} />
             </button>
           ) : (
             <button
               onClick={handleNext}
-              className="nav-button success"
+              className={`action-btn ${sessionComplete ? 'success' : 'primary'}`}
               disabled={finalizing || operationInProgress || !sessionComplete}
-              title={
-                operationInProgress ? 'Please wait for operation to complete' :
-                  !sessionComplete ? 'Please resolve all data quality issues first' : ''
-              }
             >
-              {finalizing ? 'Processing...' : 'Complete & Save'}
-              <CheckCircle2 size={20} />
+              {finalizing ? (
+                <>
+                  <div className="btn-spinner"></div>
+                  <span>Finalizing...</span>
+                </>
+              ) : (
+                <>
+                  <span>{sessionComplete ? 'Save Dataset' : 'Resolve Issues First'}</span>
+                  {sessionComplete ? <CheckCircle2 size={18} /> : <ArrowRight size={18} />}
+                </>
+              )}
             </button>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

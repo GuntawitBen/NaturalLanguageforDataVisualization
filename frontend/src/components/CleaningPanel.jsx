@@ -129,7 +129,10 @@ export default function CleaningPanel({
 
         {/* Problem Card */}
         {displayProblem && !sessionLoading && !sessionError && (!showIntro || solvedCount > 0) && (
-          <div className={`card-swipe-container ${animationClass}`}>
+          <div
+            className={`card-swipe-container ${animationClass}`}
+            style={{ height: '100%', minHeight: '780px' }}
+          >
             <ProblemCard
               problem={displayProblem.problem}
               options={displayProblem.options}
@@ -155,8 +158,8 @@ export default function CleaningPanel({
             <div className="complete-state-content">
               <div className="complete-checkmark">
                 <svg className="complete-checkmark-svg" viewBox="0 0 52 52">
-                  <circle className="complete-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                  <path className="complete-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                  <circle className="complete-checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                  <path className="complete-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
                 </svg>
               </div>
               <span className="complete-text">All Issues Resolved</span>
@@ -184,6 +187,26 @@ export default function CleaningPanel({
           </div>
         )}
       </div>
+
+      {/* Fixed Confirmation Footer */}
+      {pendingOperation && !sessionComplete && !sessionLoading && (
+        <div className="panel-footer-actions">
+          <button
+            className="discard-btn"
+            onClick={onDiscardOperation}
+            disabled={operationInProgress}
+          >
+            Discard
+          </button>
+          <button
+            className="confirm-btn"
+            onClick={onConfirmOperation}
+            disabled={operationInProgress}
+          >
+            Confirm Changes
+          </button>
+        </div>
+      )}
     </div>
   );
 }

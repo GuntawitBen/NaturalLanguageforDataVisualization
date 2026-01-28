@@ -382,9 +382,6 @@ export default function Home() {
 
         {datasets.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">
-              <Database size={32} />
-            </div>
             <h3>No datasets yet</h3>
             <p>Upload your first CSV file to get started</p>
             <button className="empty-cta" onClick={() => navigate('/data-cleaning')}>

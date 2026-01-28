@@ -536,9 +536,6 @@ export default function DatasetDetails() {
 
   return (
     <div className="dataset-details-page">
-      {/* Scan Line Effect */}
-      <div className="scan-line"></div>
-
       {/* Header Section */}
       <header className="page-header">
         <button className="back-btn" onClick={() => navigate(-1)}>

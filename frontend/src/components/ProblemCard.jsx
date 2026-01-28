@@ -195,27 +195,8 @@ export default function ProblemCard({
             );
           })}
         </div>
-      </div>
 
-      {/* Floating Confirm/Discard Footer */}
-      {pendingOptionId && !isHistorical && (
-        <div className="confirm-changes-footer">
-          <button
-            className="discard-btn"
-            onClick={onDiscardOperation}
-            disabled={disabled}
-          >
-            Discard
-          </button>
-          <button
-            className="confirm-btn"
-            onClick={onConfirmOperation}
-            disabled={disabled}
-          >
-            Confirm Changes
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

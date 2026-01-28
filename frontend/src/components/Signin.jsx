@@ -119,9 +119,6 @@ export default function Signin() {
             {/* Right side - Technical Dashboard */}
             <div className="login-right">
                 <div className="tech-display">
-                    {/* Scan line overlay */}
-                    <div className="scanline"></div>
-
                     {/* Grid background */}
                     <div className="tech-grid"></div>
 
