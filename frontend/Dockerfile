@@ -1,5 +1,5 @@
-# Use Node 18
-FROM node:18-slim
+# Use Node 22 (Required by Vite 6+)
+FROM node:22-slim
 
 # Set work directory
 WORKDIR /app

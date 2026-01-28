@@ -56,15 +56,23 @@ def get_db_engine(retry_count: int = 3, retry_delay: float = 2.0):
             f"@{os.getenv('MYSQL_HOST', 'localhost')}:{os.getenv('MYSQL_PORT', '3306')}"
             f"/{os.getenv('MYSQL_DATABASE')}"
         )
+        
+        connect_args = {
+            'connect_timeout': 10,
+        }
+        
+        # Add SSL configuration if requested
+        if os.getenv('MYSQL_SSL_MODE') == 'REQUIRED':
+            connect_args['ssl'] = {'ssl_mode': 'REQUIRED'}
+            print("[INFO] Enabling SSL for database connection")
+
         _engine = create_engine(
             mysql_url,
             pool_size=10,
             max_overflow=20,
             pool_pre_ping=True,
             pool_recycle=3600,
-            connect_args={
-                'connect_timeout': 10,
-            }
+            connect_args=connect_args
         )
         print(f"[OK] Created MySQL connection pool")
 
