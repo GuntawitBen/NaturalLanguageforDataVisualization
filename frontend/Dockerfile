@@ -11,6 +11,11 @@ RUN npm install
 # Copy project
 COPY . .
 
+# Accept build-time argument for API URL
+# DigitalOcean App Platform passes environment variables as build args
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Build the application
 RUN npm run build
 
