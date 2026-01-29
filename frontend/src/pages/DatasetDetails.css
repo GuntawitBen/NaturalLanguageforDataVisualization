@@ -1627,3 +1627,73 @@
     width: calc(100% - 2rem);
   }
 }
+/* Dashboard Grid */
+.dashboard-grid {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.dashboard-header-info h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1a202c;
+}
+
+.dashboard-header-info p {
+    color: #718096;
+    margin: 0.5rem 0 0 0;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.auto-rendered-chart {
+    margin-top: 1rem;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+}
+
+/* Custom Dashboard Styles */
+.dashboard-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.pinned-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #48bb78;
+    background: rgba(72, 187, 120, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.dashboard-chart-wrapper {
+    animation: slideInUp 0.3s ease-out forwards;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

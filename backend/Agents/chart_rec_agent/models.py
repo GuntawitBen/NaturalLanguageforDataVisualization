@@ -11,6 +11,8 @@ class ChartRecommendation(BaseModel):
     chart_type: str  # e.g., "bar", "line", "pie", "scatter"
     title: str
     description: str
+    explanation: Optional[str] = "View the details and trends in your data below."
+    priority: Optional[str] = "medium"
     x_axis: Optional[str] = None
     y_axis: Optional[str] = None
     color_by: Optional[str] = None

@@ -33,6 +33,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import DataTable from '../components/DataTable';
+import ChartRenderer from '../components/ChartRenderer';
 import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
 
@@ -62,6 +63,7 @@ export default function DatasetDetails() {
   const [sqlInputValue, setSqlInputValue] = useState('');
   const [sqlSending, setSqlSending] = useState(false);
   const [sqlError, setSqlError] = useState(null);
+  const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion}
   const sqlSessionStarted = useRef(false);
   const messagesEndRef = useRef(null);
   const recommendPromptIndex = useRef(0);
@@ -382,6 +384,16 @@ export default function DatasetDetails() {
       });
 
       setSqlMessages(restoredMessages);
+
+      // Populate dashboard with latest charts from history
+      const lastAssistantMsg = [...restoredMessages].reverse().find(m => m.role === 'assistant' && m.visualization_recommendations);
+      if (lastAssistantMsg) {
+        setLatestCharts({
+          data: lastAssistantMsg.results.data,
+          suggestions: lastAssistantMsg.visualization_recommendations
+        });
+      }
+
       window.history.replaceState({}, document.title);
 
     } catch (err) {
@@ -485,6 +497,19 @@ export default function DatasetDetails() {
 
   const handleRecommendationClick = (question) => {
     sendSqlMessage(question);
+  };
+
+  const handleAddToDashboard = (data, suggestion) => {
+    setPinnedCharts(prev => {
+      // Prevent duplicates
+      const exists = prev.some(c => c.suggestion.title === suggestion.title);
+      if (exists) return prev;
+      return [...prev, { data, suggestion }];
+    });
+  };
+
+  const handleRemoveFromDashboard = (title) => {
+    setPinnedCharts(prev => prev.filter(c => c.suggestion.title !== title));
   };
 
   // Loading State
@@ -855,15 +880,14 @@ export default function DatasetDetails() {
                                           <span><strong>X:</strong> {rec.x_axis}</span>
                                           <span><strong>Y:</strong> {rec.y_axis}</span>
                                         </div>
-                                        <button
-                                          className="viz-view-btn"
-                                          onClick={() => {
-                                            alert(`Chart: ${rec.title}\nType: ${rec.chart_type}\nX: ${rec.x_axis}\nY: ${rec.y_axis}`);
-                                          }}
-                                        >
-                                          <Eye size={14} />
-                                          View
-                                        </button>
+                                        <div className="auto-rendered-chart">
+                                          <ChartRenderer
+                                            data={msg.results.data}
+                                            suggestion={rec}
+                                            onAdd={() => handleAddToDashboard(msg.results.data, rec)}
+                                            isPinned={pinnedCharts.some(c => c.suggestion.title === rec.title)}
+                                          />
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -950,13 +974,37 @@ export default function DatasetDetails() {
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="dashboard-tab">
-            <div className="dashboard-placeholder">
-              <div className="placeholder-icon">
-                <LayoutDashboard size={48} />
+            {pinnedCharts.length > 0 ? (
+              <div className="dashboard-grid">
+                <div className="dashboard-header-info">
+                  <div className="dashboard-title-row">
+                    <h2>Custom Dashboard</h2>
+                    <span className="pinned-count">{pinnedCharts.length} items pinned</span>
+                  </div>
+                  <p>Hand-picked visualizations from your exploration</p>
+                </div>
+                <div className="charts-container" id="charts-container">
+                  {pinnedCharts.map((item, idx) => (
+                    <div key={idx} className="dashboard-chart-wrapper">
+                      <ChartRenderer
+                        data={item.data}
+                        suggestion={item.suggestion}
+                        isPinned={true}
+                        onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <h2>Dashboard</h2>
-              <p>Visualization dashboard coming soon</p>
-            </div>
+            ) : (
+              <div className="dashboard-placeholder">
+                <div className="placeholder-icon">
+                  <LayoutDashboard size={48} />
+                </div>
+                <h2>Empty Dashboard</h2>
+                <p>Pin charts from the Conversations tab to see them here</p>
+              </div>
+            )}
           </div>
         )}
 

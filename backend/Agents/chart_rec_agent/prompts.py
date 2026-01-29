@@ -8,10 +8,12 @@ For each recommendation, you must provide:
 1. Chart Type: Choose from 'bar', 'line', 'pie', 'scatter', 'area', or 'histogram'.
 2. Title: A clear, descriptive title for the chart.
 3. Description: A brief explanation of what the chart shows.
-4. X-axis: The column name to use for the X-axis.
-5. Y-axis: The column name to use for the Y-axis.
-6. Color-by (Optional): A column name for grouping/color coding.
-7. Reasoning: Why this chart is appropriate for this data.
+4. Explanation: A detailed sentence about the insight this specific chart provides.
+5. Priority: Assign a importance level - 'high' (primary insight), 'medium' (secondary), or 'low' (additional context).
+6. X-axis: The column name to use for the X-axis.
+7. Y-axis: The column name to use for the Y-axis.
+8. Color-by (Optional): A column name for grouping/color coding.
+9. Reasoning: Why this chart is appropriate for this data.
 
 GUIDELINES:
 - Bar Charts: Best for comparing categorical data or discrete values.
@@ -28,7 +30,9 @@ Example:
     {
       "chart_type": "bar",
       "title": "Total Sales by Category",
-      "description": "Comparison of sales performance across different product categories.",
+      "description": "Comparison of sales performance across product categories.",
+      "explanation": "This bar chart highlights 'Electronics' as the top-performing category, contributing to 40% of total revenue.",
+      "priority": "high",
       "x_axis": "category",
       "y_axis": "total_sales",
       "reasoning": "A bar chart effectively compares specific values across distinct categories."

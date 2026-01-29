@@ -1,0 +1,182 @@
+.chart-container-root {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+    color: #fff;
+}
+
+.chart-container-root:hover {
+    border-color: #4a5568;
+    transform: translateY(-4px);
+}
+
+.chart-container-root.high {
+    grid-column: span 2;
+    border-top: 4px solid #48bb78;
+}
+
+.chart-container-root.medium {
+    border-top: 4px solid #ed8936;
+}
+
+.chart-container-root.low {
+    border-top: 4px solid #a0aec0;
+}
+
+.chart-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.chart-header-row h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #e2e8f0;
+}
+
+.priority-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+}
+
+.priority-badge.high {
+    background-color: #22c55e;
+}
+
+.priority-badge.medium {
+    background-color: #f97316;
+}
+
+.priority-badge.low {
+    background-color: #64748b;
+}
+
+.chart-explanation {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.svg-wrapper {
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #1e293b;
+    padding: 10px;
+}
+
+.d3-svg {
+    display: block;
+}
+
+.chart-footer {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+}
+
+.reasoning-bubble {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-style: italic;
+}
+
+/* Axis Styling */
+.d3-svg .domain {
+    stroke: #475569;
+}
+
+.d3-svg .tick line {
+    stroke: #1e293b;
+}
+
+.d3-svg .tick text {
+    fill: #94a3b8;
+    font-size: 10px;
+    font-family: 'Inter', sans-serif;
+}
+
+.bar {
+    transition: fill 0.2s ease;
+}
+
+.bar:hover {
+    fill: #60a5fa !important;
+    cursor: pointer;
+}
+/* Chart Actions */
+.chart-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chart-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chart-actions .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+}
+
+.chart-actions .action-btn.add {
+    background: #3182ce;
+    color: white;
+}
+
+.chart-actions .action-btn.add:hover {
+    background: #2b6cb0;
+    transform: scale(1.02);
+}
+
+.chart-actions .action-btn.pinned {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.chart-actions .action-btn.pinned .remove-label {
+    display: none;
+}
+
+.chart-actions .action-btn.pinned:hover {
+    background: rgba(229, 62, 62, 0.15);
+    color: #e53e3e;
+    border-color: rgba(229, 62, 62, 0.3);
+}
+
+.chart-actions .action-btn.pinned:hover span:not(.remove-label),
+.chart-actions .action-btn.pinned:hover svg:not(:last-child) {
+    display: none;
+}
+
+.chart-actions .action-btn.pinned:hover .remove-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
