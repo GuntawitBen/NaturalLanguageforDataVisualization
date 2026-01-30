@@ -552,8 +552,13 @@ class CleaningAgent:
                     proscons_key = "keep_missing"
                 elif problem.problem_type == ProblemType.OUTLIERS:
                     proscons_key = "keep_outliers"
+                elif problem.problem_type == ProblemType.HIGH_CARDINALITY:
+                    proscons_key = "keep_high_cardinality"
                 else:
                     proscons_key = "keep_missing"  # Default fallback
+            elif operation_type == "drop_columns" and problem.problem_type == ProblemType.HIGH_CARDINALITY:
+                # Special case for dropping high cardinality columns
+                proscons_key = "drop_high_cardinality"
             else:
                 # Get the appropriate key for DEFAULT_PROS_CONS
                 proscons_key = OPERATION_TO_PROSCONS_KEY.get(operation_type, operation_type)

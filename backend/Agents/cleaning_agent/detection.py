@@ -52,6 +52,9 @@ def detect_all_problems(df: pd.DataFrame) -> List[Problem]:
     if duplicate_column_problem:
         problems.append(duplicate_column_problem)
 
+    # PRIORITY 6: High cardinality columns (suggestion)
+    problems.extend(detect_high_cardinality_problems(df))
+
     return problems
 
 
@@ -764,3 +767,117 @@ def _is_title_case(s: str) -> bool:
                 return False
 
     return True
+
+
+# ============================================================================
+# High Cardinality Detection
+# ============================================================================
+
+def detect_high_cardinality_problems(df: pd.DataFrame) -> List[Problem]:
+    """
+    Detect columns where most values are unique (IDs, names, keys).
+
+    These columns typically don't provide analytical value for visualizations
+    but may be needed for identification or joins.
+
+    Returns:
+        List of Problem objects for high cardinality columns
+    """
+    problems = []
+    thresholds = DETECTION_THRESHOLDS["high_cardinality"]
+
+    # Skip small datasets
+    if len(df) < thresholds["min_rows"]:
+        return problems
+
+    for column in df.columns:
+        # Check if column name looks like an identifier
+        is_identifier = _is_identifier_column_name(column)
+
+        # Skip numeric columns unless name looks like ID
+        is_numeric = pd.api.types.is_numeric_dtype(df[column])
+        if is_numeric and not is_identifier:
+            continue
+
+        # Calculate uniqueness
+        non_null = df[column].dropna()
+        if len(non_null) == 0:
+            continue
+
+        unique_count = non_null.nunique()
+        uniqueness_ratio = unique_count / len(non_null)
+
+        # Check thresholds
+        if unique_count < thresholds["min_unique_count"]:
+            continue
+        if uniqueness_ratio < thresholds["uniqueness_threshold"]:
+            continue
+
+        # Determine severity and visualization impact
+        if is_identifier:
+            severity = ProblemSeverity.INFO
+            vis_impact = VISUALIZATION_IMPACT_TEMPLATES["high_cardinality"]["identifier"].format(
+                percentage=f"{uniqueness_ratio * 100:.1f}"
+            )
+            title = f"Identifier Column: '{column}'"
+        else:
+            severity = ProblemSeverity.WARNING
+            vis_impact = VISUALIZATION_IMPACT_TEMPLATES["high_cardinality"]["warning"].format(
+                percentage=f"{uniqueness_ratio * 100:.1f}"
+            )
+            title = f"High Cardinality: '{column}'"
+
+        # Get sample values
+        sample_values = [str(v) for v in non_null.unique()[:5]]
+
+        # Create description
+        description = (
+            f"Column has {unique_count} unique values ({uniqueness_ratio * 100:.1f}% unique). "
+            f"This {'appears to be an identifier column' if is_identifier else 'has very high cardinality'}. "
+            f"Sample values: {', '.join(sample_values[:3])}{'...' if len(sample_values) > 3 else ''}."
+        )
+
+        problems.append(Problem(
+            problem_id=str(uuid.uuid4()),
+            problem_type=ProblemType.HIGH_CARDINALITY,
+            severity=severity,
+            title=title,
+            description=description,
+            affected_columns=[column],
+            visualization_impact=vis_impact,
+            metadata={
+                "column": column,
+                "unique_count": int(unique_count),
+                "uniqueness_percentage": float(uniqueness_ratio * 100),
+                "is_identifier": is_identifier,
+                "sample_values": sample_values
+            }
+        ))
+
+    return problems
+
+
+def _is_identifier_column_name(column_name: str) -> bool:
+    """
+    Check if column name matches common identifier patterns.
+
+    Args:
+        column_name: Name of the column to check
+
+    Returns:
+        True if the column name suggests it's an identifier
+    """
+    patterns = [
+        r"(?i)_id$|Id$|ID$",           # user_id, userId, userID
+        r"(?i)^id$|^ID$",               # id, ID
+        r"(?i)_key$|Key$",              # primary_key, primaryKey
+        r"(?i)uuid|guid",               # uuid, GUID
+        r"(?i)_code$|Code$",            # country_code, countryCode
+        r"(?i)_no$|_num$|_number$",     # order_no, order_num, order_number
+        r"(?i)^index$|^idx$",           # index, idx
+        r"(?i)^name$|^full_?name$",     # name, fullname, full_name
+        r"(?i)^email$|_email$",         # email, user_email
+        r"(?i)^phone$|_phone$",         # phone, user_phone
+        r"(?i)^sku$",                   # sku
+    ]
+    return any(re.search(p, column_name) for p in patterns)

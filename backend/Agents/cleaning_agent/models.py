@@ -14,6 +14,7 @@ class ProblemType(str, Enum):
     DUPLICATES_ROWS = "duplicates_rows"
     DUPLICATES_COLUMNS = "duplicates_columns"
     FORMAT_INCONSISTENCY = "format_inconsistency"
+    HIGH_CARDINALITY = "high_cardinality"
 
 
 class ProblemSeverity(str, Enum):

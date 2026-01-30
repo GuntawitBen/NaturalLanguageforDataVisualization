@@ -21,6 +21,11 @@ DETECTION_THRESHOLDS = {
     "format_inconsistency": {
         "min_inconsistency_percentage": 5.0,  # Minimum 5% inconsistent to report
         "min_unique_formats": 2,  # Need at least 2 different formats
+    },
+    "high_cardinality": {
+        "uniqueness_threshold": 0.90,  # 90% unique = high cardinality
+        "min_rows": 20,                # Skip small datasets
+        "min_unique_count": 10,        # At least 10 unique values
     }
 }
 
@@ -100,6 +105,20 @@ CLEANING_OPERATIONS = {
             "function": "drop_duplicate_columns",
             "parameters": {"columns": []},
             "description": "Remove columns that have identical values to other columns"
+        }
+    },
+    "high_cardinality": {
+        "drop_column": {
+            "name": "Drop the column",
+            "function": "drop_columns",
+            "parameters": {"columns": []},
+            "description": "Remove this identifier column from analysis"
+        },
+        "keep_column": {
+            "name": "Keep the column",
+            "function": "no_operation",
+            "parameters": {},
+            "description": "Keep this column (needed for identification or joins)"
         }
     },
     # Format inconsistency operations are dynamically generated based on detected formats
@@ -259,6 +278,10 @@ VISUALIZATION_IMPACT_TEMPLATES = {
         "date": "Inconsistent date formats may cause parsing errors and incorrect chronological ordering in time-series visualizations.",
         "boolean": "Inconsistent boolean formats may cause grouping errors, treating 'Yes' and 'True' as different categories in charts.",
         "case": "Inconsistent text casing may create duplicate categories (e.g., 'USA' and 'usa' shown separately) in visualizations."
+    },
+    "high_cardinality": {
+        "identifier": "This column appears to be an identifier ({percentage}% unique). It won't provide meaningful insights in visualizations.",
+        "warning": "High cardinality ({percentage}% unique) will create cluttered visualizations with too many categories."
     }
 }
 
@@ -307,6 +330,14 @@ DEFAULT_PROS_CONS = {
     "fill_with_value": {
         "pros": "Preserves all rows. Allows you to specify a meaningful default value (e.g., 'Unknown' or 0). Avoids introducing statistical bias from mean/median.",
         "cons": "Introduces artificial values. The chosen default might not perfectly represent the missing data."
+    },
+    "drop_high_cardinality": {
+        "pros": "Removes identifier columns that don't provide analytical value. Reduces complexity and prevents cluttered charts.",
+        "cons": "Lose ability to identify individual records or join with other datasets."
+    },
+    "keep_high_cardinality": {
+        "pros": "Preserves data for identification, record linking, or joins. Names may be useful for labels.",
+        "cons": "Creates cluttered charts with many unique values if used for grouping."
     }
 }
 
