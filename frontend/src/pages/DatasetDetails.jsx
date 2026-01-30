@@ -1082,10 +1082,13 @@ export default function DatasetDetails() {
               <div className="dashboard-grid">
                 <div className="dashboard-header-info">
                   <div className="dashboard-title-row">
-                    <h2>Custom Dashboard</h2>
-                    <span className="pinned-count">{pinnedCharts.length} items pinned</span>
+                    <h2>
+                      <LayoutDashboard size={20} />
+                      Your Dashboard
+                      <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
+                    </h2>
+                    <p>Visualizations pinned from your data exploration</p>
                   </div>
-                  <p>Hand-picked visualizations from your exploration</p>
                 </div>
                 <div className="charts-container" id="charts-container">
                   {pinnedCharts.map((item, idx) => (
@@ -1105,8 +1108,12 @@ export default function DatasetDetails() {
                 <div className="placeholder-icon">
                   <LayoutDashboard size={48} />
                 </div>
-                <h2>Empty Dashboard</h2>
-                <p>Pin charts from the Conversations tab to see them here</p>
+                <h2>No Charts Pinned Yet</h2>
+                <p>Start a conversation and pin visualizations to build your custom dashboard</p>
+                <div className="empty-hint">
+                  <Sparkles size={14} />
+                  <span>Tip: Click the pin icon on any chart to add it here</span>
+                </div>
               </div>
             )}
           </div>
