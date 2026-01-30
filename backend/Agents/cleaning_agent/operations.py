@@ -69,7 +69,12 @@ class CleaningOperations:
             if pd.api.types.is_numeric_dtype(df_cleaned[column]):
                 null_count = df_cleaned[column].isna().sum()
                 mean_value = df_cleaned[column].mean()
-                df_cleaned[column].fillna(mean_value, inplace=True)
+
+                # Convert integer columns to float to support float fill values
+                if pd.api.types.is_integer_dtype(df_cleaned[column]):
+                    df_cleaned[column] = df_cleaned[column].astype('float64')
+
+                df_cleaned[column] = df_cleaned[column].fillna(mean_value)
                 filled_counts.append(f"{column} ({null_count} values)")
 
         message = f"Filled missing values with mean in {', '.join(filled_counts)}"
@@ -94,7 +99,12 @@ class CleaningOperations:
             if pd.api.types.is_numeric_dtype(df_cleaned[column]):
                 null_count = df_cleaned[column].isna().sum()
                 median_value = df_cleaned[column].median()
-                df_cleaned[column].fillna(median_value, inplace=True)
+
+                # Convert integer columns to float to support float fill values
+                if pd.api.types.is_integer_dtype(df_cleaned[column]):
+                    df_cleaned[column] = df_cleaned[column].astype('float64')
+
+                df_cleaned[column] = df_cleaned[column].fillna(median_value)
                 filled_counts.append(f"{column} ({null_count} values)")
 
         message = f"Filled missing values with median in {', '.join(filled_counts)}"
@@ -202,6 +212,10 @@ class CleaningOperations:
                     upper_outliers = df_cleaned[column] > upper_bound
 
                     total_capped += lower_outliers.sum() + upper_outliers.sum()
+
+                    # Convert integer columns to float to support float boundary values
+                    if pd.api.types.is_integer_dtype(df_cleaned[column]):
+                        df_cleaned[column] = df_cleaned[column].astype('float64')
 
                     df_cleaned.loc[lower_outliers, column] = lower_bound
                     df_cleaned.loc[upper_outliers, column] = upper_bound

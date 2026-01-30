@@ -39,13 +39,16 @@ def save_session_token(db, email: str, token: str):
 def verify_session_token(db, token: str) -> Optional[str]:
     """Verify session token and return user email"""
     try:
+        print(f"[AUTH] Looking up session document for token: {token[:20]}...")
         session_ref = db.collection('sessions').document(token)
         session = session_ref.get()
 
         if not session.exists:
+            print(f"[AUTH] Session document does not exist")
             return None
 
         session_data = session.to_dict()
+        print(f"[AUTH] Found session data: email={session_data.get('email')}")
 
         # Check if token is expired
         expires_at = session_data.get('expires_at')
@@ -64,12 +67,15 @@ def verify_session_token(db, token: str) -> Optional[str]:
                 current_time = datetime.utcnow()
 
             if expires_at < current_time:
+                print(f"[AUTH] Token expired: {expires_at} < {current_time}")
                 session_ref.delete()
                 return None
 
         return session_data.get('email')
     except Exception as e:
-        print(f"Error verifying session token: {e}")
+        print(f"[AUTH] Error verifying session token: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def delete_session_token(db, token: str):
@@ -87,21 +93,27 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     from Auth.firebase import db
 
     if not authorization:
+        print("[AUTH] Missing authorization header")
         raise HTTPException(status_code=401, detail="Authorization header missing")
 
     # Extract token from "Bearer <token>" format
     try:
         scheme, token = authorization.split()
         if scheme.lower() != 'bearer':
+            print(f"[AUTH] Invalid scheme: {scheme}")
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
     except ValueError:
+        print(f"[AUTH] Invalid format: {authorization[:50]}...")
         raise HTTPException(status_code=401, detail="Invalid authorization header format")
 
+    print(f"[AUTH] Verifying token: {token[:20]}...")
     email = verify_session_token(db, token)
 
     if not email:
+        print(f"[AUTH] Token verification failed for: {token[:20]}...")
         raise HTTPException(status_code=401, detail="Invalid or expired session token")
 
+    print(f"[AUTH] Success for user: {email}")
     return email
 
 async def get_current_user_and_token(authorization: Optional[str] = Header(None)):

@@ -57,6 +57,15 @@ except Exception as e:
     text_to_sql_router = None
 
 try:
+    from routes.proactive import router as proactive_router
+    print("[OK] Proactive router imported successfully")
+except Exception as e:
+    print(f"[ERROR] Failed to import Proactive router: {e}")
+    import traceback
+    traceback.print_exc()
+    proactive_router = None
+
+try:
     from database import init_database
     from database.db_init import test_db_connection, get_db_status, get_db_engine, DatabaseConnectionError
     print("[OK] Database module imported successfully")
@@ -319,3 +328,9 @@ if text_to_sql_router is not None:
     print("[OK] Text-to-SQL router included")
 else:
     print("[WARNING] Text-to-SQL router not included (import failed)")
+
+if proactive_router is not None:
+    app.include_router(proactive_router)
+    print("[OK] Proactive router included")
+else:
+    print("[WARNING] Proactive router not included (import failed)")
