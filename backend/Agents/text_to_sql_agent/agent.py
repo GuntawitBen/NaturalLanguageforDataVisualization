@@ -53,14 +53,55 @@ class TextToSQLAgent:
         # Create session with user_id for persistence
         session = session_manager.create_session(dataset_id, schema, user_id)
 
+        # Generate proactive intro and recommendations
+        intro_message, recommendations = self._generate_proactive_intro(schema)
+
         print(f"[AGENT] Started session {session.session_id} for dataset {dataset_id}")
         print(f"[AGENT] Schema: {len(schema.columns)} columns, {schema.row_count:,} rows")
+
+        # Save the intro message to conversation history with recommendations
+        # Wrap in try-catch to prevent breaking session start if persistence fails
+        if intro_message:
+            try:
+                intro_data = {"recommendations": recommendations} if recommendations else None
+                session_manager.add_message(
+                    session.session_id,
+                    "assistant",
+                    intro_message,
+                    sql_query=None,
+                    query_result=None,
+                    visualization_recommendations=intro_data
+                )
+            except Exception as e:
+                print(f"[AGENT] Warning: Failed to persist intro message: {e}")
 
         return StartSessionResponse(
             session_id=session.session_id,
             schema=schema,
-            sample_questions=[]  # Users can click "Recommend" to get AI-generated questions
+            sample_questions=recommendations,
+            intro_message=intro_message
         )
+
+    def _generate_proactive_intro(self, schema: SchemaContext) -> tuple[str, list[str]]:
+        """
+        Generate conversational intro with recommendations.
+
+        Args:
+            schema: Schema context for the dataset
+
+        Returns:
+            Tuple of (intro_message, list of recommendations)
+        """
+        try:
+            intro, recommendations = self.openai_client.generate_proactive_intro(schema)
+            if intro and recommendations:
+                print(f"[AGENT] Generated proactive intro with {len(recommendations)} suggestions")
+                return intro, recommendations
+        except Exception as e:
+            print(f"[AGENT] Failed to generate proactive intro: {e}")
+
+        # Fallback - return empty values
+        return "", []
 
     def resume_session(self, session_id: str, user_id: str) -> StartSessionResponse:
         """

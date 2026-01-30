@@ -63,7 +63,8 @@ export default function DatasetDetails() {
   const [sqlInputValue, setSqlInputValue] = useState('');
   const [sqlSending, setSqlSending] = useState(false);
   const [sqlError, setSqlError] = useState(null);
-  const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion}
+  const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion, visualization_id}
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const sqlSessionStarted = useRef(false);
   const messagesEndRef = useRef(null);
   const recommendPromptIndex = useRef(0);
@@ -78,7 +79,42 @@ export default function DatasetDetails() {
 
   useEffect(() => {
     fetchDatasetDetails();
+    fetchDashboard();
   }, [datasetId]);
+
+  const fetchDashboard = async () => {
+    if (!datasetId) return;
+    setDashboardLoading(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.DATASETS.DASHBOARD(datasetId), {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch dashboard');
+      const data = await response.json();
+
+      // Convert saved visualizations to pinnedCharts format
+      const charts = (data.visualizations || []).map(viz => ({
+        visualization_id: viz.visualization_id,
+        data: viz.visualization_config?.data || [],
+        suggestion: {
+          title: viz.title,
+          chart_type: viz.chart_type,
+          x_axis: viz.visualization_config?.x_axis,
+          y_axis: viz.visualization_config?.y_axis,
+          description: viz.description || viz.visualization_config?.description,
+          ...viz.visualization_config?.suggestion
+        }
+      }));
+      setPinnedCharts(charts);
+    } catch (err) {
+      console.error('Error fetching dashboard:', err);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
 
   const currentSessionRef = useRef(null);
   useEffect(() => {
@@ -293,10 +329,26 @@ export default function DatasetDetails() {
       }
 
       setSqlSessionId(data.session_id);
-      setSqlMessages([{
-        role: 'assistant',
-        content: `Session initialized. I'm ready to help you explore your data. Ask me anything or click "Recommend" for suggestions.`,
-      }]);
+
+      // Build initial message with conversational intro
+      const initialMessages = [];
+
+      if (data.intro_message && data.sample_questions?.length > 0) {
+        // Use the GPT-generated conversational intro with recommendations
+        initialMessages.push({
+          role: 'assistant',
+          content: data.intro_message,
+          recommendations: data.sample_questions,
+        });
+      } else {
+        // Fallback if GPT failed
+        initialMessages.push({
+          role: 'assistant',
+          content: `Ready to explore your data! Ask me anything or click "Recommend" for suggestions.`,
+        });
+      }
+
+      setSqlMessages(initialMessages);
     } catch (err) {
       console.error('Error starting SQL session:', err);
       setSqlError(err.message);
@@ -346,10 +398,6 @@ export default function DatasetDetails() {
       setSqlSessionId(sessionId);
 
       const restoredMessages = [];
-      restoredMessages.push({
-        role: 'assistant',
-        content: 'Session restored. Previous conversation loaded:',
-      });
 
       if (historyData.messages && historyData.messages.length > 0) {
         for (const msg of historyData.messages) {
@@ -370,29 +418,25 @@ export default function DatasetDetails() {
             };
           }
 
-          if (msg.visualization_recommendations) {
-            uiMessage.visualization_recommendations = msg.visualization_recommendations;
+          // Handle visualization_config which can contain either:
+          // - Chart recommendations (array)
+          // - Intro recommendations (object with 'recommendations' key)
+          const vizConfig = msg.visualization_config || msg.visualization_recommendations;
+          if (vizConfig) {
+            if (Array.isArray(vizConfig)) {
+              // It's an array of chart recommendations
+              uiMessage.visualization_recommendations = vizConfig;
+            } else if (vizConfig.recommendations) {
+              // It's intro message with text recommendations
+              uiMessage.recommendations = vizConfig.recommendations;
+            }
           }
 
           restoredMessages.push(uiMessage);
         }
       }
 
-      restoredMessages.push({
-        role: 'assistant',
-        content: 'Ready to continue. What would you like to explore?',
-      });
-
       setSqlMessages(restoredMessages);
-
-      // Populate dashboard with latest charts from history
-      const lastAssistantMsg = [...restoredMessages].reverse().find(m => m.role === 'assistant' && m.visualization_recommendations);
-      if (lastAssistantMsg) {
-        setLatestCharts({
-          data: lastAssistantMsg.results.data,
-          suggestions: lastAssistantMsg.visualization_recommendations
-        });
-      }
 
       window.history.replaceState({}, document.title);
 
@@ -499,17 +543,72 @@ export default function DatasetDetails() {
     sendSqlMessage(question);
   };
 
-  const handleAddToDashboard = (data, suggestion) => {
-    setPinnedCharts(prev => {
-      // Prevent duplicates
-      const exists = prev.some(c => c.suggestion.title === suggestion.title);
-      if (exists) return prev;
-      return [...prev, { data, suggestion }];
-    });
+  const handleAddToDashboard = async (data, suggestion) => {
+    // Prevent duplicates
+    const exists = pinnedCharts.some(c => c.suggestion.title === suggestion.title);
+    if (exists) return;
+
+    try {
+      const response = await fetch(API_ENDPOINTS.DATASETS.DASHBOARD(datasetId), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: suggestion.title,
+          chart_type: suggestion.chart_type,
+          query_sql: '',
+          visualization_config: {
+            data: data,
+            x_axis: suggestion.x_axis,
+            y_axis: suggestion.y_axis,
+            description: suggestion.description,
+            suggestion: suggestion
+          },
+          description: suggestion.description
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save visualization');
+
+      const result = await response.json();
+      setPinnedCharts(prev => [...prev, {
+        visualization_id: result.visualization_id,
+        data,
+        suggestion
+      }]);
+    } catch (err) {
+      console.error('Error adding to dashboard:', err);
+    }
   };
 
-  const handleRemoveFromDashboard = (title) => {
-    setPinnedCharts(prev => prev.filter(c => c.suggestion.title !== title));
+  const handleRemoveFromDashboard = async (title) => {
+    const chart = pinnedCharts.find(c => c.suggestion.title === title);
+    if (!chart || !chart.visualization_id) {
+      // Fallback for charts without ID (shouldn't happen normally)
+      setPinnedCharts(prev => prev.filter(c => c.suggestion.title !== title));
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        API_ENDPOINTS.DATASETS.DASHBOARD_REMOVE(datasetId, chart.visualization_id),
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to remove visualization');
+
+      setPinnedCharts(prev => prev.filter(c => c.suggestion.title !== title));
+    } catch (err) {
+      console.error('Error removing from dashboard:', err);
+    }
   };
 
   // Loading State
@@ -915,7 +1014,7 @@ export default function DatasetDetails() {
                       })}
 
                       {sqlSending && (
-                        <div className="message assistant">
+                        <div className="message assistant thinking">
                           <div className="message-bubble">
                             <div className="typing-indicator">
                               <span></span>
@@ -974,7 +1073,12 @@ export default function DatasetDetails() {
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="dashboard-tab">
-            {pinnedCharts.length > 0 ? (
+            {dashboardLoading ? (
+              <div className="dashboard-loading">
+                <Loader2 size={24} className="spin" />
+                <span>Loading dashboard...</span>
+              </div>
+            ) : pinnedCharts.length > 0 ? (
               <div className="dashboard-grid">
                 <div className="dashboard-header-info">
                   <div className="dashboard-title-row">
@@ -985,7 +1089,7 @@ export default function DatasetDetails() {
                 </div>
                 <div className="charts-container" id="charts-container">
                   {pinnedCharts.map((item, idx) => (
-                    <div key={idx} className="dashboard-chart-wrapper">
+                    <div key={item.visualization_id || idx} className="dashboard-chart-wrapper">
                       <ChartRenderer
                         data={item.data}
                         suggestion={item.suggestion}

@@ -724,3 +724,53 @@ def get_user_visualizations(user_id: str) -> List[Dict]:
     except Exception as e:
         print(f"Error getting visualizations: {e}")
         return []
+
+
+def get_dataset_visualizations(dataset_id: str, user_id: str) -> List[Dict]:
+    """Get all saved visualizations for a specific dataset"""
+    engine = get_db_engine()
+
+    try:
+        with engine.connect() as conn:
+            results = conn.execute(text("""
+                SELECT * FROM saved_visualizations
+                WHERE dataset_id = :dataset_id AND user_id = :user_id
+                ORDER BY created_at ASC
+            """), {"dataset_id": dataset_id, "user_id": user_id}).fetchall()
+
+            if not results:
+                return []
+
+            columns = results[0]._fields
+
+            visualizations = []
+            for row in results:
+                viz = dict(zip(columns, row))
+                if viz.get('visualization_config'):
+                    if isinstance(viz['visualization_config'], str):
+                        viz['visualization_config'] = json.loads(viz['visualization_config'])
+                visualizations.append(viz)
+
+            return visualizations
+
+    except Exception as e:
+        print(f"Error getting dataset visualizations: {e}")
+        return []
+
+
+def delete_visualization(visualization_id: str, user_id: str) -> bool:
+    """Delete a saved visualization"""
+    engine = get_db_engine()
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                DELETE FROM saved_visualizations
+                WHERE visualization_id = :visualization_id AND user_id = :user_id
+            """), {"visualization_id": visualization_id, "user_id": user_id})
+            conn.commit()
+            return result.rowcount > 0
+
+    except Exception as e:
+        print(f"Error deleting visualization: {e}")
+        return False

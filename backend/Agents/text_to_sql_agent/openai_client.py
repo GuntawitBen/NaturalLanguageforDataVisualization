@@ -204,6 +204,86 @@ class TextToSQLOpenAIClient:
                 error=f"Failed to generate SQL: {str(e)}"
             )
 
+    def generate_proactive_intro(self, schema: SchemaContext) -> tuple[str, list[str]]:
+        """
+        Generate a conversational introduction with recommendations for a dataset.
+
+        Args:
+            schema: Database schema context
+
+        Returns:
+            Tuple of (intro_message, list of recommendations)
+        """
+        try:
+            from .prompts import build_system_prompt
+
+            system_prompt = build_system_prompt(schema)
+
+            user_prompt = """Analyze this dataset schema and provide a brief, direct introduction for a user who just opened this dataset.
+
+Write a concise message that:
+1. Starts with "I've analyzed your data" or similar phrasing (NOT "Welcome" or "fascinating dataset")
+2. Briefly states what the data contains (1-2 sentences max)
+3. Lists 3-4 specific questions they could explore (based on actual column names)
+
+Keep it professional and to the point - like a data analyst giving a quick briefing. Avoid flowery language, excessive enthusiasm, or words like "fascinating", "exciting", "wonderful".
+
+Return JSON:
+{
+    "intro_message": "Your direct, analytical message here...",
+    "recommendations": ["Question 1?", "Question 2?", "Question 3?"]
+}
+
+The recommendations array should contain the exact questions mentioned in your intro_message, so they can be displayed as clickable buttons."""
+
+            response = self._call_with_retry(
+                self.client.chat.completions.create,
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,  # Slightly higher for more natural language
+                max_tokens=500,
+                timeout=OPENAI_CONFIG["timeout"]
+            )
+
+            # Log token usage
+            if response.usage:
+                prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
+                cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
+                print(f"[GPT] Proactive intro token usage - Input: {response.usage.prompt_tokens}, "
+                      f"Output: {response.usage.completion_tokens}, "
+                      f"Cached: {cached_tokens}")
+
+            # Parse response
+            content = response.choices[0].message.content
+            parsed = self._parse_gpt_response(content)
+
+            # intro_message maps to explanation field in GPTSQLResponse
+            intro = parsed.explanation or ""
+            recommendations = parsed.recommendations or []
+
+            # If parsing didn't capture intro_message, try direct JSON parsing
+            if not intro:
+                import json
+                content_clean = content.strip()
+                if content_clean.startswith("```"):
+                    content_clean = re.sub(r'^```(?:json)?\s*', '', content_clean)
+                    content_clean = re.sub(r'\s*```$', '', content_clean)
+                try:
+                    data = json.loads(content_clean)
+                    intro = data.get("intro_message", "")
+                    recommendations = data.get("recommendations", recommendations)
+                except json.JSONDecodeError:
+                    pass
+
+            return intro, recommendations
+
+        except Exception as e:
+            print(f"[ERROR] Failed to generate proactive intro: {type(e).__name__}: {str(e)}")
+            return "", []
+
     def fix_sql_error(
         self,
         original_sql: str,

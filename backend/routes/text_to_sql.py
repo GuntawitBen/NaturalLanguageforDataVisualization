@@ -317,12 +317,14 @@ async def get_history_detail(
         formatted_messages = []
         for msg in messages:
             query_result = msg.get('query_result')
+            visualization_config = msg.get('visualization_config')
 
             formatted_messages.append({
                 "role": msg['role'],
                 "content": msg['content'],
                 "sql_query": msg.get('query_sql'),
                 "query_result": query_result,
+                "visualization_config": visualization_config,
                 "created_at": str(msg.get('created_at', ''))
             })
 

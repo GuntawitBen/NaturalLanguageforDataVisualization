@@ -69,6 +69,7 @@ class StartSessionResponse(BaseModel):
     session_id: str
     schema: SchemaContext
     sample_questions: List[str]
+    intro_message: Optional[str] = None  # Conversational intro about the dataset
 
 
 class ChatRequest(BaseModel):

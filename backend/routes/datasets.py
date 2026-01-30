@@ -19,6 +19,9 @@ from database import (
     get_user_datasets,
     delete_dataset,
     query_dataset,
+    save_visualization,
+    get_dataset_visualizations,
+    delete_visualization,
 )
 from utils.csv_validator import validate_csv_file as validate_csv_structure, ValidationConfig
 
@@ -41,6 +44,13 @@ class DatasetResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     sql_query: str
+
+class SaveVisualizationRequest(BaseModel):
+    title: str
+    chart_type: str
+    query_sql: str = ""
+    visualization_config: dict
+    description: Optional[str] = None
 
 class QueryResponse(BaseModel):
     success: bool
@@ -659,3 +669,111 @@ async def get_validation_config():
         },
         "reserved_keywords_count": len(config.RESERVED_KEYWORDS)
     }
+
+# ============================================================================
+# Dashboard / Saved Visualizations Endpoints
+# ============================================================================
+
+@router.get("/{dataset_id}/dashboard")
+async def get_dataset_dashboard(
+    dataset_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """Get all pinned visualizations (dashboard) for a dataset"""
+    try:
+        # Verify dataset exists and user has access
+        dataset = get_dataset(dataset_id)
+
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        if dataset['user_id'] != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Get visualizations for this dataset
+        visualizations = get_dataset_visualizations(dataset_id, current_user_email)
+
+        return {
+            "dataset_id": dataset_id,
+            "visualizations": visualizations
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{dataset_id}/dashboard")
+async def add_to_dashboard(
+    dataset_id: str,
+    request: SaveVisualizationRequest,
+    current_user_email: str = Depends(get_current_user)
+):
+    """Add a visualization to the dataset's dashboard"""
+    try:
+        # Verify dataset exists and user has access
+        dataset = get_dataset(dataset_id)
+
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        if dataset['user_id'] != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Save the visualization
+        viz_id = save_visualization(
+            user_id=current_user_email,
+            dataset_id=dataset_id,
+            title=request.title,
+            query_sql=request.query_sql,
+            chart_type=request.chart_type,
+            visualization_config=request.visualization_config,
+            description=request.description
+        )
+
+        if not viz_id:
+            raise HTTPException(status_code=500, detail="Failed to save visualization")
+
+        return {
+            "success": True,
+            "visualization_id": viz_id,
+            "message": "Visualization added to dashboard"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{dataset_id}/dashboard/{visualization_id}")
+async def remove_from_dashboard(
+    dataset_id: str,
+    visualization_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """Remove a visualization from the dataset's dashboard"""
+    try:
+        # Verify dataset exists and user has access
+        dataset = get_dataset(dataset_id)
+
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        if dataset['user_id'] != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Delete the visualization
+        success = delete_visualization(visualization_id, current_user_email)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Visualization not found")
+
+        return {
+            "success": True,
+            "message": "Visualization removed from dashboard"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

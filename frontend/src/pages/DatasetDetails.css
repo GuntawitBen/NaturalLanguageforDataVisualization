@@ -847,7 +847,9 @@
 .chat-view {
   display: flex;
   flex-direction: column;
-  height: 600px;
+  height: calc(100vh - 100px);
+  min-height: 600px;
+  max-height: 800px;
 }
 
 .chat-header {
@@ -957,21 +959,56 @@
 
 .message.user {
   align-self: flex-end;
+  animation: messageSlideInRight 0.3s ease-out;
 }
 
 .message.assistant {
   align-self: flex-start;
+  animation: messageSlideInLeft 0.4s ease-out;
+}
+
+/* Message send animation - slides in from right */
+@keyframes messageSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(30px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Message receive animation - slides in from left with subtle bounce */
+@keyframes messageSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.95);
+  }
+  70% {
+    transform: translateX(5px) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }
 
 .message-bubble {
   padding: 1rem 1.25rem;
   border-radius: var(--radius-lg);
+  transition: transform 0.15s ease;
+}
+
+.message-bubble:hover {
+  transform: scale(1.01);
 }
 
 .message.user .message-bubble {
   background: var(--accent-yellow);
   color: var(--color-void);
   border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px var(--accent-yellow-glow);
 }
 
 .message.assistant .message-bubble {
@@ -1003,6 +1040,19 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
+  animation: contentFadeIn 0.3s ease-out 0.1s both;
+}
+
+/* Results Block Animation */
+@keyframes contentFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sql-header {
@@ -1038,6 +1088,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   overflow: hidden;
+  animation: contentFadeIn 0.3s ease-out 0.2s both;
 }
 
 .results-header {
@@ -1104,6 +1155,7 @@
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-subtle);
+  animation: contentFadeIn 0.4s ease-out 0.3s both;
 }
 
 .viz-header {
@@ -1131,10 +1183,30 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   transition: all 0.2s ease;
+  animation: vizCardSlideIn 0.4s ease-out both;
+}
+
+/* Stagger animation for each viz card */
+.viz-card:nth-child(1) { animation-delay: 0.1s; }
+.viz-card:nth-child(2) { animation-delay: 0.2s; }
+.viz-card:nth-child(3) { animation-delay: 0.3s; }
+.viz-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes vizCardSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .viz-card:hover {
   border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .viz-card-header {
@@ -1229,13 +1301,43 @@
   font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  animation: suggestionSlideIn 0.4s ease-out both;
+}
+
+/* Stagger animation for each suggestion button */
+.suggestion-btn:nth-child(1) { animation-delay: 0.1s; }
+.suggestion-btn:nth-child(2) { animation-delay: 0.2s; }
+.suggestion-btn:nth-child(3) { animation-delay: 0.3s; }
+.suggestion-btn:nth-child(4) { animation-delay: 0.4s; }
+.suggestion-btn:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes suggestionSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .suggestion-btn:hover:not(:disabled) {
   border-color: var(--accent-yellow);
   color: var(--accent-yellow);
   transform: translateX(4px);
+  background: var(--accent-yellow-subtle);
+  box-shadow: 0 2px 8px var(--accent-yellow-glow);
+}
+
+.suggestion-btn:hover:not(:disabled) svg {
+  transform: translateX(2px);
+}
+
+.suggestion-btn svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .suggestion-btn:disabled {
@@ -1243,41 +1345,58 @@
   cursor: not-allowed;
 }
 
-/* Typing Indicator */
+/* Typing Indicator - Enhanced "..." bubble */
 .typing-indicator {
   display: flex;
-  gap: 4px;
-  padding: 0.25rem 0;
+  align-items: center;
+  gap: 5px;
+  padding: 0.5rem 0;
+  min-height: 24px;
 }
 
 .typing-indicator span {
-  width: 8px;
-  height: 8px;
-  background: var(--text-muted);
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, var(--accent-yellow), var(--accent-orange));
   border-radius: 50%;
-  animation: typing-bounce 1.4s infinite ease-in-out both;
+  animation: typingDot 1.4s infinite ease-in-out both;
+  box-shadow: 0 0 8px var(--accent-yellow-glow);
 }
 
 .typing-indicator span:nth-child(1) {
-  animation-delay: -0.32s;
+  animation-delay: 0s;
 }
 
 .typing-indicator span:nth-child(2) {
-  animation-delay: -0.16s;
+  animation-delay: 0.2s;
 }
 
-@keyframes typing-bounce {
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
-  0%,
-  80%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.5;
+@keyframes typingDot {
+  0%, 100% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0.4;
   }
-
-  40% {
-    transform: scale(1);
+  50% {
+    transform: translateY(-6px) scale(1);
     opacity: 1;
+  }
+}
+
+/* Thinking message container animation */
+.message.assistant.thinking {
+  animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
 
@@ -1448,6 +1567,17 @@
   margin: 0;
 }
 
+.dashboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Raw Data Tab
    ═══════════════════════════════════════════════════════════════════ */
@@ -1566,7 +1696,9 @@
   }
 
   .chat-view {
-    height: 500px;
+    height: calc(100vh - 300px);
+    min-height: 400px;
+    max-height: 600px;
   }
 
   .chat-input-form {

@@ -34,6 +34,9 @@ export const API_ENDPOINTS = {
     PREVIEW: (id) => `${API_BASE_URL}/datasets/${id}/preview`,
     STATS: (id) => `${API_BASE_URL}/datasets/${id}/stats`,
     VALIDATION_CONFIG: `${API_BASE_URL}/datasets/validation/config`,
+    // Dashboard / Saved Visualizations
+    DASHBOARD: (id) => `${API_BASE_URL}/datasets/${id}/dashboard`,
+    DASHBOARD_REMOVE: (datasetId, vizId) => `${API_BASE_URL}/datasets/${datasetId}/dashboard/${vizId}`,
   },
 
   // Cleaning Agent
