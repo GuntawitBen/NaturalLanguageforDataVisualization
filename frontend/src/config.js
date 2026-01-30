@@ -60,15 +60,6 @@ export const API_ENDPOINTS = {
     DELETE_HISTORY: (id) => `${API_BASE_URL}/agents/text-to-sql/history/${id}`,
   },
 
-  // Proactive Agent
-  PROACTIVE: {
-    INSIGHTS: (datasetId) => `${API_BASE_URL}/agents/proactive/${datasetId}/insights`,
-    EXPLORE: (datasetId) => `${API_BASE_URL}/agents/proactive/${datasetId}/explore`,
-    CHOOSE: (sessionId) => `${API_BASE_URL}/agents/proactive/session/${sessionId}/choose`,
-    GET_SESSION: (sessionId) => `${API_BASE_URL}/agents/proactive/session/${sessionId}`,
-    HEALTH: `${API_BASE_URL}/agents/proactive/health`,
-  },
-
   // Health check
   HELLO: `${API_BASE_URL}/api/hello`,
   HEALTH: `${API_BASE_URL}/health`,

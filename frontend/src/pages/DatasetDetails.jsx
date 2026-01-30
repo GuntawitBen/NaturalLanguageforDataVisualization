@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import ChartRenderer from '../components/ChartRenderer';
-import InsightsPanel from '../components/InsightsPanel';
 import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
 
@@ -652,13 +651,6 @@ export default function DatasetDetails() {
           )}
         </button>
         <button
-          className={`tab-btn ${activeTab === 'insights' ? 'active' : ''}`}
-          onClick={() => setActiveTab('insights')}
-        >
-          <Sparkles size={16} />
-          <span>Insights</span>
-        </button>
-        <button
           className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
         >
@@ -976,13 +968,6 @@ export default function DatasetDetails() {
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Insights Tab */}
-        {activeTab === 'insights' && (
-          <div className="insights-tab">
-            <InsightsPanel datasetId={datasetId} />
           </div>
         )}
 
