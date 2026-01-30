@@ -662,7 +662,7 @@ export default function DatasetDetails() {
           onClick={() => setActiveTab('raw-data')}
         >
           <Table size={16} />
-          <span>Raw Data</span>
+          <span>Data Preview</span>
         </button>
       </nav>
 

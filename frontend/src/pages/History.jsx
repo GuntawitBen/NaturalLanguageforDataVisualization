@@ -131,36 +131,6 @@ function ConstellationCanvas() {
   return <canvas ref={canvasRef} className="constellation-canvas" />;
 }
 
-// Activity Sparkline Component
-function ActivitySparkline({ data }) {
-  const points = useMemo(() => {
-    if (!data || data.length === 0) return '';
-    const max = Math.max(...data, 1);
-    const width = 60;
-    const height = 20;
-
-    return data.map((val, i) => {
-      const x = (i / (data.length - 1)) * width;
-      const y = height - (val / max) * height;
-      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ');
-  }, [data]);
-
-  if (!data || data.length === 0) return null;
-
-  return (
-    <svg className="sparkline" viewBox="0 0 60 20" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#ef4444" stopOpacity="0.8" />
-        </linearGradient>
-      </defs>
-      <path d={points} fill="none" stroke="url(#sparklineGradient)" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export default function History() {
   const { sessionToken, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -572,7 +542,6 @@ export default function History() {
                             <MessageSquare size={14} />
                             <span>{conv.message_count} messages</span>
                           </div>
-                          <ActivitySparkline data={[1, 3, 2, 4, 3, 5, 2]} />
                         </div>
                       </div>
 

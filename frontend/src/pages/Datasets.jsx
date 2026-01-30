@@ -442,28 +442,6 @@ export default function Datasets() {
                         <span>{formatFileSize(dataset.file_size_bytes)}</span>
                       </div>
                     </div>
-
-                    {/* Mini visualization */}
-                    <div className="card-viz">
-                      <svg viewBox="0 0 100 24" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id={`grad-${dataset.dataset_id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="var(--accent-yellow)" stopOpacity="0.3" />
-                            <stop offset="100%" stopColor="var(--accent-yellow)" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d={`M0,24 ${getSparklineData(dataset.row_count).map((v, i) => `L${i * 9},${24 - v * 0.24}`).join(' ')} L100,24 Z`}
-                          fill={`url(#grad-${dataset.dataset_id})`}
-                        />
-                        <polyline
-                          fill="none"
-                          stroke="var(--accent-yellow)"
-                          strokeWidth="1.5"
-                          points={getSparklineData(dataset.row_count).map((v, i) => `${i * 9},${24 - v * 0.24}`).join(' ')}
-                        />
-                      </svg>
-                    </div>
                   </div>
 
                   <div className="card-footer">
