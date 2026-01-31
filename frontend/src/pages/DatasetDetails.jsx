@@ -65,7 +65,15 @@ export default function DatasetDetails() {
   const [sqlError, setSqlError] = useState(null);
   const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion, visualization_id}
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
   const sqlSessionStarted = useRef(false);
+
+  const toggleSection = (sectionKey) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
+  };
   const messagesEndRef = useRef(null);
   const recommendPromptIndex = useRef(0);
 
@@ -947,61 +955,76 @@ export default function DatasetDetails() {
                               <p className="message-text">{msg.content || ''}</p>
 
                               {msg.sql_query && (
-                                <div className="sql-block">
-                                  <div className="sql-header">
+                                <div className={`sql-block ${expandedSections[`sql-${index}`] ? 'expanded' : 'collapsed'}`}>
+                                  <div
+                                    className="sql-header"
+                                    onClick={() => toggleSection(`sql-${index}`)}
+                                  >
                                     <Code size={14} />
                                     <span>SQL Query</span>
+                                    <ChevronDown size={14} className="collapse-icon" />
                                   </div>
-                                  <pre><code>{msg.sql_query}</code></pre>
+                                  {expandedSections[`sql-${index}`] && (
+                                    <pre><code>{msg.sql_query}</code></pre>
+                                  )}
                                 </div>
                               )}
 
                               {msg.results && msg.results.data && msg.results.columns && (
-                                <div className="results-block">
-                                  <div className="results-header">
+                                <div className={`results-block ${expandedSections[`results-${index}`] ? 'expanded' : 'collapsed'}`}>
+                                  <div
+                                    className="results-header"
+                                    onClick={() => toggleSection(`results-${index}`)}
+                                  >
                                     <Table size={14} />
                                     <span>Results</span>
                                     <span className="results-count">
                                       {msg.results.row_count} row{msg.results.row_count !== 1 ? 's' : ''}
                                     </span>
+                                    <ChevronDown size={14} className="collapse-icon" />
                                   </div>
-                                  <div className="results-table-wrapper">
-                                    <table className="results-table">
-                                      <thead>
-                                        <tr>
-                                          {msg.results.columns.map((col, colIndex) => (
-                                            <th key={colIndex}>{col}</th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {msg.results.data.map((row, rowIndex) => {
-                                          if (!row || typeof row !== 'object') return null;
-                                          return (
-                                            <tr key={rowIndex}>
-                                              {msg.results.columns.map((col, cellIndex) => {
-                                                const cell = row[col];
-                                                return (
-                                                  <td key={cellIndex}>
-                                                    {cell !== null && cell !== undefined ? String(cell) : '—'}
-                                                  </td>
-                                                );
-                                              })}
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                  {expandedSections[`results-${index}`] && (
+                                    <div className="results-table-wrapper">
+                                      <table className="results-table">
+                                        <thead>
+                                          <tr>
+                                            {msg.results.columns.map((col, colIndex) => (
+                                              <th key={colIndex}>{col}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {msg.results.data.map((row, rowIndex) => {
+                                            if (!row || typeof row !== 'object') return null;
+                                            return (
+                                              <tr key={rowIndex}>
+                                                {msg.results.columns.map((col, cellIndex) => {
+                                                  const cell = row[col];
+                                                  return (
+                                                    <td key={cellIndex}>
+                                                      {cell !== null && cell !== undefined ? String(cell) : '—'}
+                                                    </td>
+                                                  );
+                                                })}
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
                               {msg.results && msg.results.data && msg.results.data.length > 0 && (
                                 msg.visualization_recommendations && msg.visualization_recommendations.length > 0 ? (
                                   <div className="viz-recommendations">
-                                    <div className="viz-header">
-                                      <TrendingUp size={14} />
-                                      <span>Chart Recommendations</span>
+                                    <div className="chart-explanations">
+                                      {msg.visualization_recommendations.map((rec, rIndex) => (
+                                        <p key={rIndex} className="chart-explanation-text">
+                                          <strong>{rec.title}:</strong> {rec.description}
+                                        </p>
+                                      ))}
                                     </div>
                                     <div className="viz-grid">
                                       {msg.visualization_recommendations.map((rec, rIndex) => (
@@ -1010,7 +1033,6 @@ export default function DatasetDetails() {
                                             <span className="viz-type">{rec.chart_type}</span>
                                             <h5>{rec.title}</h5>
                                           </div>
-                                          <p className="viz-desc">{rec.description}</p>
                                           <div className="viz-axes">
                                             <span><strong>X:</strong> {rec.x_axis}</span>
                                             <span><strong>Y:</strong> {rec.y_axis}</span>

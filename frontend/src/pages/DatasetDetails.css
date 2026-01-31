@@ -976,6 +976,7 @@
 
 .message.assistant {
   align-self: flex-start;
+  max-width: 100%;
   animation: messageSlideInLeft 0.4s ease-out;
 }
 
@@ -1012,7 +1013,7 @@
   transition: transform 0.15s ease;
 }
 
-.message-bubble:hover {
+.message.user .message-bubble:hover {
   transform: scale(1.01);
 }
 
@@ -1023,15 +1024,20 @@
   box-shadow: 0 2px 8px var(--accent-yellow-glow);
 }
 
+/* Assistant messages are free-flowing (no box/bubble) */
 .message.assistant .message-bubble {
-  background: var(--color-elevated);
-  border: 1px solid var(--border-subtle);
-  border-bottom-left-radius: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.25rem 0;
+  box-shadow: none;
 }
 
 .message.error .message-bubble {
   background: var(--accent-red-subtle);
-  border-color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
 }
 
 .message-text {
@@ -1117,7 +1123,39 @@
 
 .results-count {
   margin-left: auto;
+  margin-right: 0.5rem;
   color: var(--text-muted);
+}
+
+/* Collapsible header styling */
+.sql-header,
+.results-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sql-header:hover,
+.results-header:hover {
+  background: var(--color-surface);
+}
+
+/* Collapse icon rotation */
+.collapse-icon {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sql-block .collapse-icon {
+  margin-left: auto;
+}
+
+.results-block .collapse-icon {
+  margin-left: 0;
+}
+
+.expanded .collapse-icon {
+  transform: rotate(180deg);
 }
 
 .results-table-wrapper {
@@ -1168,6 +1206,27 @@
   padding-top: 1rem;
   border-top: 1px solid var(--border-subtle);
   animation: contentFadeIn 0.4s ease-out 0.3s both;
+}
+
+/* Chart explanations - conversational AI style */
+.chart-explanations {
+  margin-bottom: 1rem;
+}
+
+.chart-explanation-text {
+  margin: 0 0 0.5rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.chart-explanation-text:last-child {
+  margin-bottom: 0;
+}
+
+.chart-explanation-text strong {
+  color: var(--accent-yellow);
 }
 
 .viz-header {
@@ -1245,14 +1304,6 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.viz-desc {
-  margin: 0 0 0.75rem;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  line-height: 1.4;
 }
 
 .viz-axes {
@@ -1731,8 +1782,7 @@
   margin-top: 1rem;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--color-surface);
-  border: 1px solid var(--border-subtle);
+  background: var(--color-void);
 }
 
 /* Responsive adjustments */

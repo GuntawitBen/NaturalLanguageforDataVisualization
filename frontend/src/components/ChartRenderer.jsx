@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
-import { Plus, Trash2, Check, Table } from 'lucide-react';
+import { Pin, PinOff, Table } from 'lucide-react';
 import './ChartRenderer.css';
 
 // Professional chart color palette
@@ -80,25 +80,13 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                         </div>
                     )}
                 </div>
-                <div className="chart-analysis">
-                    <p className="chart-explanation">{suggestion.explanation || suggestion.description}</p>
-                </div>
-                <div className="chart-footer">
-                    <div className="chart-actions">
-                        {isPinned ? (
-                            <button className="action-btn pinned" onClick={onRemove} title="Remove from Dashboard">
-                                <Check size={18} />
-                                <span>Added to Dashboard</span>
-                                <span className="remove-label"><Trash2 size={16} /> Remove</span>
-                            </button>
-                        ) : (
-                            <button className="action-btn add" onClick={onAdd} title="Add to Dashboard">
-                                <Plus size={18} />
-                                <span>Add to Dashboard</span>
-                            </button>
-                        )}
-                    </div>
-                </div>
+                <button
+                    className={`pin-btn ${isPinned ? 'pinned' : ''}`}
+                    onClick={isPinned ? onRemove : onAdd}
+                    title={isPinned ? 'Unpin from Dashboard' : 'Pin to Dashboard'}
+                >
+                    {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
+                </button>
             </div>
         );
     }
@@ -480,25 +468,13 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     className="d3-svg"
                 />
             </div>
-            <div className="chart-analysis">
-                <p className="chart-explanation">{suggestion.explanation}</p>
-            </div>
-            <div className="chart-footer">
-                <div className="chart-actions">
-                    {isPinned ? (
-                        <button className="action-btn pinned" onClick={onRemove} title="Remove from Dashboard">
-                            <Check size={18} />
-                            <span>Added to Dashboard</span>
-                            <span className="remove-label"><Trash2 size={16} /> Remove</span>
-                        </button>
-                    ) : (
-                        <button className="action-btn add" onClick={onAdd} title="Add to Dashboard">
-                            <Plus size={18} />
-                            <span>Add to Dashboard</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+            <button
+                className={`pin-btn ${isPinned ? 'pinned' : ''}`}
+                onClick={isPinned ? onRemove : onAdd}
+                title={isPinned ? 'Unpin from Dashboard' : 'Pin to Dashboard'}
+            >
+                {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
+            </button>
         </div>
     );
 }
