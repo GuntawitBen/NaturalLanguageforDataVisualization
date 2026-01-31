@@ -54,6 +54,7 @@ export const API_ENDPOINTS = {
   TEXT_TO_SQL: {
     START_SESSION: `${API_BASE_URL}/agents/text-to-sql/start-session`,
     CHAT: `${API_BASE_URL}/agents/text-to-sql/chat`,
+    FOLLOW_UP: (id) => `${API_BASE_URL}/agents/text-to-sql/follow-up/${id}`,
     GET_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
     END_SESSION: (id) => `${API_BASE_URL}/agents/text-to-sql/session/${id}`,
     HISTORY: `${API_BASE_URL}/agents/text-to-sql/history`,

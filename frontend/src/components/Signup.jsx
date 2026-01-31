@@ -226,8 +226,15 @@ export default function Signup() {
 
 
 
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? 'Creating Account...' : 'Create Account'}
+                    <button type="submit" className={`btn btn-primary ${loading ? 'loading' : ''}`} disabled={loading}>
+                        {loading ? (
+                            <>
+                                <span className="btn-spinner"></span>
+                                <span>Creating Account...</span>
+                            </>
+                        ) : (
+                            'Create Account'
+                        )}
                     </button>
                 </form>
 
@@ -238,115 +245,6 @@ export default function Signup() {
 
             {/* Right side - Technical Dashboard */}
             <div className="register-right">
-                <div className="tech-display">
-                    {/* Grid background */}
-                    <div className="tech-grid"></div>
-
-                    {/* Main Dashboard Container */}
-                    <div className="dashboard-frame">
-                        {/* Header */}
-                        <div className="dash-header">
-                            <div className="status-dot"></div>
-                            <span className="header-text">PHEBE_ANALYTICS</span>
-                            <span className="header-version">v2.4.1</span>
-                        </div>
-
-                        {/* Chart Panel */}
-                        <div className="chart-panel">
-                            <div className="panel-label">REVENUE_METRICS</div>
-                            <svg className="area-chart" viewBox="0 0 200 80">
-                                <defs>
-                                    <linearGradient id="chartGradSignup" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" stopColor="rgba(251,191,36,0.3)" />
-                                        <stop offset="100%" stopColor="rgba(251,191,36,0)" />
-                                    </linearGradient>
-                                </defs>
-                                <path className="chart-area" d="M0,60 Q25,55 40,45 T80,35 T120,40 T160,25 T200,30 L200,80 L0,80 Z" fill="url(#chartGradSignup)" />
-                                <path className="chart-line-main" d="M0,60 Q25,55 40,45 T80,35 T120,40 T160,25 T200,30" />
-                                <circle className="chart-point" cx="200" cy="30" r="3" />
-                            </svg>
-                            <div className="chart-labels">
-                                <span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span>
-                            </div>
-                        </div>
-
-                        {/* Stats Row */}
-                        <div className="stats-row">
-                            <div className="stat-box">
-                                <div className="stat-value">2.4M</div>
-                                <div className="stat-label">records</div>
-                            </div>
-                            <div className="stat-box">
-                                <div className="stat-value">847</div>
-                                <div className="stat-label">queries</div>
-                            </div>
-                            <div className="stat-box">
-                                <div className="stat-value">99.2%</div>
-                                <div className="stat-label">uptime</div>
-                            </div>
-                        </div>
-
-                        {/* Bar Chart */}
-                        <div className="bar-panel">
-                            <div className="panel-label">DISTRIBUTION</div>
-                            <div className="h-bars">
-                                <div className="h-bar-row">
-                                    <span className="bar-label">Dataset A</span>
-                                    <div className="bar-track"><div className="bar-fill bf-1"></div></div>
-                                    <span className="bar-value">78%</span>
-                                </div>
-                                <div className="h-bar-row">
-                                    <span className="bar-label">Dataset B</span>
-                                    <div className="bar-track"><div className="bar-fill bf-2"></div></div>
-                                    <span className="bar-value">64%</span>
-                                </div>
-                                <div className="h-bar-row">
-                                    <span className="bar-label">Dataset C</span>
-                                    <div className="bar-track"><div className="bar-fill bf-3"></div></div>
-                                    <span className="bar-value">91%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Terminal Window */}
-                    <div className="terminal-window">
-                        <div className="terminal-header">
-                            <div className="term-dots">
-                                <span></span><span></span><span></span>
-                            </div>
-                            <span className="term-title">query.sql</span>
-                        </div>
-                        <div className="terminal-body">
-                            <div className="code-line">
-                                <span className="line-num">1</span>
-                                <span className="kw">SELECT</span> <span className="fn">COUNT</span>(*) <span className="kw">AS</span> total
-                            </div>
-                            <div className="code-line">
-                                <span className="line-num">2</span>
-                                <span className="kw">FROM</span> analytics.events
-                            </div>
-                            <div className="code-line">
-                                <span className="line-num">3</span>
-                                <span className="kw">WHERE</span> date <span className="op">&gt;=</span> <span className="str">'2024-01'</span>
-                            </div>
-                            <div className="code-line cursor-line">
-                                <span className="line-num">4</span>
-                                <span className="kw">GROUP BY</span> category<span className="cursor">|</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Floating metric badges */}
-                    <div className="metric-badge mb-1">
-                        <span className="badge-icon">↑</span>
-                        <span className="badge-value">+24.5%</span>
-                    </div>
-                    <div className="metric-badge mb-2">
-                        <span className="badge-icon">◆</span>
-                        <span className="badge-value">LIVE</span>
-                    </div>
-                </div>
             </div>
         </div>
     );

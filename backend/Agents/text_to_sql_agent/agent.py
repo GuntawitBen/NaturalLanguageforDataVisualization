@@ -313,12 +313,12 @@ class TextToSQLAgent:
 
         # Add assistant message with SQL and VIZ recommendations to session and DB
         session_manager.add_message(
-            session_id, 
-            "assistant", 
-            response_msg, 
-            sql_query, 
+            session_id,
+            "assistant",
+            response_msg,
+            sql_query,
             query_result_for_db,
-            visualization_recommendations=viz_recommendations # PROACTIVE PERSISTENCE
+            visualization_recommendations=viz_recommendations
         )
 
         return ChatResponse(
@@ -617,6 +617,74 @@ class TextToSQLAgent:
             True if session was deleted
         """
         return session_manager.delete_session(session_id)
+
+    def get_follow_up_suggestions(self, session_id: str) -> Dict[str, Any]:
+        """
+        Generate follow-up suggestions based on the last assistant message with results.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Dict with 'intro_message' and 'suggestions' list
+
+        Raises:
+            ValueError: If session not found or no valid message to generate from
+        """
+        session = session_manager.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session not found or expired: {session_id}")
+
+        # Find the last assistant message with SQL query and results
+        last_message = None
+        last_user_question = None
+
+        for msg in reversed(session.messages):
+            if msg.role == "assistant" and msg.sql_query and last_message is None:
+                last_message = msg
+            elif msg.role == "user" and last_message is not None:
+                last_user_question = msg.content
+                break
+
+        if not last_message or not last_user_question:
+            return {"intro_message": "", "suggestions": []}
+
+        # We need results data - get from the last query execution
+        # The results were stored in the message but we need to re-execute or get from DB
+        # For now, get the last query results from the conversation messages in DB
+        from database.db_utils import get_conversation_messages
+
+        db_messages = get_conversation_messages(session_id)
+
+        # Find the last assistant message with query_result
+        result_data = None
+        result_columns = []
+        row_count = 0
+
+        for msg in reversed(db_messages):
+            if msg.get('role') == 'assistant' and msg.get('query_result'):
+                query_result = msg['query_result']
+                result_data = query_result.get('data', [])
+                result_columns = query_result.get('columns', [])
+                row_count = query_result.get('row_count', 0)
+                break
+
+        if not result_data:
+            return {"intro_message": "", "suggestions": []}
+
+        try:
+            result = self.openai_client.generate_follow_up_suggestions(
+                original_question=last_user_question,
+                sql_query=last_message.sql_query,
+                result_columns=result_columns,
+                sample_results=result_data,
+                row_count=row_count,
+                schema=session.schema
+            )
+            return result
+        except Exception as e:
+            print(f"[AGENT] Failed to generate follow-up suggestions: {e}")
+            return {"intro_message": "", "suggestions": []}
 
 
 # Global agent instance

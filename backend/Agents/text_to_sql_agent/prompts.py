@@ -150,3 +150,33 @@ def generate_sample_questions(schema: SchemaContext) -> List[str]:
         questions.append(f"Show {num_col} by {str_col.name}")
 
     return questions[:4]  # Return at most 4 sample questions
+
+
+FOLLOW_UP_SUGGESTIONS_PROMPT = """Based on the query results, suggest 3-4 follow-up questions that would help the user dig deeper into their data.
+
+CONTEXT:
+- Original Question: {original_question}
+- SQL Query: {sql_query}
+- Result Columns: {result_columns}
+- Sample Results (first few rows): {sample_results}
+- Total Row Count: {row_count}
+- Unexplored Columns (not in current query): {unexplored_columns}
+
+GUIDELINES:
+1. Write a brief intro message (1-2 sentences) that references something interesting in the results
+2. Dig deeper into interesting patterns from the current results
+3. Suggest comparisons or breakdowns not in the original query
+4. Propose exploring unused columns that relate to findings
+5. Consider trends, outliers, or correlations worth investigating
+
+RESPONSE FORMAT (strict JSON):
+{{
+    "intro_message": "Brief observation about the results and invitation to explore further (1-2 sentences, conversational tone)",
+    "suggestions": [
+        {{
+            "question": "The exact question to ask"
+        }}
+    ]
+}}
+
+Return ONLY valid JSON, no markdown or extra text."""

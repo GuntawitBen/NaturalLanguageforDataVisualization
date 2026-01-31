@@ -14,7 +14,7 @@ class ChartRecOpenAIClient:
 
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-5.2")
         if not self.api_key:
             print("[WARNING] OPENAI_API_KEY not found in environment")
         
@@ -50,11 +50,21 @@ class ChartRecOpenAIClient:
                     {"role": "system", "content": CHART_REC_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt}
                 ],
-                response_format={"type": "json_object"},
                 temperature=0.2
             )
 
             content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content for chart recommendation")
+                return VisualizationResponse(recommendations=[], summary="Empty response from AI")
+
+            # Handle potential markdown code blocks
+            import re
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```(?:json)?\s*', '', content)
+                content = re.sub(r'\s*```$', '', content)
+
             data = json.loads(content)
             
             return VisualizationResponse(**data)

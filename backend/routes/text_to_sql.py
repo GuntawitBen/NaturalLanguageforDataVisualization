@@ -145,6 +145,49 @@ async def chat(
         )
 
 
+class FollowUpResponse(BaseModel):
+    """Response for follow-up suggestions"""
+    intro_message: str
+    suggestions: List[str]
+
+
+@router.get("/follow-up/{session_id}", response_model=FollowUpResponse)
+async def get_follow_up_suggestions(
+    session_id: str,
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Generate follow-up suggestions based on the last query results.
+
+    This endpoint is called separately after the main chat response
+    to avoid blocking the visualization results.
+
+    Args:
+        session_id: Session ID
+        current_user_email: Authenticated user email
+
+    Returns:
+        FollowUpResponse with intro message and list of suggestion questions
+    """
+    try:
+        result = text_to_sql_agent.get_follow_up_suggestions(session_id)
+        return FollowUpResponse(
+            intro_message=result.get("intro_message", ""),
+            suggestions=result.get("suggestions", [])
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except Exception as e:
+        print(f"[ERROR] Failed to generate follow-up suggestions: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+        # Return empty on error (non-blocking)
+        return FollowUpResponse(intro_message="", suggestions=[])
+
+
 @router.get("/session/{session_id}", response_model=SessionState)
 async def get_session(
     session_id: str,

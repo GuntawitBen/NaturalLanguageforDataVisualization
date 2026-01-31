@@ -2,11 +2,13 @@
 Configuration for the Text-to-SQL agent.
 """
 
+import os
+
 # OpenAI API Configuration
 OPENAI_CONFIG = {
-    "model": "gpt-4o",
+    "model": os.getenv("OPENAI_MODEL", "gpt-5.2"),
     "temperature": 0.3,  # Lower for more consistent SQL generation
-    "max_tokens": 500,   # SQL queries are typically short
+    "max_completion_tokens": 500,   # SQL queries are typically short
     "timeout": 15,       # seconds
 }
 

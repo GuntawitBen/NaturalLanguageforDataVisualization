@@ -161,9 +161,7 @@ class CleaningOpenAIClient:
                 model=RECOMMENDATION_CONFIG.get("model", self.model),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=RECOMMENDATION_CONFIG.get("temperature", 0.3),
-                max_tokens=RECOMMENDATION_CONFIG.get("max_tokens", 150),
-                response_format={"type": "json_object"},
-                max_retries=RECOMMENDATION_CONFIG.get("max_retries", 1),
+                max_completion_tokens=RECOMMENDATION_CONFIG.get("max_completion_tokens", 150),
                 timeout=RECOMMENDATION_CONFIG.get("timeout", 8)
             )
 
@@ -177,6 +175,17 @@ class CleaningOpenAIClient:
 
             # Parse response
             content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content")
+                return None, None
+
+            # Handle potential markdown code blocks
+            content = content.strip()
+            if content.startswith("```"):
+                import re
+                content = re.sub(r'^```(?:json)?\s*', '', content)
+                content = re.sub(r'\s*```$', '', content)
+
             data = json.loads(content)
 
             recommended_id = data.get("recommended_option_id")

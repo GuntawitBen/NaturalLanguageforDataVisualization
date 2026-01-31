@@ -516,6 +516,11 @@ export default function DatasetDetails() {
         visualization_recommendations: data.visualization_recommendations || null,
         error: data.status === 'error',
       }]);
+
+      // Fetch follow-up suggestions separately (non-blocking)
+      if (data.status === 'success' && results && results.data?.length > 0) {
+        fetchFollowUpSuggestions();
+      }
     } catch (err) {
       console.error('Error sending message:', err);
       setSqlMessages(prev => [...prev, {
@@ -525,6 +530,34 @@ export default function DatasetDetails() {
       }]);
     } finally {
       setSqlSending(false);
+    }
+  };
+
+  const fetchFollowUpSuggestions = async () => {
+    if (!sqlSessionId) return;
+
+    try {
+      const response = await fetch(API_ENDPOINTS.TEXT_TO_SQL.FOLLOW_UP(sqlSessionId), {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.suggestions && data.suggestions.length > 0 && data.intro_message) {
+        // Add a new assistant message with the follow-up suggestions
+        setSqlMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.intro_message,
+          recommendations: data.suggestions, // Use recommendations format (same as intro)
+        }]);
+      }
+    } catch (err) {
+      console.error('Error fetching follow-up suggestions:', err);
+      // Silent fail - follow-up suggestions are optional
     }
   };
 
@@ -837,13 +870,14 @@ export default function DatasetDetails() {
                         </div>
                         <div className="conversation-actions">
                           <button
-                            className="action-btn"
+                            className="action-btn view"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSelectConversation(conv.session_id);
                             }}
+                            title="View conversation"
                           >
-                            <ChevronRight size={18} />
+                            <Eye size={20} strokeWidth={2} />
                           </button>
                           <button
                             className="action-btn danger"
@@ -851,8 +885,9 @@ export default function DatasetDetails() {
                               e.stopPropagation();
                               handleDeleteConversation(conv.session_id);
                             }}
+                            title="Delete conversation"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={20} strokeWidth={2} />
                           </button>
                         </div>
                       </div>
@@ -961,36 +996,67 @@ export default function DatasetDetails() {
                                 </div>
                               )}
 
-                              {msg.visualization_recommendations && msg.visualization_recommendations.length > 0 && (
-                                <div className="viz-recommendations">
-                                  <div className="viz-header">
-                                    <TrendingUp size={14} />
-                                    <span>Chart Recommendations</span>
+                              {msg.results && msg.results.data && msg.results.data.length > 0 && (
+                                msg.visualization_recommendations && msg.visualization_recommendations.length > 0 ? (
+                                  <div className="viz-recommendations">
+                                    <div className="viz-header">
+                                      <TrendingUp size={14} />
+                                      <span>Chart Recommendations</span>
+                                    </div>
+                                    <div className="viz-grid">
+                                      {msg.visualization_recommendations.map((rec, rIndex) => (
+                                        <div key={rIndex} className="viz-card">
+                                          <div className="viz-card-header">
+                                            <span className="viz-type">{rec.chart_type}</span>
+                                            <h5>{rec.title}</h5>
+                                          </div>
+                                          <p className="viz-desc">{rec.description}</p>
+                                          <div className="viz-axes">
+                                            <span><strong>X:</strong> {rec.x_axis}</span>
+                                            <span><strong>Y:</strong> {rec.y_axis}</span>
+                                          </div>
+                                          <div className="auto-rendered-chart">
+                                            <ChartRenderer
+                                              data={msg.results.data}
+                                              suggestion={rec}
+                                              onAdd={() => handleAddToDashboard(msg.results.data, rec)}
+                                              isPinned={pinnedCharts.some(c => c.suggestion.title === rec.title)}
+                                            />
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-                                  <div className="viz-grid">
-                                    {msg.visualization_recommendations.map((rec, rIndex) => (
-                                      <div key={rIndex} className="viz-card">
-                                        <div className="viz-card-header">
-                                          <span className="viz-type">{rec.chart_type}</span>
-                                          <h5>{rec.title}</h5>
-                                        </div>
-                                        <p className="viz-desc">{rec.description}</p>
-                                        <div className="viz-axes">
-                                          <span><strong>X:</strong> {rec.x_axis}</span>
-                                          <span><strong>Y:</strong> {rec.y_axis}</span>
-                                        </div>
-                                        <div className="auto-rendered-chart">
-                                          <ChartRenderer
-                                            data={msg.results.data}
-                                            suggestion={rec}
-                                            onAdd={() => handleAddToDashboard(msg.results.data, rec)}
-                                            isPinned={pinnedCharts.some(c => c.suggestion.title === rec.title)}
-                                          />
-                                        </div>
-                                      </div>
-                                    ))}
+                                ) : (
+                                  <div className="viz-recommendations">
+                                    <div className="viz-header">
+                                      <Table size={14} />
+                                      <span>Table View</span>
+                                    </div>
+                                    <div className="viz-grid">
+                                      <ChartRenderer
+                                        data={msg.results.data}
+                                        suggestion={{
+                                          chart_type: 'table',
+                                          title: 'Data Table',
+                                          description: 'Tabular view of query results',
+                                          explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
+                                          x_axis: null,
+                                          y_axis: null,
+                                        }}
+                                        onAdd={() => handleAddToDashboard(msg.results.data, {
+                                          chart_type: 'table',
+                                          title: 'Data Table',
+                                          description: 'Tabular view of query results',
+                                          explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
+                                          x_axis: null,
+                                          y_axis: null,
+                                        })}
+                                        isPinned={pinnedCharts.some(c => c.suggestion.chart_type === 'table' && c.suggestion.title === 'Data Table')}
+                                      />
+                                    </div>
                                   </div>
-                                </div>
+                                )
                               )}
 
                               {msg.recommendations && msg.recommendations.length > 0 && (

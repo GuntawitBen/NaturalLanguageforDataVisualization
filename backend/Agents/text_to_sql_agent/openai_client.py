@@ -7,10 +7,10 @@ import json
 import time
 import re
 import os
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from .models import SchemaContext, Message, GPTSQLResponse
-from .prompts import build_system_prompt, build_user_prompt
+from .prompts import build_system_prompt, build_user_prompt, FOLLOW_UP_SUGGESTIONS_PROMPT
 from .config import OPENAI_CONFIG, RATE_LIMIT_CONFIG
 
 
@@ -182,7 +182,7 @@ class TextToSQLOpenAIClient:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=OPENAI_CONFIG["temperature"],
-                max_tokens=OPENAI_CONFIG["max_tokens"],
+                max_completion_tokens=OPENAI_CONFIG["max_completion_tokens"],
                 timeout=OPENAI_CONFIG["timeout"]
             )
 
@@ -244,7 +244,7 @@ The recommendations array should contain the exact questions mentioned in your i
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,  # Slightly higher for more natural language
-                max_tokens=500,
+                max_completion_tokens=500,
                 timeout=OPENAI_CONFIG["timeout"]
             )
 
@@ -321,7 +321,7 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=OPENAI_CONFIG["temperature"],
-                max_tokens=OPENAI_CONFIG["max_tokens"],
+                max_completion_tokens=OPENAI_CONFIG["max_completion_tokens"],
                 timeout=OPENAI_CONFIG["timeout"]
             )
 
@@ -333,3 +333,94 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
             return GPTSQLResponse(
                 error=f"Failed to fix SQL: {str(e)}"
             )
+
+    def generate_follow_up_suggestions(
+        self,
+        original_question: str,
+        sql_query: str,
+        result_columns: List[str],
+        sample_results: List[Dict[str, Any]],
+        row_count: int,
+        schema: SchemaContext
+    ) -> Dict[str, Any]:
+        """
+        Generate proactive follow-up suggestions based on query results.
+
+        Args:
+            original_question: The user's original question
+            sql_query: The SQL query that was executed
+            result_columns: Columns returned in the result
+            sample_results: Sample data from the results (first few rows)
+            row_count: Total number of rows returned
+            schema: Database schema context
+
+        Returns:
+            Dict with 'intro_message' and 'suggestions' list
+        """
+        try:
+            # Find unexplored columns (columns in schema but not in result)
+            unexplored = [c.name for c in schema.columns if c.name not in result_columns]
+
+            # Limit sample results for prompt (first 5 rows)
+            sample_for_prompt = sample_results[:5] if sample_results else []
+
+            # Build the prompt
+            prompt = FOLLOW_UP_SUGGESTIONS_PROMPT.format(
+                original_question=original_question,
+                sql_query=sql_query,
+                result_columns=", ".join(result_columns) if result_columns else "None",
+                sample_results=json.dumps(sample_for_prompt, default=str),
+                row_count=row_count,
+                unexplored_columns=", ".join(unexplored) if unexplored else "None"
+            )
+
+            response = self._call_with_retry(
+                self.client.chat.completions.create,
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a data analyst assistant. Generate insightful follow-up questions based on query results."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_completion_tokens=600,
+                timeout=OPENAI_CONFIG["timeout"]
+            )
+
+            # Log token usage
+            if response.usage:
+                prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
+                cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
+                print(f"[GPT] Follow-up suggestions token usage - Input: {response.usage.prompt_tokens}, "
+                      f"Output: {response.usage.completion_tokens}, "
+                      f"Cached: {cached_tokens}")
+
+            # Parse response
+            content = response.choices[0].message.content.strip()
+
+            # Handle potential markdown code blocks
+            if content.startswith("```"):
+                content = re.sub(r'^```(?:json)?\s*', '', content)
+                content = re.sub(r'\s*```$', '', content)
+
+            data = json.loads(content)
+            intro_message = data.get("intro_message", "Here are some follow-up questions you might find interesting:")
+            suggestions = data.get("suggestions", [])
+
+            # Clean suggestions (just need question now)
+            cleaned = []
+            for s in suggestions[:4]:  # Limit to 4 suggestions
+                if isinstance(s, dict) and "question" in s:
+                    cleaned.append(s.get("question", ""))
+
+            print(f"[GPT] Generated {len(cleaned)} follow-up suggestions")
+            return {
+                "intro_message": intro_message,
+                "suggestions": cleaned
+            }
+
+        except json.JSONDecodeError as e:
+            print(f"[WARNING] Failed to parse follow-up suggestions JSON: {e}")
+            return {"intro_message": "", "suggestions": []}
+        except Exception as e:
+            print(f"[ERROR] Failed to generate follow-up suggestions: {type(e).__name__}: {str(e)}")
+            return {"intro_message": "", "suggestions": []}

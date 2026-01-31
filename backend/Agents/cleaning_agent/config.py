@@ -341,11 +341,13 @@ DEFAULT_PROS_CONS = {
     }
 }
 
+import os
+
 # GPT-4 configuration
 OPENAI_CONFIG = {
-    "model": "gpt-4o",
+    "model": os.getenv("OPENAI_MODEL", "gpt-5.2"),
     "temperature": 0.7,
-    "max_tokens": 800,
+    "max_completion_tokens": 800,
     "timeout": 10,  # seconds
 }
 
@@ -355,6 +357,6 @@ RECOMMENDATION_CONFIG = {
     "min_options": 2,  # Only recommend if 2+ options available
     "timeout": 8,  # Timeout for recommendation API calls (seconds)
     "temperature": 0.3,  # Lower = more deterministic recommendations
-    "max_tokens": 150,  # Keep reasons short and concise
+    "max_completion_tokens": 150,  # Keep reasons short and concise
     "max_retries": 1,  # Retry once on failure (2 attempts total)
 }

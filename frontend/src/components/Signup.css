@@ -45,7 +45,7 @@
     z-index: 0;
 }
 
-.register-container > * {
+.register-container>* {
     position: relative;
     z-index: 1;
 }
@@ -94,12 +94,16 @@
 }
 
 @keyframes ambientMove {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translate(0, 0) rotate(0deg);
     }
+
     33% {
         transform: translate(5%, 3%) rotate(1deg);
     }
+
     66% {
         transform: translate(-3%, 5%) rotate(-1deg);
     }
@@ -252,6 +256,11 @@ input[type="password"]:focus {
     background: linear-gradient(135deg, var(--accent-yellow, #fbbf24) 0%, var(--accent-orange, #f97316) 100%);
     color: var(--color-void, #060606);
     box-shadow: 0 4px 14px rgba(251, 191, 36, 0.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -264,9 +273,32 @@ input[type="password"]:focus {
 }
 
 .btn-primary:disabled {
-    opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
+    opacity: 0.85;
+}
+
+.btn-primary.loading {
+    pointer-events: none;
+}
+
+/* Button Spinner */
+.btn-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid transparent;
+    border-top-color: var(--color-void, #060606);
+    border-right-color: var(--color-void, #060606);
+    border-radius: 50%;
+    animation: btnSpin 0.6s linear infinite;
+}
+
+@keyframes btnSpin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .btn-google {
@@ -404,8 +436,15 @@ input[type="password"]:focus {
 }
 
 @keyframes dashFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
 /* Dashboard Header */
@@ -427,8 +466,17 @@ input[type="password"]:focus {
 }
 
 @keyframes statusPulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); }
-    50% { opacity: 0.5; box-shadow: 0 0 4px rgba(251, 191, 36, 0.3); }
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+    }
+
+    50% {
+        opacity: 0.5;
+        box-shadow: 0 0 4px rgba(251, 191, 36, 0.3);
+    }
 }
 
 .header-text {
@@ -471,8 +519,13 @@ input[type="password"]:focus {
 }
 
 @keyframes areaReveal {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 .chart-line-main {
@@ -486,8 +539,13 @@ input[type="password"]:focus {
 }
 
 @keyframes lineReveal {
-    0% { stroke-dashoffset: 300; }
-    100% { stroke-dashoffset: 0; }
+    0% {
+        stroke-dashoffset: 300;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+    }
 }
 
 .chart-point {
@@ -497,8 +555,17 @@ input[type="password"]:focus {
 }
 
 @keyframes pointPulse {
-    0%, 100% { r: 3; opacity: 1; }
-    50% { r: 5; opacity: 0.7; }
+
+    0%,
+    100% {
+        r: 3;
+        opacity: 1;
+    }
+
+    50% {
+        r: 5;
+        opacity: 0.7;
+    }
 }
 
 .chart-labels {
@@ -601,8 +668,15 @@ input[type="password"]:focus {
 }
 
 @keyframes barGrow {
-    0% { transform: scaleX(0); transform-origin: left; }
-    100% { transform: scaleX(1); transform-origin: left; }
+    0% {
+        transform: scaleX(0);
+        transform-origin: left;
+    }
+
+    100% {
+        transform: scaleX(1);
+        transform-origin: left;
+    }
 }
 
 .bar-value {
@@ -629,8 +703,15 @@ input[type="password"]:focus {
 }
 
 @keyframes termFloat {
-    0%, 100% { transform: translateY(0) rotate(-1deg); }
-    50% { transform: translateY(-12px) rotate(0deg); }
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(-1deg);
+    }
+
+    50% {
+        transform: translateY(-12px) rotate(0deg);
+    }
 }
 
 .terminal-header {
@@ -653,9 +734,17 @@ input[type="password"]:focus {
     background: rgba(255, 255, 255, 0.15);
 }
 
-.term-dots span:first-child { background: #ef4444; }
-.term-dots span:nth-child(2) { background: #fbbf24; }
-.term-dots span:last-child { background: #22c55e; }
+.term-dots span:first-child {
+    background: #ef4444;
+}
+
+.term-dots span:nth-child(2) {
+    background: #fbbf24;
+}
+
+.term-dots span:last-child {
+    background: #22c55e;
+}
 
 .term-title {
     font-family: 'JetBrains Mono', monospace;
@@ -678,14 +767,32 @@ input[type="password"]:focus {
     animation: typeIn 0.3s ease-out forwards;
 }
 
-.code-line:nth-child(1) { animation-delay: 0.5s; }
-.code-line:nth-child(2) { animation-delay: 1s; }
-.code-line:nth-child(3) { animation-delay: 1.5s; }
-.code-line:nth-child(4) { animation-delay: 2s; }
+.code-line:nth-child(1) {
+    animation-delay: 0.5s;
+}
+
+.code-line:nth-child(2) {
+    animation-delay: 1s;
+}
+
+.code-line:nth-child(3) {
+    animation-delay: 1.5s;
+}
+
+.code-line:nth-child(4) {
+    animation-delay: 2s;
+}
 
 @keyframes typeIn {
-    0% { opacity: 0; transform: translateX(-5px); }
-    100% { opacity: 1; transform: translateX(0); }
+    0% {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .line-num {
@@ -694,10 +801,21 @@ input[type="password"]:focus {
     width: 12px;
 }
 
-.kw { color: #c792ea; }
-.fn { color: #82aaff; }
-.str { color: #c3e88d; }
-.op { color: #89ddff; }
+.kw {
+    color: #c792ea;
+}
+
+.fn {
+    color: #82aaff;
+}
+
+.str {
+    color: #c3e88d;
+}
+
+.op {
+    color: #89ddff;
+}
 
 .cursor {
     color: #fbbf24;
@@ -705,8 +823,15 @@ input[type="password"]:focus {
 }
 
 @keyframes cursorBlink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }
 
 /* Metric Badges */
@@ -737,13 +862,27 @@ input[type="password"]:focus {
 }
 
 @keyframes badgeFloat1 {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 @keyframes badgeFloat2 {
-    0%, 100% { transform: translateY(0) rotate(-2deg); }
-    50% { transform: translateY(-15px) rotate(2deg); }
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(-2deg);
+    }
+
+    50% {
+        transform: translateY(-15px) rotate(2deg);
+    }
 }
 
 .badge-icon {
@@ -757,8 +896,15 @@ input[type="password"]:focus {
 }
 
 @keyframes livePulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
 }
 
 .badge-value {

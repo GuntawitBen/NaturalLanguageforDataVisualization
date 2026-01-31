@@ -69,12 +69,10 @@ except Exception as e:
     get_db_status = lambda: (False, "Database module failed to import")
 
 load_dotenv()
-print("=" * 50)
 print("Environment Variables Check:")
 print(f"SECRET_KEY: {'Loaded' if os.getenv('SECRET_KEY') else 'NOT FOUND'}")
 print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT FOUND'}")
 print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
-print("=" * 50)
 
 # Initialize database on startup (check MySQL connection and tables)
 def check_mysql_connection() -> bool:

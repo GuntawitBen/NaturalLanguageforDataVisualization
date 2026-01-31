@@ -34,7 +34,10 @@ class Message(BaseModel):
     role: str  # "user" or "assistant"
     content: str
     sql_query: Optional[str] = None
-    visualization_recommendations: Optional[List[Dict[str, Any]]] = None
+    # Can be either:
+    # - List[Dict] for chart recommendations (chart_type, x_axis, y_axis, etc.)
+    # - Dict with 'recommendations' key for text recommendations (intro suggestions)
+    visualization_recommendations: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None
     timestamp: datetime = None
 
     def __init__(self, **data):
