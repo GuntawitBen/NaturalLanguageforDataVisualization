@@ -1033,12 +1033,6 @@
   box-shadow: none;
 }
 
-.message.error .message-bubble {
-  background: var(--accent-red-subtle);
-  border: 1px solid var(--accent-red);
-  padding: 1rem 1.25rem;
-  border-radius: var(--radius-lg);
-}
 
 .message-text {
   margin: 0;

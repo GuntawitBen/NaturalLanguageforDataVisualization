@@ -100,4 +100,5 @@ class GPTSQLResponse(BaseModel):
     explanation: Optional[str] = None
     clarification_needed: Optional[str] = None
     error: Optional[str] = None
+    error_type: Optional[str] = None  # Category: not_a_query, column_not_found, ambiguous_request, etc.
     recommendations: Optional[List[str]] = None  # List of recommended questions

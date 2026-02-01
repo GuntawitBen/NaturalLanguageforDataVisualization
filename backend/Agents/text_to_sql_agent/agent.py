@@ -205,15 +205,15 @@ class TextToSQLAgent:
                 message=clarification_msg
             )
 
-        # Handle error from GPT
+        # Handle error from GPT - use the specific error message
         if gpt_response.error:
             error_msg = gpt_response.error
-            session_manager.add_message(session_id, "assistant", f"Error: {error_msg}")
+            session_manager.add_message(session_id, "assistant", error_msg)
 
             return ChatResponse(
                 status="error",
-                message="I couldn't generate a SQL query for that question.",
-                error_details=error_msg
+                message=error_msg,
+                error_details=gpt_response.error_type
             )
 
         # Handle missing SQL

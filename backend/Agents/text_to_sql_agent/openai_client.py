@@ -132,6 +132,7 @@ class TextToSQLOpenAIClient:
                 explanation=data.get("explanation"),
                 clarification_needed=data.get("clarification_needed"),
                 error=data.get("error"),
+                error_type=data.get("error_type"),
                 recommendations=data.get("recommendations")
             )
 

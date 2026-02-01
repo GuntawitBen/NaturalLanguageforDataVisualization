@@ -35,8 +35,20 @@ For successful SQL generation:
 If the question is ambiguous or needs clarification:
 {{"clarification_needed": "What specific aspect would you like to clarify?"}}
 
-If the question cannot be answered with the available data:
-{{"error": "Explanation of why this query cannot be generated"}}
+If the question cannot be answered with the available data, provide a specific explanation:
+{{"error": "Specific reason why SQL cannot be generated", "error_type": "category"}}
+
+Error types and when to use them:
+- "not_a_query": User message is a greeting, casual chat, or not a data question (e.g., "hello", "thanks", "how are you")
+- "column_not_found": User references a column that doesn't exist. List the column they asked for and suggest similar existing columns if any.
+- "ambiguous_request": Request is too vague to determine what data to retrieve (e.g., "show me something interesting")
+- "unsupported_operation": Request requires operations not possible with SQL (e.g., "predict future sales", "why did sales drop")
+- "no_relevant_data": The dataset doesn't contain information related to the question
+
+Example error responses:
+- {{"error": "Your message appears to be a greeting rather than a data question. Try asking something about your data, like 'How many rows are there?' or 'Show me the top 10 records'.", "error_type": "not_a_query"}}
+- {{"error": "Column 'revenue' does not exist in this dataset. Available columns are: sales, quantity, price, discount. Did you mean 'sales'?", "error_type": "column_not_found"}}
+- {{"error": "I can only query existing data, not make predictions. Try asking about historical trends instead, like 'What were the sales trends over the past year?'", "error_type": "unsupported_operation"}}
 
 SPECIAL - RECOMMENDATION REQUEST:
 When the user asks for recommendations (e.g., "recommend questions", "suggest questions", "what should I explore"):

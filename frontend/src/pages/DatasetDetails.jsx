@@ -477,7 +477,22 @@ export default function DatasetDetails() {
     const userMessage = message.trim();
     setSqlInputValue('');
     setSqlSending(true);
-    setSqlMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+    // Check if user is responding to follow-up prompt with an affirmative
+    const lastMessage = sqlMessages[sqlMessages.length - 1];
+    const wantsRecommendations = lastMessage?.isFollowUpPrompt &&
+      /^(yes|yeah|sure|ok|okay|recommend|suggest|show me|please|go ahead)/i.test(userMessage);
+
+    if (wantsRecommendations) {
+      // Remove the prompt message and fetch recommendations instead
+      setSqlMessages(prev => [...prev.filter(msg => !msg.isFollowUpPrompt), { role: 'user', content: userMessage }]);
+      await fetchFollowUpSuggestions();
+      setSqlSending(false);
+      return;
+    }
+
+    // Remove follow-up prompt if user typed something else (proceeding with their query)
+    setSqlMessages(prev => [...prev.filter(msg => !msg.isFollowUpPrompt), { role: 'user', content: userMessage }]);
 
     try {
       const response = await fetch(API_ENDPOINTS.TEXT_TO_SQL.CHAT, {
@@ -525,9 +540,13 @@ export default function DatasetDetails() {
         error: data.status === 'error',
       }]);
 
-      // Fetch follow-up suggestions separately (non-blocking)
+      // Ask user if they want follow-up suggestions (conversational approach)
       if (data.status === 'success' && results && results.data?.length > 0) {
-        fetchFollowUpSuggestions();
+        setSqlMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "Would you like me to suggest some follow-up questions, or do you have something specific in mind?",
+          isFollowUpPrompt: true,
+        }]);
       }
     } catch (err) {
       console.error('Error sending message:', err);
