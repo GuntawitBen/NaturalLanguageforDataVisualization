@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
+import { Responsive as ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import {
   ArrowLeft,
   ChevronDown,
@@ -66,6 +69,8 @@ export default function DatasetDetails() {
   const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion, visualization_id}
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+  const [chartLayout, setChartLayout] = useState([]);
+  const { width, containerRef, mounted } = useContainerWidth();
   const sqlSessionStarted = useRef(false);
 
   const toggleSection = (sectionKey) => {
@@ -73,6 +78,51 @@ export default function DatasetDetails() {
       ...prev,
       [sectionKey]: !prev[sectionKey]
     }));
+  };
+
+  // Load chart layout from localStorage or generate default
+  const loadChartLayout = (charts) => {
+    const storageKey = `dashboard-layout-${datasetId}`;
+    const savedLayout = localStorage.getItem(storageKey);
+
+    if (savedLayout) {
+      try {
+        const parsed = JSON.parse(savedLayout);
+        // Filter to only include existing chart IDs
+        const validLayout = parsed.filter(item =>
+          charts.some(c => c.visualization_id === item.i)
+        );
+        setChartLayout(validLayout);
+        return;
+      } catch (e) {
+        console.error('Failed to parse saved layout:', e);
+      }
+    }
+
+    // Generate default layout (2 columns)
+    const defaultLayout = charts.map((chart, idx) => ({
+      i: chart.visualization_id,
+      x: (idx % 2) * 6,
+      y: Math.floor(idx / 2) * 30, // Increased spacing between rows relative to rowHeight
+      w: 6,
+      h: 22 // Adjusted height for better proportions with rowHeight 10
+    }));
+    setChartLayout(defaultLayout);
+  };
+
+  // Save layout to localStorage
+  const saveChartLayout = (layout) => {
+    const storageKey = `dashboard-layout-${datasetId}`;
+    localStorage.setItem(storageKey, JSON.stringify(layout));
+  };
+
+  // Handle layout change from GridLayout
+  const handleLayoutChange = (newLayout) => {
+    // Only save if it's not the initial empty layout
+    if (newLayout.length > 0) {
+      setChartLayout(newLayout);
+      saveChartLayout(newLayout);
+    }
   };
   const messagesEndRef = useRef(null);
   const recommendPromptIndex = useRef(0);
@@ -117,6 +167,9 @@ export default function DatasetDetails() {
         }
       }));
       setPinnedCharts(charts);
+
+      // Load layout from localStorage or generate default
+      loadChartLayout(charts);
     } catch (err) {
       console.error('Error fetching dashboard:', err);
     } finally {
@@ -633,11 +686,25 @@ export default function DatasetDetails() {
       if (!response.ok) throw new Error('Failed to save visualization');
 
       const result = await response.json();
-      setPinnedCharts(prev => [...prev, {
+      const newChart = {
         visualization_id: result.visualization_id,
         data,
         suggestion
-      }]);
+      };
+      setPinnedCharts(prev => [...prev, newChart]);
+
+      // Add layout entry for new chart (place at bottom)
+      const maxY = chartLayout.length > 0 ? Math.max(...chartLayout.map(l => l.y + l.h)) : 0;
+      const newLayoutItem = {
+        i: result.visualization_id,
+        x: 0,
+        y: maxY,
+        w: 6,
+        h: 22 // Matching default height
+      };
+      const newLayout = [...chartLayout, newLayoutItem];
+      setChartLayout(newLayout);
+      saveChartLayout(newLayout);
     } catch (err) {
       console.error('Error adding to dashboard:', err);
     }
@@ -666,6 +733,11 @@ export default function DatasetDetails() {
       if (!response.ok) throw new Error('Failed to remove visualization');
 
       setPinnedCharts(prev => prev.filter(c => c.suggestion.title !== title));
+
+      // Remove from layout
+      const newLayout = chartLayout.filter(item => item.i !== chart.visualization_id);
+      setChartLayout(newLayout);
+      saveChartLayout(newLayout);
     } catch (err) {
       console.error('Error removing from dashboard:', err);
     }
@@ -1194,20 +1266,38 @@ export default function DatasetDetails() {
                       Your Dashboard
                       <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
                     </h2>
-                    <p>Visualizations pinned from your data exploration</p>
+                    <p>Visualizations pinned from your data exploration. Drag to reposition, resize from corners.</p>
                   </div>
                 </div>
-                <div className="charts-container" id="charts-container">
-                  {pinnedCharts.map((item, idx) => (
-                    <div key={item.visualization_id || idx} className="dashboard-chart-wrapper">
-                      <ChartRenderer
-                        data={item.data}
-                        suggestion={item.suggestion}
-                        isPinned={true}
-                        onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
-                      />
-                    </div>
-                  ))}
+                <div className="dashboard-grid-container" ref={containerRef}>
+                  {mounted && (
+                    <ResponsiveGridLayout
+                      className="charts-container"
+                      width={width}
+                      layouts={{ lg: chartLayout }}
+                      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xss: 0 }}
+                      cols={{ lg: 12, md: 10, sm: 6, xs: 4, xss: 2 }}
+                      rowHeight={10}
+                      onLayoutChange={handleLayoutChange}
+                      draggableHandle=".chart-drag-handle"
+                      compactType="vertical"
+                      preventCollision={false}
+                      margin={[20, 20]} // Spacing between items
+                    >
+                      {pinnedCharts.map((item) => (
+                        <div key={item.visualization_id} className="dashboard-grid-item">
+                          <div className="dashboard-chart-wrapper">
+                            <ChartRenderer
+                              data={item.data}
+                              suggestion={item.suggestion}
+                              isPinned={true}
+                              onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </ResponsiveGridLayout>
+                  )}
                 </div>
               </div>
             ) : (

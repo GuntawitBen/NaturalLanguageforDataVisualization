@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Pin, PinOff, Table } from 'lucide-react';
 import './ChartRenderer.css';
@@ -34,7 +34,27 @@ const CATEGORY_PALETTE = [
 
 export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPinned }) {
     const svgRef = useRef(null);
+    const tooltipRef = useRef(null);
+    const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
     const MAX_TABLE_ROWS = 10;
+
+    // Tooltip helper functions
+    const showTooltip = (event, content) => {
+        const svgRect = svgRef.current.getBoundingClientRect();
+        const x = event.clientX - svgRect.left;
+        const y = event.clientY - svgRect.top;
+
+        setTooltip({
+            visible: true,
+            x: x + 15,
+            y: y - 10,
+            content
+        });
+    };
+
+    const hideTooltip = () => {
+        setTooltip({ ...tooltip, visible: false });
+    };
 
     // Handle table type separately
     if (suggestion?.chart_type === 'table') {
@@ -44,6 +64,18 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
         return (
             <div className="chart-container-root table-visualization">
+                {isPinned && (
+                    <div className="chart-drag-handle" title="Drag to reposition">
+                        <div className="drag-grip">
+                            <div className="grip-dot"></div>
+                            <div className="grip-dot"></div>
+                            <div className="grip-dot"></div>
+                            <div className="grip-dot"></div>
+                            <div className="grip-dot"></div>
+                            <div className="grip-dot"></div>
+                        </div>
+                    </div>
+                )}
                 <div className="table-wrapper">
                     <div className="table-header-bar">
                         <Table size={16} />
@@ -99,7 +131,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
         svg.selectAll('*').remove();
 
         const width = svgRef.current.clientWidth || 600;
-        const height = 420;
+        const height = svgRef.current.clientHeight || 400;
         const margin = { top: 50, right: 40, bottom: 80, left: 80 };
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
@@ -122,6 +154,17 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .style('font-size', '14px')
                 .text('No data available for these axes');
             return;
+        }
+
+        // Add zoom behavior (except for pie charts)
+        if (suggestion.chart_type !== 'pie') {
+            const zoom = d3.zoom()
+                .scaleExtent([0.5, 3])
+                .on('zoom', (event) => {
+                    g.attr('transform', `translate(${margin.left},${margin.top}) ${event.transform}`);
+                });
+
+            svg.call(zoom);
         }
 
         // Helper function to add axis titles
@@ -301,16 +344,75 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
                 styleAxes(xAxisG, yAxisG);
 
-                g.selectAll('.bar')
+                // Create gradient for bars
+                const defs = svg.append('defs');
+                const gradient = defs.append('linearGradient')
+                    .attr('id', 'barGradient')
+                    .attr('x1', '0%')
+                    .attr('y1', '0%')
+                    .attr('x2', '0%')
+                    .attr('y2', '100%');
+
+                gradient.append('stop')
+                    .attr('offset', '0%')
+                    .attr('stop-color', CHART_COLORS.primary)
+                    .attr('stop-opacity', 1);
+
+                gradient.append('stop')
+                    .attr('offset', '100%')
+                    .attr('stop-color', CHART_COLORS.primary)
+                    .attr('stop-opacity', 0.7);
+
+                const bars = g.selectAll('.bar')
                     .data(cleanData)
                     .enter().append('rect')
                     .attr('class', 'bar')
                     .attr('x', d => x(String(d[xKey])))
-                    .attr('y', d => y(+d[yKey]))
+                    .attr('y', innerHeight)
                     .attr('width', x.bandwidth())
-                    .attr('height', d => innerHeight - y(+d[yKey]))
-                    .attr('fill', CHART_COLORS.primary)
-                    .attr('rx', 4);
+                    .attr('height', 0)
+                    .attr('fill', 'url(#barGradient)')
+                    .attr('rx', 6)
+                    .style('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))')
+                    .style('cursor', 'pointer');
+
+                // Entrance animation with stagger
+                bars.transition()
+                    .duration(800)
+                    .delay((d, i) => i * 50)
+                    .ease(d3.easeCubicOut)
+                    .attr('y', d => y(+d[yKey]))
+                    .attr('height', d => innerHeight - y(+d[yKey]));
+
+                // Interactive hover effects
+                bars.on('mouseenter', function (event, d) {
+                    // Brighten hovered bar
+                    d3.select(this)
+                        .transition().duration(200)
+                        .style('filter', 'brightness(1.2) drop-shadow(0 6px 12px rgba(255, 255, 255, 0.3))');
+
+                    // Dim other bars
+                    bars.filter(function () { return this !== event.currentTarget; })
+                        .transition().duration(200)
+                        .style('opacity', 0.6);
+
+                    // Show tooltip
+                    showTooltip(event, `${String(d[xKey])}: ${(+d[yKey]).toLocaleString()}`);
+                })
+                    .on('mousemove', (event) => {
+                        const svgRect = svgRef.current.getBoundingClientRect();
+                        const x = event.clientX - svgRect.left;
+                        const y = event.clientY - svgRect.top;
+                        setTooltip(prev => ({ ...prev, x: x + 15, y: y - 10 }));
+                    })
+                    .on('mouseleave', function () {
+                        // Reset all bars
+                        bars.transition().duration(200)
+                            .style('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))')
+                            .style('opacity', 1);
+
+                        hideTooltip();
+                    });
             }
 
             addAxisTitles();
@@ -350,30 +452,90 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             g.append('path')
                 .datum(cleanData)
                 .attr('fill', CHART_COLORS.primary)
-                .attr('fill-opacity', 0.1)
-                .attr('d', area);
+                .attr('fill-opacity', 0)
+                .attr('d', area)
+                .transition()
+                .duration(800)
+                .attr('fill-opacity', 0.1);
 
             const line = d3.line()
                 .x(d => x(String(d[xKey])))
                 .y(d => y(+d[yKey]))
                 .curve(d3.curveMonotoneX);
 
-            g.append('path')
+            const path = g.append('path')
                 .datum(cleanData)
                 .attr('fill', 'none')
                 .attr('stroke', CHART_COLORS.primary)
                 .attr('stroke-width', 2.5)
                 .attr('d', line);
 
-            g.selectAll('.dot')
+            // Entrance animation - draw line from left to right
+            const totalLength = path.node().getTotalLength();
+            path.attr('stroke-dasharray', totalLength + ' ' + totalLength)
+                .attr('stroke-dashoffset', totalLength)
+                .transition()
+                .duration(1200)
+                .ease(d3.easeCubicOut)
+                .attr('stroke-dashoffset', 0);
+
+            // Crosshair group
+            const crosshair = g.append('g')
+                .style('display', 'none');
+
+            crosshair.append('line')
+                .attr('class', 'chart-crosshair')
+                .attr('y1', 0)
+                .attr('y2', innerHeight);
+
+            const points = g.selectAll('.dot')
                 .data(cleanData)
                 .enter().append('circle')
+                .attr('class', 'dot')
                 .attr('cx', d => x(String(d[xKey])))
                 .attr('cy', d => y(+d[yKey]))
-                .attr('r', 5)
+                .attr('r', 0)
                 .attr('fill', CHART_COLORS.primary)
                 .attr('stroke', CHART_COLORS.background)
-                .attr('stroke-width', 2);
+                .attr('stroke-width', 2)
+                .style('cursor', 'pointer');
+
+            // Points fade in after line draws
+            points.transition()
+                .delay(1000)
+                .duration(400)
+                .attr('r', 5);
+
+            // Interactive points
+            points.on('mouseenter', function (event, d) {
+                d3.select(this)
+                    .transition().duration(200)
+                    .attr('r', 7)
+                    .style('filter', 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.8))');
+
+                // Show crosshair
+                crosshair.style('display', null)
+                    .select('line')
+                    .attr('x1', x(String(d[xKey])))
+                    .attr('x2', x(String(d[xKey])));
+
+                showTooltip(event, `${String(d[xKey])}: ${(+d[yKey]).toLocaleString()}`);
+            })
+                .on('mousemove', (event) => {
+                    const svgRect = svgRef.current.getBoundingClientRect();
+                    const xPos = event.clientX - svgRect.left;
+                    const yPos = event.clientY - svgRect.top;
+                    setTooltip(prev => ({ ...prev, x: xPos + 15, y: yPos - 10 }));
+                })
+                .on('mouseleave', function () {
+                    d3.select(this)
+                        .transition().duration(200)
+                        .attr('r', 5)
+                        .style('filter', 'none');
+
+                    crosshair.style('display', 'none');
+                    hideTooltip();
+                });
 
             addAxisTitles();
 
@@ -398,16 +560,54 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             styleAxes(xAxisG, yAxisG);
 
-            g.selectAll('.dot')
+            const dots = g.selectAll('.dot')
                 .data(cleanData)
                 .enter().append('circle')
+                .attr('class', 'dot')
                 .attr('cx', d => x(+d[xKey]))
                 .attr('cy', d => y(+d[yKey]))
-                .attr('r', 7)
+                .attr('r', 0)
                 .attr('fill', CHART_COLORS.primary)
                 .attr('fill-opacity', 0.7)
                 .attr('stroke', CHART_COLORS.primaryLight)
-                .attr('stroke-width', 1.5);
+                .attr('stroke-width', 1.5)
+                .style('cursor', 'pointer');
+
+            // Entrance animation - fade in and grow
+            dots.transition()
+                .duration(600)
+                .delay((d, i) => i * 30)
+                .ease(d3.easeCubicOut)
+                .attr('r', 7);
+
+            // Interactive dots
+            dots.on('mouseenter', function (event, d) {
+                d3.select(this)
+                    .transition().duration(200)
+                    .attr('r', 9)
+                    .style('filter', 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.8))');
+
+                // Dim other dots
+                dots.filter(function () { return this !== event.currentTarget; })
+                    .transition().duration(200)
+                    .style('opacity', 0.4);
+
+                showTooltip(event, `X: ${(+d[xKey]).toLocaleString()}, Y: ${(+d[yKey]).toLocaleString()}`);
+            })
+                .on('mousemove', (event) => {
+                    const svgRect = svgRef.current.getBoundingClientRect();
+                    const xPos = event.clientX - svgRect.left;
+                    const yPos = event.clientY - svgRect.top;
+                    setTooltip(prev => ({ ...prev, x: xPos + 15, y: yPos - 10 }));
+                })
+                .on('mouseleave', function () {
+                    dots.transition().duration(200)
+                        .attr('r', 7)
+                        .style('filter', 'none')
+                        .style('opacity', 1);
+
+                    hideTooltip();
+                });
 
             addAxisTitles();
 
@@ -419,18 +619,72 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             const color = d3.scaleOrdinal(CATEGORY_PALETTE);
             const pie = d3.pie().value(d => +d[yKey]).sort(null);
             const arc = d3.arc().innerRadius(0).outerRadius(radius - 10);
+            const hoverArc = d3.arc().innerRadius(0).outerRadius(radius - 5);
             const labelArc = d3.arc().innerRadius(radius * 0.6).outerRadius(radius * 0.6);
 
             const arcs = pieG.selectAll('arc')
                 .data(pie(cleanData))
                 .enter()
-                .append('g');
+                .append('g')
+                .attr('class', 'arc');
 
-            arcs.append('path')
-                .attr('d', arc)
+            const paths = arcs.append('path')
                 .attr('fill', (d, i) => color(i))
                 .attr('stroke', CHART_COLORS.background)
-                .style('stroke-width', '2px');
+                .style('stroke-width', '2px')
+                .style('filter', 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))')
+                .style('cursor', 'pointer');
+
+            // Entrance animation - arc tween
+            paths.transition()
+                .duration(800)
+                .ease(d3.easeCubicOut)
+                .attrTween('d', function (d) {
+                    const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                    return function (t) {
+                        return arc(interpolate(t));
+                    };
+                });
+
+            // Interactive slices
+            const arcGroups = pieG.selectAll('.arc');
+            arcGroups.on('mouseenter', function (event, d) {
+                const currentArc = d3.select(this).select('path');
+
+                // Pull out and scale slice
+                d3.select(this)
+                    .transition().duration(200)
+                    .attr('transform', function (d) {
+                        const [x, y] = arc.centroid(d);
+                        return `translate(${x * 0.1},${y * 0.1}) scale(1.05)`;
+                    });
+
+                currentArc.transition().duration(200)
+                    .attr('d', hoverArc)
+                    .style('filter', 'drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5))');
+
+                const percent = ((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(1);
+                const value = d.data[yKey];
+                showTooltip(event, `${String(d.data[xKey])}: ${(+value).toLocaleString()} (${percent}%)`);
+            })
+                .on('mousemove', (event) => {
+                    const svgRect = svgRef.current.getBoundingClientRect();
+                    const xPos = event.clientX - svgRect.left;
+                    const yPos = event.clientY - svgRect.top;
+                    setTooltip(prev => ({ ...prev, x: xPos + 15, y: yPos - 10 }));
+                })
+                .on('mouseleave', function () {
+                    d3.select(this)
+                        .transition().duration(200)
+                        .attr('transform', 'translate(0,0) scale(1)');
+
+                    d3.select(this).select('path')
+                        .transition().duration(200)
+                        .attr('d', arc)
+                        .style('filter', 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))');
+
+                    hideTooltip();
+                });
 
             // Add labels for larger slices
             arcs.append('text')
@@ -439,10 +693,15 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .style('font-size', '11px')
                 .style('fill', CHART_COLORS.text)
                 .style('font-weight', '500')
+                .style('opacity', 0)
                 .text(d => {
                     const percent = (d.endAngle - d.startAngle) / (2 * Math.PI) * 100;
                     return percent > 5 ? `${percent.toFixed(0)}%` : '';
-                });
+                })
+                .transition()
+                .delay(800)
+                .duration(400)
+                .style('opacity', 1);
         }
 
         // Add Chart Title
@@ -460,13 +719,39 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
     return (
         <div className="chart-container-root">
+            {isPinned && (
+                <div className="chart-drag-handle" title="Drag to reposition">
+                    <div className="drag-grip">
+                        <div className="grip-dot"></div>
+                        <div className="grip-dot"></div>
+                        <div className="grip-dot"></div>
+                        <div className="grip-dot"></div>
+                        <div className="grip-dot"></div>
+                        <div className="grip-dot"></div>
+                    </div>
+                </div>
+            )}
             <div className="svg-wrapper">
                 <svg
                     ref={svgRef}
                     width="100%"
-                    height={420}
+                    height="100%"
                     className="d3-svg"
+                    style={{ minHeight: '300px', maxHeight: '500px' }}
                 />
+                {/* Tooltip overlay */}
+                {tooltip.visible && (
+                    <div
+                        ref={tooltipRef}
+                        className="chart-tooltip visible"
+                        style={{
+                            left: `${tooltip.x}px`,
+                            top: `${tooltip.y}px`,
+                        }}
+                    >
+                        <div className="chart-tooltip-value">{tooltip.content}</div>
+                    </div>
+                )}
             </div>
             <button
                 className={`pin-btn ${isPinned ? 'pinned' : ''}`}
