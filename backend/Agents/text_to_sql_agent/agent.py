@@ -302,8 +302,20 @@ class TextToSQLAgent:
                     break
             columns_info.append({"name": col_name, "type": col_type})
 
+        # Get context from previous user message to handle multi-turn requests (e.g. "Scatter plot" -> "with quantity")
+        user_question_with_context = message
+        last_user_msg = None
+        # messages contains history before current turn
+        for msg in reversed(messages):
+            if msg.role == "user":
+                last_user_msg = msg.content
+                break
+        
+        if last_user_msg:
+            user_question_with_context = f"Context: {last_user_msg}\nCurrent Request: {message}"
+
         viz_response = chart_rec_agent.get_recommendations(
-            user_question=message,
+            user_question=user_question_with_context,
             sql_query=sql_query,
             columns_info=columns_info,
             sample_data=results_data

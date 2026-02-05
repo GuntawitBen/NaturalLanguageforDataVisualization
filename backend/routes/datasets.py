@@ -22,6 +22,7 @@ from database import (
     save_visualization,
     get_dataset_visualizations,
     delete_visualization,
+    update_visualization,
 )
 from utils.csv_validator import validate_csv_file as validate_csv_structure, ValidationConfig
 
@@ -771,6 +772,44 @@ async def remove_from_dashboard(
         return {
             "success": True,
             "message": "Visualization removed from dashboard"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{dataset_id}/dashboard/{visualization_id}")
+async def update_dashboard_visualization(
+    dataset_id: str,
+    visualization_id: str,
+    request: SaveVisualizationRequest,
+    current_user_email: str = Depends(get_current_user)
+):
+    """Update a visualization on the dashboard"""
+    try:
+        # Verify dataset exists and user has access
+        dataset = get_dataset(dataset_id)
+
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+
+        if dataset['user_id'] != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Update the visualization
+        success = update_visualization(
+            visualization_id=visualization_id,
+            user_id=current_user_email,
+            visualization_config=request.visualization_config
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Visualization not found")
+
+        return {
+            "success": True,
+            "message": "Visualization updated"
         }
 
     except HTTPException:

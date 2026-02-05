@@ -105,8 +105,171 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────
-   Drag Handle (for grid layout)
+   Settings Button
    ───────────────────────────────────────────────────────────────────── */
+.settings-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 3.5rem;
+    /* Positioned to the left of Pin button */
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.settings-btn:hover,
+.settings-btn.active {
+    background: var(--color-elevated);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+    transform: scale(1.05);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Settings Panel
+   ───────────────────────────────────────────────────────────────────── */
+.chart-settings-panel {
+    position: absolute;
+    top: 3.5rem;
+    right: 0.75rem;
+    width: 260px;
+    background: rgba(18, 18, 18, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 0;
+    z-index: 100;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    animation: fadeInScale 0.2s ease-out;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.close-settings {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-settings:hover {
+    background: var(--color-hover);
+    color: var(--text-primary);
+}
+
+.settings-content {
+    padding: 0.75rem 1rem;
+    max-height: 240px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.color-setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.category-label {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Custom Color Input */
+input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: 2px solid var(--border-subtle);
+    border-radius: 50%;
+    transition: transform 0.1s ease;
+}
+
+input[type="color"]:hover::-webkit-color-swatch {
+    transform: scale(1.1);
+    border-color: var(--text-primary);
+}
+
+.settings-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--color-surface);
+    display: flex;
+    justify-content: flex-end;
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+}
+
+.save-settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--text-primary);
+    color: var(--color-void);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.save-settings-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
 .chart-drag-handle {
     position: absolute;
     top: 0.75rem;

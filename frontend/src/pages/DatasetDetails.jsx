@@ -743,6 +743,49 @@ export default function DatasetDetails() {
     }
   };
 
+  const handleUpdateDashboard = async (visualization_id, updatedConfig) => {
+    const currentChart = pinnedCharts.find(c => c.visualization_id === visualization_id);
+    if (!currentChart) return;
+
+    // Ensure we persist the data
+    const fullConfig = {
+      data: currentChart.data,
+      ...updatedConfig,
+      suggestion: updatedConfig
+    };
+
+    try {
+      const response = await fetch(API_ENDPOINTS.DATASETS.DASHBOARD_UPDATE(datasetId, visualization_id), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: updatedConfig.title || 'Updated Visualization',
+          chart_type: updatedConfig.chart_type || 'bar',
+          visualization_config: fullConfig
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update visualization');
+
+      // Update local state
+      setPinnedCharts(prev => prev.map(chart => {
+        if (chart.visualization_id === visualization_id) {
+          return {
+            ...chart,
+            suggestion: updatedConfig
+          };
+        }
+        return chart;
+      }));
+
+    } catch (err) {
+      console.error('Error updating dashboard:', err);
+    }
+  };
+
   // Loading State
   if (loading) {
     return (
@@ -1292,6 +1335,7 @@ export default function DatasetDetails() {
                               suggestion={item.suggestion}
                               isPinned={true}
                               onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
+                              onUpdate={(config) => handleUpdateDashboard(item.visualization_id, config)}
                             />
                           </div>
                         </div>

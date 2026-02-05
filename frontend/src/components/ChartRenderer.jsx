@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Pin, PinOff, Table } from 'lucide-react';
+import { Pin, PinOff, Table, Settings, X, Check, Palette } from 'lucide-react';
 import './ChartRenderer.css';
 
 // Professional chart color palette
@@ -32,11 +32,44 @@ const CATEGORY_PALETTE = [
     '#6366F1', // indigo
 ];
 
-export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPinned }) {
+export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPinned, onUpdate }) {
     const svgRef = useRef(null);
     const tooltipRef = useRef(null);
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
+    const [showSettings, setShowSettings] = useState(false);
+    // Initialize colors from suggestion or defaults
+    const [customColors, setCustomColors] = useState(suggestion.color_mapping || {});
     const MAX_TABLE_ROWS = 10;
+
+    // Save changes when customColors change (debounce if needed, but simple for now)
+    const handleColorChange = (category, color) => {
+        const newColors = { ...customColors, [category]: color };
+        setCustomColors(newColors);
+    };
+
+    const saveSettings = () => {
+        if (onUpdate) {
+            onUpdate({
+                ...suggestion,
+                color_mapping: customColors
+            });
+        }
+        setShowSettings(false);
+    };
+
+    // Extract unique categories for color picking
+    const getCategories = () => {
+        if (!data || data.length === 0) return [];
+        const groupKey = suggestion.group_by || suggestion.color_by || suggestion.x_axis;
+        // For scatter plots, we might want to color by a third dimension if it exists
+        if (suggestion.chart_type === 'scatter') return ['Default'];
+        if (suggestion.chart_type === 'line' || suggestion.chart_type === 'area') return ['Primary'];
+
+        // For bar/pie/histogram
+        return [...new Set(data.map(d => String(d[groupKey])))].sort();
+    };
+
+    const categories = getCategories();
 
     // Tooltip helper functions
     const showTooltip = (event, content) => {
@@ -236,7 +269,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .style('stroke-dasharray', '3,3');
         };
 
-        if (suggestion.chart_type === 'bar') {
+        if (suggestion.chart_type === 'bar' || suggestion.chart_type === 'histogram') {
             const groupKey = suggestion.group_by || suggestion.color_by;
 
             if (groupKey && cleanData.some(d => d[groupKey] != null)) {
@@ -246,7 +279,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
                 const colorScale = d3.scaleOrdinal()
                     .domain(groups)
-                    .range(CATEGORY_PALETTE);
+                    .range(groups.map((g, i) => customColors[g] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]));
 
                 const x0 = d3.scaleBand()
                     .domain(xCategories)
@@ -371,7 +404,10 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     .attr('y', innerHeight)
                     .attr('width', x.bandwidth())
                     .attr('height', 0)
-                    .attr('fill', 'url(#barGradient)')
+                    .attr('fill', d => {
+                        const category = String(d[xKey]);
+                        return customColors[category] ? customColors[category] : 'url(#barGradient)';
+                    })
                     .attr('rx', 6)
                     .style('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))')
                     .style('cursor', 'pointer');
@@ -417,7 +453,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             addAxisTitles();
 
-        } else if (suggestion.chart_type === 'line') {
+        } else if (suggestion.chart_type === 'line' || suggestion.chart_type === 'area') {
             const x = d3.scalePoint()
                 .domain(cleanData.map(d => String(d[xKey])))
                 .range([0, innerWidth]);
@@ -451,7 +487,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             g.append('path')
                 .datum(cleanData)
-                .attr('fill', CHART_COLORS.primary)
+                .attr('fill', customColors['Primary'] || CHART_COLORS.primary)
                 .attr('fill-opacity', 0)
                 .attr('d', area)
                 .transition()
@@ -466,7 +502,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             const path = g.append('path')
                 .datum(cleanData)
                 .attr('fill', 'none')
-                .attr('stroke', CHART_COLORS.primary)
+                .attr('stroke', customColors['Primary'] || CHART_COLORS.primary)
                 .attr('stroke-width', 2.5)
                 .attr('d', line);
 
@@ -495,7 +531,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('cx', d => x(String(d[xKey])))
                 .attr('cy', d => y(+d[yKey]))
                 .attr('r', 0)
-                .attr('fill', CHART_COLORS.primary)
+                .attr('fill', customColors['Primary'] || CHART_COLORS.primary)
                 .attr('stroke', CHART_COLORS.background)
                 .attr('stroke-width', 2)
                 .style('cursor', 'pointer');
@@ -567,9 +603,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('cx', d => x(+d[xKey]))
                 .attr('cy', d => y(+d[yKey]))
                 .attr('r', 0)
-                .attr('fill', CHART_COLORS.primary)
+                .attr('fill', customColors['Default'] || CHART_COLORS.primary)
                 .attr('fill-opacity', 0.7)
-                .attr('stroke', CHART_COLORS.primaryLight)
+                .attr('stroke', customColors['Default'] || CHART_COLORS.primaryLight)
                 .attr('stroke-width', 1.5)
                 .style('cursor', 'pointer');
 
@@ -616,7 +652,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             const pieG = g.append('g')
                 .attr('transform', `translate(${innerWidth / 2},${innerHeight / 2})`);
 
-            const color = d3.scaleOrdinal(CATEGORY_PALETTE);
+            const color = d3.scaleOrdinal()
+                .domain(cleanData.map(d => String(d[xKey]))) // Ensure domain matches categories
+                .range(cleanData.map((d, i) => customColors[String(d[xKey])] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]));
             const pie = d3.pie().value(d => +d[yKey]).sort(null);
             const arc = d3.arc().innerRadius(0).outerRadius(radius - 10);
             const hoverArc = d3.arc().innerRadius(0).outerRadius(radius - 5);
@@ -753,6 +791,15 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     </div>
                 )}
             </div>
+            {isPinned && onUpdate && (
+                <button
+                    className={`settings-btn ${showSettings ? 'active' : ''}`}
+                    onClick={() => setShowSettings(!showSettings)}
+                    title="Customize Colors"
+                >
+                    <Settings size={16} />
+                </button>
+            )}
             <button
                 className={`pin-btn ${isPinned ? 'pinned' : ''}`}
                 onClick={isPinned ? onRemove : onAdd}
@@ -760,6 +807,39 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             >
                 {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
             </button>
+
+            {/* Settings Components */}
+            {showSettings && (
+                <div className="chart-settings-panel">
+                    <div className="settings-header">
+                        <div className="settings-title">
+                            <Palette size={14} />
+                            <span>Chart Colors</span>
+                        </div>
+                        <button className="close-settings" onClick={() => setShowSettings(false)}>
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="settings-content">
+                        {categories.map((category, idx) => (
+                            <div key={idx} className="color-setting-item">
+                                <span className="category-label">{category}</span>
+                                <input
+                                    type="color"
+                                    value={customColors[category] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length]}
+                                    onChange={(e) => handleColorChange(category, e.target.value)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="settings-footer">
+                        <button className="save-settings-btn" onClick={saveSettings}>
+                            <Check size={14} />
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

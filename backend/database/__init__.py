@@ -35,6 +35,7 @@ from .db_utils import (
 
     # Visualizations
     save_visualization,
+    update_visualization,
     get_user_visualizations,
     get_dataset_visualizations,
     delete_visualization,
@@ -74,6 +75,7 @@ __all__ = [
 
     # Visualizations
     'save_visualization',
+    'update_visualization',
     'get_user_visualizations',
     'get_dataset_visualizations',
     'delete_visualization',

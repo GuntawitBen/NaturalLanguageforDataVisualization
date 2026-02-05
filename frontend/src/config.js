@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
     VALIDATION_CONFIG: `${API_BASE_URL}/datasets/validation/config`,
     // Dashboard / Saved Visualizations
     DASHBOARD: (id) => `${API_BASE_URL}/datasets/${id}/dashboard`,
+    DASHBOARD_UPDATE: (datasetId, vizId) => `${API_BASE_URL}/datasets/${datasetId}/dashboard/${vizId}`,
     DASHBOARD_REMOVE: (datasetId, vizId) => `${API_BASE_URL}/datasets/${datasetId}/dashboard/${vizId}`,
   },
 

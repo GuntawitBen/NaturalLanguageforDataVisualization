@@ -695,6 +695,34 @@ def save_visualization(
         print(f"Error saving visualization: {e}")
         return None
 
+def update_visualization(
+    visualization_id: str,
+    user_id: str,
+    visualization_config: Dict
+) -> bool:
+    """Update a visualization's configuration"""
+    engine = get_db_engine()
+
+    try:
+        viz_config_json = json.dumps(visualization_config)
+
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                UPDATE saved_visualizations
+                SET visualization_config = :visualization_config
+                WHERE visualization_id = :visualization_id AND user_id = :user_id
+            """), {
+                "visualization_config": viz_config_json,
+                "visualization_id": visualization_id,
+                "user_id": user_id
+            })
+            conn.commit()
+            return result.rowcount > 0
+
+    except Exception as e:
+        print(f"Error updating visualization: {e}")
+        return False
+
 def get_user_visualizations(user_id: str) -> List[Dict]:
     """Get all saved visualizations for a user"""
     engine = get_db_engine()
