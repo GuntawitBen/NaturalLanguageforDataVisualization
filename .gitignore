@@ -36,6 +36,9 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.backup
+.env.production
+backend/.env*
 
 # Firebase
 firebase-credentials.json
