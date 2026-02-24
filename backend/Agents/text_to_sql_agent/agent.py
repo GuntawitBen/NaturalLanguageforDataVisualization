@@ -171,8 +171,12 @@ class TextToSQLAgent:
         # Update activity
         session_manager.update_activity(session_id)
 
-        # Get conversation history
+        # Get conversation history (before adding current message)
         messages = session_manager.get_messages(session_id)
+
+        # Detect if user is replying to a clarification/error
+        from .prompts import get_last_clarification_context
+        clarification_context = get_last_clarification_context(messages)
 
         # Add user message to history
         session_manager.add_message(session_id, "user", message)
@@ -181,7 +185,8 @@ class TextToSQLAgent:
         gpt_response = self.openai_client.generate_sql(
             question=message,
             schema=session.schema,
-            messages=messages
+            messages=messages,
+            clarification_context=clarification_context
         )
 
         # Handle recommendations

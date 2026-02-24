@@ -2,7 +2,7 @@
 Prompt templates for SQL generation.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .models import SchemaContext, Message
 from .config import TOKEN_CONFIG
 
@@ -50,11 +50,19 @@ Example error responses:
 - {{"error": "Column 'revenue' does not exist in this dataset. Available columns are: sales, quantity, price, discount. Did you mean 'sales'?", "error_type": "column_not_found"}}
 - {{"error": "I can only query existing data, not make predictions. Try asking about historical trends instead, like 'What were the sales trends over the past year?'", "error_type": "unsupported_operation"}}
 
+HANDLING FOLLOW-UP REPLIES:
+- If the user says "yes" or confirms, use the suggested column or interpretation from the previous assistant message
+- If the user picks one option from multiple suggestions, use that option
+- If the user provides a column name directly, verify it exists and use it
+
 SPECIAL - RECOMMENDATION REQUEST:
 When the user asks for recommendations (e.g., "recommend questions", "suggest questions", "what should I explore"):
 - Analyze the schema and think about what would be genuinely interesting to explore
-- Generate 3-4 specific, actionable questions the user could ask about this data
-- Focus on questions that reveal insights: distributions, top/bottom values, correlations, trends, outliers
+- Generate 3-4 questions the user could ask about this data
+- Each question MUST be a single short sentence using simple everyday words
+- Do NOT use parentheses, technical jargon, or complex phrasing
+- Do NOT include examples or multiple parts in one question
+- Keep each question under 15 words
 - Return JSON format: {{"recommendations": ["Question 1?", "Question 2?", "Question 3?"], "explanation": "Brief explanation of why these questions are interesting"}}
 
 IMPORTANT:
@@ -109,14 +117,82 @@ def build_system_prompt(schema: SchemaContext) -> str:
     )
 
 
+def get_last_clarification_context(messages: List[Message]) -> Optional[Dict[str, str]]:
+    """
+    Check if the last assistant message was a clarification or error suggestion.
+
+    Returns a dict with original_question and assistant_response if the last
+    assistant message was a clarification/error, or None otherwise.
+    """
+    if not messages:
+        return None
+
+    # Walk backwards to find last assistant message and the user message before it
+    last_assistant = None
+    last_user_before_assistant = None
+
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].role == "assistant" and last_assistant is None:
+            last_assistant = messages[i]
+        elif messages[i].role == "user" and last_assistant is not None:
+            last_user_before_assistant = messages[i]
+            break
+
+    if not last_assistant or not last_user_before_assistant:
+        return None
+
+    # If the assistant message had a sql_query, it was a successful query — not a clarification
+    if last_assistant.sql_query:
+        return None
+
+    # Check if the assistant message looks like a clarification or error suggestion
+    content = last_assistant.content.lower()
+    clarification_indicators = [
+        "did you mean",
+        "do you mean",
+        "does not exist",
+        "not found",
+        "which one",
+        "could you clarify",
+        "could you specify",
+        "what do you mean",
+        "available columns",
+    ]
+
+    is_clarification = any(indicator in content for indicator in clarification_indicators)
+
+    if not is_clarification:
+        return None
+
+    return {
+        "original_question": last_user_before_assistant.content,
+        "assistant_response": last_assistant.content,
+    }
+
+
 def build_user_prompt(
     question: str,
-    messages: List[Message] = None
+    messages: List[Message] = None,
+    clarification_context: Optional[Dict[str, str]] = None
 ) -> str:
     """Build the user prompt with question and optional history"""
     prompt_parts = []
 
-    # Add conversation history if available
+    # If this is a reply to a clarification/error, use enhanced framing
+    if clarification_context:
+        prompt_parts.append(
+            f'\nThe user previously asked: "{clarification_context["original_question"]}"'
+        )
+        prompt_parts.append(
+            f'The assistant responded: "{clarification_context["assistant_response"]}"'
+        )
+        prompt_parts.append(f'The user replied: "{question}"')
+        prompt_parts.append(
+            "\nBased on this conversation, generate the appropriate SQL query:"
+        )
+        return "\n".join(prompt_parts)
+
+    # Normal flow: add conversation history if available
     if messages:
         history = format_conversation_history(messages)
         if history:
@@ -180,6 +256,9 @@ GUIDELINES:
 3. Suggest comparisons or breakdowns not in the original query
 4. Propose exploring unused columns that relate to findings
 5. Consider trends, outliers, or correlations worth investigating
+6. Each question MUST be a single short sentence using simple everyday words
+7. Do NOT use parentheses, technical jargon, or complex phrasing
+8. Keep each question under 15 words
 
 RESPONSE FORMAT (strict JSON):
 {{

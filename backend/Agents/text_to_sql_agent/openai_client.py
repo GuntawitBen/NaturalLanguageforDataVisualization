@@ -156,7 +156,8 @@ class TextToSQLOpenAIClient:
         self,
         question: str,
         schema: SchemaContext,
-        messages: List[Message] = None
+        messages: List[Message] = None,
+        clarification_context: dict = None
     ) -> GPTSQLResponse:
         """
         Generate SQL query from natural language question
@@ -165,6 +166,7 @@ class TextToSQLOpenAIClient:
             question: Natural language question
             schema: Database schema context
             messages: Conversation history (optional)
+            clarification_context: Context from a previous clarification/error (optional)
 
         Returns:
             GPTSQLResponse with SQL or clarification request
@@ -172,7 +174,7 @@ class TextToSQLOpenAIClient:
         try:
             # Build prompts
             system_prompt = build_system_prompt(schema)
-            user_prompt = build_user_prompt(question, messages)
+            user_prompt = build_user_prompt(question, messages, clarification_context=clarification_context)
 
             # Call OpenAI API with retry
             response = self._call_with_retry(
