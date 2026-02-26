@@ -35,14 +35,34 @@ For successful SQL generation:
 If the question is ambiguous or needs clarification:
 {{"clarification_needed": "What specific aspect would you like to clarify?"}}
 
+For chart type change requests (e.g. "show as pie chart", "try scatter plot", "change to line chart"):
+{{"chart_change": "pie", "explanation": "Switching to pie chart to show proportional distribution"}}
+
+Valid chart types: bar, line, pie, scatter, table.
+Only use this when the user explicitly asks to change/switch/try a different chart type for EXISTING results.
+If they ask a NEW data question, generate SQL as normal.
+
+For conversational/advisory questions about the data (dataset summaries, overviews, explaining what the data contains, explaining results, analysis suggestions, asking why a chart type is suitable, describing columns or structure):
+{{"conversational": "Your helpful response here", "explanation": "Brief note on what was discussed"}}
+
+Use the conversational format (NOT SQL) when the user asks for:
+- A summary or overview of the dataset (e.g., "summarize the data", "overall dataset summary", "what is this dataset about")
+- An explanation of what the data contains or its structure
+- Describing columns, data types, or what fields mean
+- General advice about the data or analysis approach
+- Chart type recommendations (e.g., "what chart should I use", "recommend a chart type")
+These should be answered using your knowledge of the schema, not by generating SQL.
+
+When recommending chart types in conversational responses, ONLY suggest from the supported types: bar, line, pie, scatter, and table. Do NOT recommend any other chart types (e.g., area, histogram, heatmap, treemap, etc.).
+
 If the question cannot be answered with the available data, provide a specific explanation:
 {{"error": "Specific reason why SQL cannot be generated", "error_type": "category"}}
 
 Error types and when to use them:
-- "not_a_query": User message is a greeting, casual chat, or not a data question (e.g., "hello", "thanks", "how are you")
+- "not_a_query": User message is a greeting, casual chat, or completely unrelated to the data (e.g., "hello", "thanks", "how are you", "what's the weather"). Do NOT use this for data-related advisory questions — use the conversational format instead.
 - "column_not_found": User references a column that doesn't exist. List the column they asked for and suggest similar existing columns if any.
 - "ambiguous_request": Request is too vague to determine what data to retrieve (e.g., "show me something interesting")
-- "unsupported_operation": Request requires operations not possible with SQL (e.g., "predict future sales", "why did sales drop")
+- "unsupported_operation": Request requires operations not possible with SQL (e.g., "predict future sales")
 - "no_relevant_data": The dataset doesn't contain information related to the question
 
 Example error responses:
