@@ -103,6 +103,91 @@ class TextToSQLAgent:
         # Fallback - return empty values
         return "", []
 
+    def _handle_chart_change(
+        self,
+        session_id: str,
+        session: SessionState,
+        chart_type: str,
+        explanation: Optional[str] = None
+    ) -> ChatResponse:
+        """
+        Handle a chart type change request by re-running chart recommendations
+        on the last query results with the preferred chart type.
+        """
+        VALID_CHART_TYPES = {"bar", "line", "pie", "scatter", "area", "histogram"}
+
+        chart_type = chart_type.lower().strip()
+        if chart_type not in VALID_CHART_TYPES:
+            msg = f"'{chart_type}' is not a supported chart type. Valid types are: {', '.join(sorted(VALID_CHART_TYPES))}."
+            session_manager.add_message(session_id, "assistant", msg)
+            return ChatResponse(status="conversational", message=msg)
+
+        # Retrieve last query results from DB
+        from database.db_utils import get_conversation_messages
+
+        db_messages = get_conversation_messages(session_id)
+
+        last_result = None
+        last_sql = None
+        for msg in reversed(db_messages):
+            if msg.get('role') == 'assistant' and msg.get('query_result') and msg.get('query_sql'):
+                last_result = msg['query_result']
+                last_sql = msg['query_sql']
+                break
+
+        if not last_result or not last_result.get('data'):
+            msg = "There are no previous query results to change the chart for. Try asking a data question first."
+            session_manager.add_message(session_id, "assistant", msg)
+            return ChatResponse(status="conversational", message=msg)
+
+        results_data = last_result['data']
+        result_columns = last_result.get('columns', [])
+        row_count = last_result.get('row_count', 0)
+
+        # Build columns_info from schema
+        columns_info = []
+        for col_name in result_columns:
+            col_type = "unknown"
+            for schema_col in session.schema.columns:
+                if schema_col.name == col_name:
+                    col_type = schema_col.type
+                    break
+            columns_info.append({"name": col_name, "type": col_type})
+
+        # Re-run chart recommendations with preferred type
+        viz_response = chart_rec_agent.get_recommendations(
+            user_question=f"Show as {chart_type} chart",
+            sql_query=last_sql,
+            columns_info=columns_info,
+            sample_data=results_data,
+            preferred_chart_type=chart_type
+        )
+
+        viz_recommendations = [rec.model_dump() for rec in viz_response.recommendations] if viz_response else None
+
+        response_msg = explanation or f"Switched to {chart_type} chart."
+
+        # Save to conversation history
+        query_result_for_db = {
+            "columns": result_columns,
+            "data": results_data,
+            "row_count": row_count
+        }
+        session_manager.add_message(
+            session_id, "assistant", response_msg, last_sql,
+            query_result_for_db, visualization_recommendations=viz_recommendations
+        )
+
+        return ChatResponse(
+            status="success",
+            message=response_msg,
+            sql_query=last_sql,
+            results=results_data,
+            columns=result_columns,
+            row_count=row_count,
+            visualization_recommendations=viz_recommendations
+        )
+
     def resume_session(self, session_id: str, user_id: str) -> StartSessionResponse:
         """
         Resume an existing session from history
@@ -188,6 +273,20 @@ class TextToSQLAgent:
             messages=messages,
             clarification_context=clarification_context
         )
+
+        # Handle chart change request
+        if gpt_response.chart_change:
+            return self._handle_chart_change(
+                session_id, session, gpt_response.chart_change, gpt_response.explanation
+            )
+
+        # Handle conversational response
+        if gpt_response.conversational:
+            session_manager.add_message(session_id, "assistant", gpt_response.conversational)
+            return ChatResponse(
+                status="conversational",
+                message=gpt_response.conversational
+            )
 
         # Handle recommendations
         if gpt_response.recommendations:

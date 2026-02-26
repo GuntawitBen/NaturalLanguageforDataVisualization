@@ -25,7 +25,8 @@ class ChartRecOpenAIClient:
         user_question: str,
         sql_query: str,
         columns_info: List[Dict[str, str]],
-        sample_data: List[Dict[str, Any]]
+        sample_data: List[Dict[str, Any]],
+        preferred_chart_type: Optional[str] = None
     ) -> VisualizationResponse:
         """
         Get chart recommendations from GPT
@@ -33,7 +34,7 @@ class ChartRecOpenAIClient:
         try:
             # Format columns info
             cols_str = "\\n".join([f"- {c['name']} ({c['type']})" for c in columns_info])
-            
+
             # Format sample data
             sample_str = json.dumps(sample_data[:5], indent=2)
 
@@ -43,6 +44,13 @@ class ChartRecOpenAIClient:
                 sample_data=sample_str,
                 user_question=user_question
             )
+
+            if preferred_chart_type:
+                user_prompt += f"""
+
+CHART TYPE PREFERENCE:
+The user has specifically requested a '{preferred_chart_type}' chart. You MUST use '{preferred_chart_type}' as the chart_type.
+Configure x_axis, y_axis, and color_by optimally for this chart type with this data."""
 
             response = self.client.chat.completions.create(
                 model=self.model,

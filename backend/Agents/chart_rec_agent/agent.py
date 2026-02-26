@@ -18,7 +18,8 @@ class ChartRecAgent:
         user_question: str,
         sql_query: str,
         columns_info: List[Dict[str, str]],
-        sample_data: List[Dict[str, Any]]
+        sample_data: List[Dict[str, Any]],
+        preferred_chart_type: Optional[str] = None
     ) -> VisualizationResponse:
         """
         Analyze query results and recommend charts
@@ -28,21 +29,19 @@ class ChartRecAgent:
             sql_query: The SQL query that was executed
             columns_info: List of dictionaries with column name and type
             sample_data: List of row dictionaries (sample results)
+            preferred_chart_type: If set, force this chart type in recommendations
 
         Returns:
             VisualizationResponse with chart recommendations
         """
         print(f"[CHART-REC] Analyzing results for query: {sql_query[:50]}...")
-        
-        # In a real-world scenario, we might do some pre-analysis 
-        # (e.g., check if data is time-series, categorical, etc.)
-        # for now, we rely on GPT's analysis capability.
-        
+
         return self.openai_client.recommend_charts(
             user_question=user_question,
             sql_query=sql_query,
             columns_info=columns_info,
-            sample_data=sample_data
+            sample_data=sample_data,
+            preferred_chart_type=preferred_chart_type
         )
 
 

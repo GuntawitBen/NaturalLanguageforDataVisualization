@@ -544,6 +544,13 @@ export default function DatasetDetails() {
       return;
     }
 
+    // Check if user is responding to a clarification question
+    const lastAssistantMsg = [...sqlMessages].reverse().find(m => m.role === 'assistant');
+    let messageToSend = userMessage;
+    if (lastAssistantMsg?.isClarification) {
+      messageToSend = `Q: ${lastAssistantMsg.content}\nA: ${userMessage}`;
+    }
+
     // Remove follow-up prompt if user typed something else (proceeding with their query)
     setSqlMessages(prev => [...prev.filter(msg => !msg.isFollowUpPrompt), { role: 'user', content: userMessage }]);
 
@@ -556,7 +563,7 @@ export default function DatasetDetails() {
         },
         body: JSON.stringify({
           session_id: sqlSessionId,
-          message: userMessage,
+          message: messageToSend,
         }),
       });
 
@@ -591,6 +598,7 @@ export default function DatasetDetails() {
         results: results,
         visualization_recommendations: data.visualization_recommendations || null,
         error: data.status === 'error',
+        isClarification: data.status === 'clarification_needed',
       }]);
 
       // Ask user if they want follow-up suggestions (conversational approach)

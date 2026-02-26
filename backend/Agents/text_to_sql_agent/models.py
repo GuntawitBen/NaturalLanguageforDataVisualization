@@ -102,3 +102,5 @@ class GPTSQLResponse(BaseModel):
     error: Optional[str] = None
     error_type: Optional[str] = None  # Category: not_a_query, column_not_found, ambiguous_request, etc.
     recommendations: Optional[List[str]] = None  # List of recommended questions
+    conversational: Optional[str] = None  # Free-form conversational response
+    chart_change: Optional[str] = None  # Desired chart type: bar, line, pie, scatter, area, histogram
