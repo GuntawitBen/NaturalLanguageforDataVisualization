@@ -83,6 +83,10 @@ When the user asks for recommendations (e.g., "recommend questions", "suggest qu
 - Do NOT use parentheses, technical jargon, or complex phrasing
 - Do NOT include examples or multiple parts in one question
 - Keep each question under 15 words
+- Questions should be SIMPLE and straightforward - things like "What is the average X?" or "Which Y has the most Z?"
+- Do NOT suggest queries that require complex joins, subqueries, window functions, or advanced SQL concepts
+- Do NOT suggest multi-step analysis, correlations, or statistical comparisons
+- Think of questions a non-technical person would naturally ask about the data
 - Return JSON format: {{"recommendations": ["Question 1?", "Question 2?", "Question 3?"], "explanation": "Brief explanation of why these questions are interesting"}}
 
 IMPORTANT:
@@ -272,13 +276,14 @@ CONTEXT:
 
 GUIDELINES:
 1. Write a brief intro message (1-2 sentences) that references something interesting in the results
-2. Dig deeper into interesting patterns from the current results
-3. Suggest comparisons or breakdowns not in the original query
-4. Propose exploring unused columns that relate to findings
-5. Consider trends, outliers, or correlations worth investigating
-6. Each question MUST be a single short sentence using simple everyday words
-7. Do NOT use parentheses, technical jargon, or complex phrasing
-8. Keep each question under 15 words
+2. Suggest simple, natural follow-up questions based on the results
+3. Propose exploring unused columns that relate to findings
+4. Each question MUST be a single short sentence using simple everyday words
+5. Do NOT use parentheses, technical jargon, or complex phrasing
+6. Keep each question under 15 words
+7. Questions should be SIMPLE - like "What is the average X?" or "Which Y has the most Z?"
+8. Do NOT suggest queries requiring complex joins, subqueries, correlations, or multi-step analysis
+9. Think of questions a non-technical person would naturally ask next
 
 RESPONSE FORMAT (strict JSON):
 {{

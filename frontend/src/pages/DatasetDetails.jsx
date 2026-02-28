@@ -129,10 +129,7 @@ export default function DatasetDetails() {
 
   const recommendPrompts = [
     "Recommend some interesting questions I should explore about this data.",
-    "What patterns or trends might be hidden in this dataset?",
     "Suggest some analytical questions that could reveal insights.",
-    "What are some unusual or surprising things I should look for?",
-    "What comparisons or breakdowns would be most valuable to analyze?",
   ];
 
   useEffect(() => {
@@ -205,6 +202,22 @@ export default function DatasetDetails() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [sqlMessages]);
+
+  useEffect(() => {
+    if (conversationsView === 'chat') {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 100);
+    }
+  }, [conversationsView]);
+
+  useEffect(() => {
+    if (activeTab === 'conversations' && conversationsView === 'chat') {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 100);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'conversations' && conversationsView === 'list') {
@@ -1184,6 +1197,7 @@ export default function DatasetDetails() {
                                               data={msg.results.data}
                                               suggestion={rec}
                                               onAdd={() => handleAddToDashboard(msg.results.data, rec)}
+                                              onRemove={() => handleRemoveFromDashboard(rec.title)}
                                               isPinned={pinnedCharts.some(c => c.suggestion.title === rec.title)}
                                             />
                                           </div>
@@ -1198,26 +1212,36 @@ export default function DatasetDetails() {
                                       <span>Table View</span>
                                     </div>
                                     <div className="viz-grid">
-                                      <ChartRenderer
-                                        data={msg.results.data}
-                                        suggestion={{
-                                          chart_type: 'table',
-                                          title: 'Data Table',
-                                          description: 'Tabular view of query results',
-                                          explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
-                                          x_axis: null,
-                                          y_axis: null,
-                                        }}
-                                        onAdd={() => handleAddToDashboard(msg.results.data, {
-                                          chart_type: 'table',
-                                          title: 'Data Table',
-                                          description: 'Tabular view of query results',
-                                          explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
-                                          x_axis: null,
-                                          y_axis: null,
-                                        })}
-                                        isPinned={pinnedCharts.some(c => c.suggestion.chart_type === 'table' && c.suggestion.title === 'Data Table')}
-                                      />
+                                      {(() => {
+                                        // Derive table title from the preceding user question
+                                        const userMsg = sqlMessages.slice(0, index).reverse().find(m => m.role === 'user');
+                                        const tableTitle = userMsg?.content
+                                          ? userMsg.content.length > 50 ? userMsg.content.slice(0, 50) + '...' : userMsg.content
+                                          : `Table #${index}`;
+                                        return (
+                                          <ChartRenderer
+                                            data={msg.results.data}
+                                            suggestion={{
+                                              chart_type: 'table',
+                                              title: tableTitle,
+                                              description: 'Tabular view of query results',
+                                              explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
+                                              x_axis: null,
+                                              y_axis: null,
+                                            }}
+                                            onAdd={() => handleAddToDashboard(msg.results.data, {
+                                              chart_type: 'table',
+                                              title: tableTitle,
+                                              description: 'Tabular view of query results',
+                                              explanation: `Displaying ${msg.results.row_count} row${msg.results.row_count !== 1 ? 's' : ''} of data.`,
+                                              x_axis: null,
+                                              y_axis: null,
+                                            })}
+                                            onRemove={() => handleRemoveFromDashboard(tableTitle)}
+                                            isPinned={pinnedCharts.some(c => c.suggestion.title === tableTitle)}
+                                          />
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 )

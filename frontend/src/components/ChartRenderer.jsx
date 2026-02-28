@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Pin, PinOff, Table, Settings, X, Check, Palette } from 'lucide-react';
+import { Pin, PinOff, Table, X, Check, Palette } from 'lucide-react';
 import './ChartRenderer.css';
 
 // Professional chart color palette
 const CHART_COLORS = {
-    primary: '#ffffff',      // White - clean chart color
-    primaryLight: '#e5e5e5',
+    primary: '#3B82F6',      // Blue - default chart color
+    primaryLight: '#60A5FA',
     secondary: '#d4d4d4',    // Light gray
     tertiary: '#a3a3a3',     // Gray
     quaternary: '#737373',   // Dark gray
-    background: '#0c0c0c',
-    text: '#fafafa',
-    textSecondary: 'rgba(250, 250, 250, 0.7)',
-    textMuted: 'rgba(250, 250, 250, 0.5)',
+    background: '#131a24',
+    text: '#ffffff',
+    textSecondary: 'rgba(255, 255, 255, 0.7)',
+    textMuted: 'rgba(255, 255, 255, 0.5)',
     axis: '#525252',
-    grid: 'rgba(250, 250, 250, 0.08)',
+    grid: 'rgba(255, 255, 255, 0.08)',
 };
 
 // Multi-color palette for grouped/categorical charts
@@ -60,6 +60,10 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
     // Extract unique categories for color picking
     const getCategories = () => {
         if (!data || data.length === 0) return [];
+        // For tables, use column names as categories
+        if (suggestion.chart_type === 'table') {
+            return Object.keys(data[0]);
+        }
         const groupKey = suggestion.group_by || suggestion.color_by || suggestion.x_axis;
         // For scatter plots, we might want to color by a third dimension if it exists
         if (suggestion.chart_type === 'scatter') return ['Default'];
@@ -94,6 +98,26 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
         const columns = data && data.length > 0 ? Object.keys(data[0]) : [];
         const displayData = data ? data.slice(0, MAX_TABLE_ROWS) : [];
         const hasMoreRows = data && data.length > MAX_TABLE_ROWS;
+        const isSingleRow = data && data.length === 1;
+
+        // Format value for display
+        const formatStatValue = (val) => {
+            if (val === null || val === undefined) return '—';
+            const num = Number(val);
+            if (!isNaN(num) && String(val).trim() !== '') {
+                if (Number.isInteger(num)) return num.toLocaleString();
+                return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            }
+            return String(val);
+        };
+
+        // Format column name for display
+        const formatColumnName = (col) => {
+            return col
+                .replace(/_/g, ' ')
+                .replace(/([a-z])([A-Z])/g, '$1 $2')
+                .replace(/\b\w/g, c => c.toUpperCase());
+        };
 
         return (
             <div className="chart-container-root table-visualization">
@@ -109,42 +133,69 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                         </div>
                     </div>
                 )}
-                <div className="table-wrapper">
-                    <div className="table-header-bar">
-                        <Table size={16} />
-                        <span className="table-title">{suggestion.title || 'Data Table'}</span>
-                        <span className="table-row-count">{data?.length || 0} rows</span>
+                {isSingleRow ? (
+                    <div className="stat-cards-wrapper">
+                        <div className="stat-cards-grid">
+                            {columns.map((col, idx) => {
+                                const cardColor = customColors[col] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
+                                return (
+                                    <div key={idx} className="stat-card" style={{ borderTopColor: cardColor }}>
+                                        <span className="stat-card-label">{formatColumnName(col)}</span>
+                                        <span className="stat-card-value" style={{ color: cardColor }}>
+                                            {formatStatValue(data[0][col])}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="table-scroll-container">
-                        <table className="viz-table">
-                            <thead>
-                                <tr>
-                                    {columns.map((col, idx) => (
-                                        <th key={idx}>{col}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {displayData.map((row, rowIdx) => (
-                                    <tr key={rowIdx}>
-                                        {columns.map((col, colIdx) => (
-                                            <td key={colIdx}>
-                                                {row[col] !== null && row[col] !== undefined
-                                                    ? String(row[col])
-                                                    : '—'}
-                                            </td>
+                ) : (
+                    <div className="table-wrapper">
+                        {suggestion.title && (
+                            <div className="table-header-bar">
+                                <span className="table-title">{suggestion.title}</span>
+                            </div>
+                        )}
+                        <div className="table-scroll-container">
+                            <table className="viz-table">
+                                <thead>
+                                    <tr>
+                                        {columns.map((col, idx) => (
+                                            <th key={idx} style={{ borderBottomColor: customColors[col] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length] }}>{col}</th>
                                         ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    {hasMoreRows && (
-                        <div className="table-more-rows">
-                            +{data.length - MAX_TABLE_ROWS} more rows
+                                </thead>
+                                <tbody>
+                                    {displayData.map((row, rowIdx) => (
+                                        <tr key={rowIdx}>
+                                            {columns.map((col, colIdx) => (
+                                                <td key={colIdx}>
+                                                    {row[col] !== null && row[col] !== undefined
+                                                        ? String(row[col])
+                                                        : '—'}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    )}
-                </div>
+                        {hasMoreRows && (
+                            <div className="table-more-rows">
+                                +{data.length - MAX_TABLE_ROWS} more rows
+                            </div>
+                        )}
+                    </div>
+                )}
+                {isPinned && onUpdate && (
+                    <button
+                        className={`settings-btn ${showSettings ? 'active' : ''}`}
+                        onClick={() => setShowSettings(!showSettings)}
+                        title="Customize Colors"
+                    >
+                        <Palette size={16} />
+                    </button>
+                )}
                 <button
                     className={`pin-btn ${isPinned ? 'pinned' : ''}`}
                     onClick={isPinned ? onRemove : onAdd}
@@ -152,6 +203,37 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 >
                     {isPinned ? <PinOff size={16} /> : <Pin size={16} />}
                 </button>
+                {showSettings && (
+                    <div className="chart-settings-panel">
+                        <div className="settings-header">
+                            <div className="settings-title">
+                                <Palette size={14} />
+                                <span>Chart Colors</span>
+                            </div>
+                            <button className="close-settings" onClick={() => setShowSettings(false)}>
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <div className="settings-content">
+                            {categories.map((category, idx) => (
+                                <div key={idx} className="color-setting-item">
+                                    <span className="category-label">{category}</span>
+                                    <input
+                                        type="color"
+                                        value={customColors[category] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length]}
+                                        onChange={(e) => handleColorChange(category, e.target.value)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="settings-footer">
+                            <button className="save-settings-btn" onClick={saveSettings}>
+                                <Check size={14} />
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -312,13 +394,13 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 styleAxes(xAxisG, yAxisG);
 
                 // Create grouped bars
-                xCategories.forEach(category => {
+                xCategories.forEach((category, catIdx) => {
                     const categoryData = cleanData.filter(d => String(d[xKey]) === category);
 
-                    g.selectAll(`.bar-${category.replace(/\s+/g, '-')}`)
+                    g.selectAll(`.bar-cat-${catIdx}`)
                         .data(categoryData)
                         .enter().append('rect')
-                        .attr('class', 'bar')
+                        .attr('class', `bar bar-cat-${catIdx}`)
                         .attr('x', d => x0(String(d[xKey])) + x1(String(d[groupKey])))
                         .attr('y', d => y(+d[yKey]))
                         .attr('width', x1.bandwidth())
@@ -377,24 +459,11 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
                 styleAxes(xAxisG, yAxisG);
 
-                // Create gradient for bars
-                const defs = svg.append('defs');
-                const gradient = defs.append('linearGradient')
-                    .attr('id', 'barGradient')
-                    .attr('x1', '0%')
-                    .attr('y1', '0%')
-                    .attr('x2', '0%')
-                    .attr('y2', '100%');
-
-                gradient.append('stop')
-                    .attr('offset', '0%')
-                    .attr('stop-color', CHART_COLORS.primary)
-                    .attr('stop-opacity', 1);
-
-                gradient.append('stop')
-                    .attr('offset', '100%')
-                    .attr('stop-color', CHART_COLORS.primary)
-                    .attr('stop-opacity', 0.7);
+                // Build color scale for bars - each category gets a distinct color
+                const xCategories = [...new Set(cleanData.map(d => String(d[xKey])))];
+                const barColorScale = d3.scaleOrdinal()
+                    .domain(xCategories)
+                    .range(xCategories.map((cat, i) => customColors[cat] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]));
 
                 const bars = g.selectAll('.bar')
                     .data(cleanData)
@@ -404,10 +473,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     .attr('y', innerHeight)
                     .attr('width', x.bandwidth())
                     .attr('height', 0)
-                    .attr('fill', d => {
-                        const category = String(d[xKey]);
-                        return customColors[category] ? customColors[category] : 'url(#barGradient)';
-                    })
+                    .attr('fill', d => barColorScale(String(d[xKey])))
                     .attr('rx', 6)
                     .style('filter', 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))')
                     .style('cursor', 'pointer');
@@ -655,9 +721,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             const color = d3.scaleOrdinal()
                 .domain(cleanData.map(d => String(d[xKey]))) // Ensure domain matches categories
                 .range(cleanData.map((d, i) => customColors[String(d[xKey])] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length]));
-            const pie = d3.pie().value(d => +d[yKey]).sort(null);
-            const arc = d3.arc().innerRadius(0).outerRadius(radius - 10);
-            const hoverArc = d3.arc().innerRadius(0).outerRadius(radius - 5);
+            const pie = d3.pie().value(d => +d[yKey]).sort(null).padAngle(0.01);
+            const arc = d3.arc().innerRadius(0).outerRadius(radius - 10).cornerRadius(2);
+            const hoverArc = d3.arc().innerRadius(0).outerRadius(radius - 5).cornerRadius(2);
             const labelArc = d3.arc().innerRadius(radius * 0.6).outerRadius(radius * 0.6);
 
             const arcs = pieG.selectAll('arc')
@@ -678,7 +744,10 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .duration(800)
                 .ease(d3.easeCubicOut)
                 .attrTween('d', function (d) {
-                    const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                    const interpolate = d3.interpolate(
+                        { startAngle: d.startAngle, endAngle: d.startAngle, padAngle: d.padAngle },
+                        d
+                    );
                     return function (t) {
                         return arc(interpolate(t));
                     };
@@ -797,7 +866,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     onClick={() => setShowSettings(!showSettings)}
                     title="Customize Colors"
                 >
-                    <Settings size={16} />
+                    <Palette size={16} />
                 </button>
             )}
             <button
@@ -826,7 +895,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                                 <span className="category-label">{category}</span>
                                 <input
                                     type="color"
-                                    value={customColors[category] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length]}
+                                    value={customColors[category] || (category === 'Primary' || category === 'Default' ? CHART_COLORS.primary : CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length])}
                                     onChange={(e) => handleColorChange(category, e.target.value)}
                                 />
                             </div>

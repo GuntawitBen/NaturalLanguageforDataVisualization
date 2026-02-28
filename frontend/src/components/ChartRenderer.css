@@ -61,6 +61,25 @@
    Chart Analysis Section
    ───────────────────────────────────────────────────────────────────── */
 /* ─────────────────────────────────────────────────────────────────────
+   Hide controls until hover
+   ───────────────────────────────────────────────────────────────────── */
+.chart-container-root .pin-btn,
+.chart-container-root .settings-btn,
+.chart-container-root .chart-drag-handle {
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.15s ease, opacity 0.2s ease;
+}
+
+.chart-container-root:hover .pin-btn,
+.chart-container-root:hover .settings-btn,
+.chart-container-root:hover .chart-drag-handle,
+.chart-container-root .settings-btn.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
    Pin Button
    ───────────────────────────────────────────────────────────────────── */
 .pin-btn {
@@ -143,6 +162,8 @@
     top: 3.5rem;
     right: 0.75rem;
     width: 260px;
+    max-height: 400px;
+    overflow-y: auto;
     background: rgba(18, 18, 18, 0.95);
     backdrop-filter: blur(12px);
     border: 1px solid var(--border-default);
@@ -360,6 +381,7 @@ input[type="color"]:hover::-webkit-color-swatch {
     overflow: hidden;
 }
 
+
 .table-visualization .table-header-bar {
     display: flex;
     align-items: center;
@@ -431,6 +453,62 @@ input[type="color"]:hover::-webkit-color-swatch {
 
 .table-visualization .viz-table tbody tr:last-child td {
     border-bottom: none;
+}
+
+/* Stat Cards - single row KPI display */
+.table-visualization .stat-cards-wrapper {
+    margin: 1rem 1.25rem 0 1.25rem;
+}
+
+.table-visualization .stat-cards-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.table-visualization .stat-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.table-visualization .stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--border-subtle);
+    border-top: 3px solid;
+    border-radius: var(--radius-md);
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.table-visualization .stat-card:hover {
+    background: var(--color-elevated);
+    border-color: var(--border-default);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.table-visualization .stat-card-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.table-visualization .stat-card-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.2;
+    word-break: break-word;
 }
 
 .table-visualization .table-more-rows {

@@ -4,13 +4,15 @@ GPT prompts for the Chart Recommendation agent.
 
 CHART_REC_SYSTEM_PROMPT = """You are a Data Visualization Expert. Your goal is to analyze a dataset schema and a sample of SQL query results to recommend the single most insightful chart for this data - or determine that the data is best viewed as a table.
 
-IMPORTANT: If the data cannot be meaningfully visualized as a chart, return an empty recommendations array.
-Examples of non-chartable data:
-- Single column with no aggregation possible
+IMPORTANT: If the data cannot be meaningfully visualized as a chart, return an empty recommendations array so the data is displayed as a table instead.
+Examples of non-chartable data (MUST return empty recommendations):
+- Single column results (e.g., a list of names, values, or IDs) - these should ALWAYS be a table, NEVER a histogram or any chart
 - Single row/value results
 - Raw text or ID-only columns (names, descriptions, identifiers)
 - Data that would not provide visual insight beyond a table
 - Results with only categorical/text data and no numeric values to plot
+- Lists of values from one column, even if numeric - a table is clearer than a histogram
+- Any query that returns rows of a single column regardless of data type
 
 In these cases, respond with:
 {
@@ -56,7 +58,9 @@ Example for chartable data:
 }
 """
 
-CHART_REC_USER_PROMPT_TEMPLATE = """Analyze the following query results and recommend exactly 1 visualization - the single best chart for this data. If the data is not suitable for charting (single column, single value, text-only, IDs only), return an empty recommendations array.
+CHART_REC_USER_PROMPT_TEMPLATE = """Analyze the following query results and recommend exactly 1 visualization - the single best chart for this data. If the data is not suitable for charting, return an empty recommendations array so the data is shown as a table.
+
+CRITICAL: If the result has only ONE column (regardless of how many rows), it is NOT chartable - return empty recommendations. Do NOT recommend histogram for single-column lists. A table view is always better for displaying a list of values from one column.
 
 SQL QUERY:
 {sql_query}

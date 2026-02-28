@@ -233,6 +233,13 @@ Write a concise message that:
 
 Keep it professional and to the point - like a data analyst giving a quick briefing. Avoid flowery language, excessive enthusiasm, or words like "fascinating", "exciting", "wonderful".
 
+IMPORTANT - Keep recommendations SIMPLE:
+- Each question should be short (under 15 words) and use simple everyday language
+- Suggest basic questions like "What is the average X?", "Which Y has the most Z?", "How many X are there?"
+- Do NOT suggest complex queries involving correlations, comparisons across multiple dimensions, or multi-step analysis
+- Do NOT use technical jargon, parentheses, or compound questions
+- Think of questions a non-technical person would naturally ask
+
 Return JSON:
 {
     "intro_message": "Your direct, analytical message here...",

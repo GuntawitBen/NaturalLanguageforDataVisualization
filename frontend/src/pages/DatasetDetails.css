@@ -861,7 +861,6 @@
   flex-direction: column;
   height: calc(100vh - 100px);
   min-height: 600px;
-  max-height: 800px;
 }
 
 .chat-header {
