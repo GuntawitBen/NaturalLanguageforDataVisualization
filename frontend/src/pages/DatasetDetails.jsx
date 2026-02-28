@@ -68,6 +68,17 @@ export default function DatasetDetails() {
   const [sqlError, setSqlError] = useState(null);
   const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion, visualization_id}
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardTitle, setDashboardTitle] = useState(() => {
+    return localStorage.getItem(`dashboard-title-${datasetId}`) || '';
+  });
+  const [editingTitle, setEditingTitle] = useState(false);
+
+  useEffect(() => {
+    if (dataset?.dataset_name && !localStorage.getItem(`dashboard-title-${datasetId}`)) {
+      setDashboardTitle(dataset.dataset_name);
+    }
+  }, [dataset]);
+
   const [expandedSections, setExpandedSections] = useState({});
   const [chartLayout, setChartLayout] = useState([]);
   const { width, containerRef, mounted } = useContainerWidth();
@@ -89,9 +100,9 @@ export default function DatasetDetails() {
       try {
         const parsed = JSON.parse(savedLayout);
         // Filter to only include existing chart IDs
-        const validLayout = parsed.filter(item =>
-          charts.some(c => c.visualization_id === item.i)
-        );
+        const validLayout = parsed
+          .filter(item => charts.some(c => c.visualization_id === item.i))
+          .map(item => ({ ...item, maxW: 12 }));
         setChartLayout(validLayout);
         return;
       } catch (e) {
@@ -105,7 +116,8 @@ export default function DatasetDetails() {
       x: (idx % 2) * 6,
       y: Math.floor(idx / 2) * 30, // Increased spacing between rows relative to rowHeight
       w: 6,
-      h: 22 // Adjusted height for better proportions with rowHeight 10
+      h: 22, // Adjusted height for better proportions with rowHeight 10
+      maxW: 12
     }));
     setChartLayout(defaultLayout);
   };
@@ -116,12 +128,32 @@ export default function DatasetDetails() {
     localStorage.setItem(storageKey, JSON.stringify(layout));
   };
 
+  // Clamp layout items so none exceed the grid boundary
+  const clampLayout = (layout) => {
+    const maxCols = 12;
+    return layout.map(item => {
+      if (item.x + item.w > maxCols) {
+        return { ...item, w: maxCols - item.x };
+      }
+      return item;
+    });
+  };
+
   // Handle layout change from GridLayout
   const handleLayoutChange = (newLayout) => {
-    // Only save if it's not the initial empty layout
     if (newLayout.length > 0) {
-      setChartLayout(newLayout);
-      saveChartLayout(newLayout);
+      const clamped = clampLayout(newLayout);
+      setChartLayout(clamped);
+      saveChartLayout(clamped);
+    }
+  };
+
+  // Prevent items from resizing past the right edge of the grid
+  const handleResize = (layout, oldItem, newItem, placeholder) => {
+    const maxCols = 12;
+    if (newItem.x + newItem.w > maxCols) {
+      newItem.w = maxCols - newItem.x;
+      placeholder.w = maxCols - newItem.x;
     }
   };
   const messagesEndRef = useRef(null);
@@ -721,7 +753,8 @@ export default function DatasetDetails() {
         x: 0,
         y: maxY,
         w: 6,
-        h: 22 // Matching default height
+        h: 22, // Matching default height
+        maxW: 12
       };
       const newLayout = [...chartLayout, newLayoutItem];
       setChartLayout(newLayout);
@@ -1333,16 +1366,48 @@ export default function DatasetDetails() {
                 <span>Loading dashboard...</span>
               </div>
             ) : pinnedCharts.length > 0 ? (
+              <>
+              <div className="dashboard-header-info">
+                <div className="dashboard-title-row">
+                  <h2>
+                    <LayoutDashboard size={20} />
+                    Your Dashboard
+                    <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
+                  </h2>
+                  <p>Visualizations pinned from your data exploration. Drag to reposition, resize from corners.</p>
+                </div>
+              </div>
               <div className="dashboard-grid">
-                <div className="dashboard-header-info">
-                  <div className="dashboard-title-row">
-                    <h2>
-                      <LayoutDashboard size={20} />
-                      Your Dashboard
-                      <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
-                    </h2>
-                    <p>Visualizations pinned from your data exploration. Drag to reposition, resize from corners.</p>
-                  </div>
+                <div className="dashboard-paper-title">
+                  {editingTitle ? (
+                    <input
+                      className="dashboard-title-input"
+                      value={dashboardTitle}
+                      onChange={(e) => setDashboardTitle(e.target.value)}
+                      onBlur={() => {
+                        setEditingTitle(false);
+                        const title = dashboardTitle.trim() || dataset?.dataset_name || 'My Report';
+                        setDashboardTitle(title);
+                        localStorage.setItem(`dashboard-title-${datasetId}`, title);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.target.blur();
+                        if (e.key === 'Escape') {
+                          setDashboardTitle(localStorage.getItem(`dashboard-title-${datasetId}`) || dataset?.dataset_name || 'My Report');
+                          setEditingTitle(false);
+                        }
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="dashboard-title-text"
+                      onClick={() => setEditingTitle(true)}
+                      title="Click to edit title"
+                    >
+                      {dashboardTitle}
+                    </span>
+                  )}
                 </div>
                 <div className="dashboard-grid-container" ref={containerRef}>
                   {mounted && (
@@ -1350,13 +1415,15 @@ export default function DatasetDetails() {
                       className="charts-container"
                       width={width}
                       layouts={{ lg: chartLayout }}
-                      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xss: 0 }}
-                      cols={{ lg: 12, md: 10, sm: 6, xs: 4, xss: 2 }}
+                      breakpoints={{ lg: 0 }}
+                      cols={{ lg: 12 }}
                       rowHeight={10}
                       onLayoutChange={handleLayoutChange}
                       draggableHandle=".chart-drag-handle"
                       compactType="vertical"
                       preventCollision={false}
+                      isBounded={true}
+                      onResize={handleResize}
                       margin={[20, 20]} // Spacing between items
                     >
                       {pinnedCharts.map((item) => (
@@ -1376,6 +1443,7 @@ export default function DatasetDetails() {
                   )}
                 </div>
               </div>
+              </>
             ) : (
               <div className="dashboard-placeholder">
                 <div className="placeholder-icon">

@@ -10,12 +10,12 @@ const CHART_COLORS = {
     secondary: '#d4d4d4',    // Light gray
     tertiary: '#a3a3a3',     // Gray
     quaternary: '#737373',   // Dark gray
-    background: '#131a24',
-    text: '#ffffff',
-    textSecondary: 'rgba(255, 255, 255, 0.7)',
-    textMuted: 'rgba(255, 255, 255, 0.5)',
-    axis: '#525252',
-    grid: 'rgba(255, 255, 255, 0.08)',
+    background: '#ffffff',
+    text: '#111111',
+    textSecondary: '#333333',
+    textMuted: '#555555',
+    axis: '#666666',
+    grid: 'rgba(0, 0, 0, 0.1)',
 };
 
 // Multi-color palette for grouped/categorical charts
@@ -37,6 +37,8 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
     const tooltipRef = useRef(null);
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
     const [showSettings, setShowSettings] = useState(false);
+    const [editableTitle, setEditableTitle] = useState(suggestion.title || '');
+    const [editingChartTitle, setEditingChartTitle] = useState(false);
     // Initialize colors from suggestion or defaults
     const [customColors, setCustomColors] = useState(suggestion.color_mapping || {});
     const MAX_TABLE_ROWS = 10;
@@ -55,6 +57,15 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             });
         }
         setShowSettings(false);
+    };
+
+    const saveTitle = () => {
+        setEditingChartTitle(false);
+        const title = editableTitle.trim() || suggestion.title || 'Untitled';
+        setEditableTitle(title);
+        if (onUpdate) {
+            onUpdate({ ...suggestion, title });
+        }
     };
 
     // Extract unique categories for color picking
@@ -151,11 +162,32 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     </div>
                 ) : (
                     <div className="table-wrapper">
-                        {suggestion.title && (
-                            <div className="table-header-bar">
-                                <span className="table-title">{suggestion.title}</span>
-                            </div>
-                        )}
+                        <div className="table-header-bar">
+                            {editingChartTitle ? (
+                                <input
+                                    className="chart-title-input"
+                                    value={editableTitle}
+                                    onChange={(e) => setEditableTitle(e.target.value)}
+                                    onBlur={saveTitle}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') e.target.blur();
+                                        if (e.key === 'Escape') {
+                                            setEditableTitle(suggestion.title || '');
+                                            setEditingChartTitle(false);
+                                        }
+                                    }}
+                                    autoFocus
+                                />
+                            ) : (
+                                <span
+                                    className="table-title chart-title-text"
+                                    onClick={() => setEditingChartTitle(true)}
+                                    title="Click to edit title"
+                                >
+                                    {editableTitle || suggestion.title || 'Untitled'}
+                                </span>
+                            )}
+                        </div>
                         <div className="table-scroll-container">
                             <table className="viz-table">
                                 <thead>
@@ -266,7 +298,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('y', innerHeight / 2)
                 .attr('text-anchor', 'middle')
                 .style('fill', CHART_COLORS.textSecondary)
-                .style('font-size', '14px')
+                .style('font-size', '16px')
                 .text('No data available for these axes');
             return;
         }
@@ -289,9 +321,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('x', innerWidth / 2)
                 .attr('y', innerHeight + 60)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '13px')
-                .style('font-weight', '500')
-                .style('fill', CHART_COLORS.textSecondary)
+                .style('font-size', '16px')
+                .style('font-weight', '700')
+                .style('fill', CHART_COLORS.text)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif")
                 .text(xKey);
 
@@ -301,9 +333,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('x', -innerHeight / 2)
                 .attr('y', -55)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '13px')
-                .style('font-weight', '500')
-                .style('fill', CHART_COLORS.textSecondary)
+                .style('font-size', '16px')
+                .style('font-weight', '700')
+                .style('fill', CHART_COLORS.text)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif")
                 .text(yKey);
         };
@@ -312,7 +344,8 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
         const styleAxes = (xAxisG, yAxisG) => {
             // Style x-axis
             xAxisG.selectAll('text')
-                .style('font-size', '12px')
+                .style('font-size', '14px')
+                .style('font-weight', '600')
                 .style('fill', CHART_COLORS.textSecondary)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif");
 
@@ -324,7 +357,8 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             // Style y-axis
             yAxisG.selectAll('text')
-                .style('font-size', '12px')
+                .style('font-size', '14px')
+                .style('font-weight', '600')
                 .style('fill', CHART_COLORS.textSecondary)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif");
 
@@ -426,8 +460,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     legendRow.append('text')
                         .attr('x', 20)
                         .attr('y', 11)
-                        .style('font-size', '11px')
-                        .style('fill', CHART_COLORS.textSecondary)
+                        .style('font-size', '14px')
+                        .style('font-weight', '600')
+                        .style('fill', CHART_COLORS.text)
                         .style('font-family', "'Plus Jakarta Sans', sans-serif")
                         .text(group);
                 });
@@ -797,9 +832,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             arcs.append('text')
                 .attr('transform', d => `translate(${labelArc.centroid(d)})`)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '11px')
+                .style('font-size', '15px')
                 .style('fill', CHART_COLORS.text)
-                .style('font-weight', '500')
+                .style('font-weight', '700')
                 .style('opacity', 0)
                 .text(d => {
                     const percent = (d.endAngle - d.startAngle) / (2 * Math.PI) * 100;
@@ -811,16 +846,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .style('opacity', 1);
         }
 
-        // Add Chart Title
-        svg.append('text')
-            .attr('x', width / 2)
-            .attr('y', 28)
-            .attr('text-anchor', 'middle')
-            .style('font-size', '15px')
-            .style('font-weight', '600')
-            .style('fill', CHART_COLORS.text)
-            .style('font-family', "'JetBrains Mono', monospace")
-            .text(suggestion.title);
+        // Chart title is now rendered as HTML above the SVG
 
     }, [data, suggestion]);
 
@@ -839,6 +865,32 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 </div>
             )}
             <div className="svg-wrapper">
+                <div className="chart-editable-title">
+                    {editingChartTitle ? (
+                        <input
+                            className="chart-title-input"
+                            value={editableTitle}
+                            onChange={(e) => setEditableTitle(e.target.value)}
+                            onBlur={saveTitle}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.target.blur();
+                                if (e.key === 'Escape') {
+                                    setEditableTitle(suggestion.title || '');
+                                    setEditingChartTitle(false);
+                                }
+                            }}
+                            autoFocus
+                        />
+                    ) : (
+                        <span
+                            className="chart-title-text"
+                            onClick={() => setEditingChartTitle(true)}
+                            title="Click to edit title"
+                        >
+                            {editableTitle || suggestion.title || 'Untitled'}
+                        </span>
+                    )}
+                </div>
                 <svg
                     ref={svgRef}
                     width="100%"
