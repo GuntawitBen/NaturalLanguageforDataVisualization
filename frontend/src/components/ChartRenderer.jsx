@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { Pin, PinOff, Table, X, Check, Palette } from 'lucide-react';
 import './ChartRenderer.css';
@@ -34,6 +34,7 @@ const CATEGORY_PALETTE = [
 
 export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPinned, onUpdate }) {
     const svgRef = useRef(null);
+    const wrapperRef = useRef(null);
     const tooltipRef = useRef(null);
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, content: '' });
     const [showSettings, setShowSettings] = useState(false);
@@ -41,7 +42,21 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
     const [editingChartTitle, setEditingChartTitle] = useState(false);
     // Initialize colors from suggestion or defaults
     const [customColors, setCustomColors] = useState(suggestion.color_mapping || {});
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const MAX_TABLE_ROWS = 10;
+
+    // Track container size via ResizeObserver
+    useEffect(() => {
+        const node = wrapperRef.current;
+        if (!node) return;
+        const measure = () => {
+            setContainerSize({ width: node.clientWidth, height: node.clientHeight });
+        };
+        measure();
+        const ro = new ResizeObserver(() => measure());
+        ro.observe(node);
+        return () => ro.disconnect();
+    }, []);
 
     // Save changes when customColors change (debounce if needed, but simple for now)
     const handleColorChange = (category, color) => {
@@ -272,16 +287,36 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
     useEffect(() => {
         if (!data || !suggestion || !svgRef.current) return;
+        if (containerSize.width === 0 || containerSize.height === 0) return;
 
         // Clear existing content
         const svg = d3.select(svgRef.current);
         svg.selectAll('*').remove();
 
-        const width = svgRef.current.clientWidth || 600;
-        const height = svgRef.current.clientHeight || 400;
-        const margin = { top: 50, right: 40, bottom: 80, left: 80 };
+        const width = svgRef.current.clientWidth || containerSize.width || 600;
+        const height = svgRef.current.clientHeight || containerSize.height || 400;
+
+        // Proportional sizing based on container dimensions
+        const scale = Math.min(width / 600, height / 400);
+        const clampedScale = Math.max(0.4, Math.min(scale, 1.5));
+        const margin = {
+            top: Math.max(20, Math.round(50 * clampedScale)),
+            right: Math.max(15, Math.round(40 * clampedScale)),
+            bottom: Math.max(35, Math.round(80 * clampedScale)),
+            left: Math.max(35, Math.round(80 * clampedScale)),
+        };
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
+
+        // Adaptive font sizes
+        const fontSize = {
+            title: Math.max(7, Math.round(12 * clampedScale)),
+            axis: Math.max(6, Math.round(10 * clampedScale)),
+            label: Math.max(6, Math.round(11 * clampedScale)),
+            legend: Math.max(6, Math.round(10 * clampedScale)),
+            noData: Math.max(8, Math.round(12 * clampedScale)),
+        };
+        const tickCount = Math.max(3, Math.round(6 * clampedScale));
 
         const g = svg.append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -298,20 +333,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .attr('y', innerHeight / 2)
                 .attr('text-anchor', 'middle')
                 .style('fill', CHART_COLORS.textSecondary)
-                .style('font-size', '16px')
+                .style('font-size', `${fontSize.noData}px`)
                 .text('No data available for these axes');
             return;
-        }
-
-        // Add zoom behavior (except for pie charts)
-        if (suggestion.chart_type !== 'pie') {
-            const zoom = d3.zoom()
-                .scaleExtent([0.5, 3])
-                .on('zoom', (event) => {
-                    g.attr('transform', `translate(${margin.left},${margin.top}) ${event.transform}`);
-                });
-
-            svg.call(zoom);
         }
 
         // Helper function to add axis titles
@@ -319,9 +343,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             // X-axis title
             g.append('text')
                 .attr('x', innerWidth / 2)
-                .attr('y', innerHeight + 60)
+                .attr('y', innerHeight + margin.bottom * 0.75)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '16px')
+                .style('font-size', `${fontSize.title}px`)
                 .style('font-weight', '700')
                 .style('fill', CHART_COLORS.text)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif")
@@ -331,9 +355,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             g.append('text')
                 .attr('transform', 'rotate(-90)')
                 .attr('x', -innerHeight / 2)
-                .attr('y', -55)
+                .attr('y', -margin.left * 0.7)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '16px')
+                .style('font-size', `${fontSize.title}px`)
                 .style('font-weight', '700')
                 .style('fill', CHART_COLORS.text)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif")
@@ -344,7 +368,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
         const styleAxes = (xAxisG, yAxisG) => {
             // Style x-axis
             xAxisG.selectAll('text')
-                .style('font-size', '14px')
+                .style('font-size', `${fontSize.axis}px`)
                 .style('font-weight', '600')
                 .style('fill', CHART_COLORS.textSecondary)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif");
@@ -357,7 +381,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             // Style y-axis
             yAxisG.selectAll('text')
-                .style('font-size', '14px')
+                .style('font-size', `${fontSize.axis}px`)
                 .style('font-weight', '600')
                 .style('fill', CHART_COLORS.textSecondary)
                 .style('font-family', "'Plus Jakarta Sans', sans-serif");
@@ -374,7 +398,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             g.append('g')
                 .attr('class', 'grid')
                 .selectAll('line')
-                .data(yScale.ticks(5))
+                .data(yScale.ticks(tickCount))
                 .enter()
                 .append('line')
                 .attr('x1', 0)
@@ -423,7 +447,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     .style('text-anchor', 'end');
 
                 const yAxisG = g.append('g')
-                    .call(d3.axisLeft(y).ticks(6));
+                    .call(d3.axisLeft(y).ticks(tickCount));
 
                 styleAxes(xAxisG, yAxisG);
 
@@ -444,23 +468,25 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 });
 
                 // Add legend
+                const legendSize = Math.max(8, Math.round(14 * clampedScale));
+                const legendSpacing = Math.max(14, Math.round(22 * clampedScale));
                 const legend = svg.append('g')
-                    .attr('transform', `translate(${width - margin.right - 100}, ${margin.top})`);
+                    .attr('transform', `translate(${width - margin.right - Math.round(100 * clampedScale)}, ${margin.top})`);
 
                 groups.forEach((group, i) => {
                     const legendRow = legend.append('g')
-                        .attr('transform', `translate(0, ${i * 22})`);
+                        .attr('transform', `translate(0, ${i * legendSpacing})`);
 
                     legendRow.append('rect')
-                        .attr('width', 14)
-                        .attr('height', 14)
+                        .attr('width', legendSize)
+                        .attr('height', legendSize)
                         .attr('rx', 2)
                         .attr('fill', colorScale(group));
 
                     legendRow.append('text')
-                        .attr('x', 20)
-                        .attr('y', 11)
-                        .style('font-size', '14px')
+                        .attr('x', legendSize + 6)
+                        .attr('y', legendSize - 3)
+                        .style('font-size', `${fontSize.legend}px`)
                         .style('font-weight', '600')
                         .style('fill', CHART_COLORS.text)
                         .style('font-family', "'Plus Jakarta Sans', sans-serif")
@@ -490,7 +516,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     .style('text-anchor', 'end');
 
                 const yAxisG = g.append('g')
-                    .call(d3.axisLeft(y).ticks(6));
+                    .call(d3.axisLeft(y).ticks(tickCount));
 
                 styleAxes(xAxisG, yAxisG);
 
@@ -575,7 +601,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 .style('text-anchor', 'end');
 
             const yAxisG = g.append('g')
-                .call(d3.axisLeft(y).ticks(6));
+                .call(d3.axisLeft(y).ticks(tickCount));
 
             styleAxes(xAxisG, yAxisG);
 
@@ -690,10 +716,10 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
             const xAxisG = g.append('g')
                 .attr('transform', `translate(0,${innerHeight})`)
-                .call(d3.axisBottom(x).ticks(6));
+                .call(d3.axisBottom(x).ticks(tickCount));
 
             const yAxisG = g.append('g')
-                .call(d3.axisLeft(y).ticks(6));
+                .call(d3.axisLeft(y).ticks(tickCount));
 
             styleAxes(xAxisG, yAxisG);
 
@@ -832,7 +858,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             arcs.append('text')
                 .attr('transform', d => `translate(${labelArc.centroid(d)})`)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '15px')
+                .style('font-size', `${fontSize.label}px`)
                 .style('fill', CHART_COLORS.text)
                 .style('font-weight', '700')
                 .style('opacity', 0)
@@ -848,7 +874,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
 
         // Chart title is now rendered as HTML above the SVG
 
-    }, [data, suggestion]);
+    }, [data, suggestion, containerSize.width, containerSize.height]);
 
     return (
         <div className="chart-container-root">
@@ -864,7 +890,7 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     </div>
                 </div>
             )}
-            <div className="svg-wrapper">
+            <div className="svg-wrapper" ref={wrapperRef}>
                 <div className="chart-editable-title">
                     {editingChartTitle ? (
                         <input
@@ -896,7 +922,6 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     width="100%"
                     height="100%"
                     className="d3-svg"
-                    style={{ minHeight: '300px', maxHeight: '500px' }}
                 />
                 {/* Tooltip overlay */}
                 {tooltip.visible && (

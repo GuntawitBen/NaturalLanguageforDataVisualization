@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
-import { Responsive as ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout';
+import { Responsive as ResponsiveGridLayout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import {
@@ -81,7 +81,25 @@ export default function DatasetDetails() {
 
   const [expandedSections, setExpandedSections] = useState({});
   const [chartLayout, setChartLayout] = useState([]);
-  const { width, containerRef, mounted } = useContainerWidth();
+  const [gridWidth, setGridWidth] = useState(0);
+  const observerRef = useRef(null);
+  const containerRef = useCallback((node) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    if (node) {
+      setGridWidth(node.offsetWidth);
+      const ro = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) setGridWidth(entry.contentRect.width);
+      });
+      ro.observe(node);
+      observerRef.current = ro;
+    }
+  }, []);
+  const width = gridWidth;
+  const mounted = gridWidth > 0;
   const sqlSessionStarted = useRef(false);
 
   const toggleSection = (sectionKey) => {
@@ -797,6 +815,34 @@ export default function DatasetDetails() {
     }
   };
 
+  const handleClearDashboard = async () => {
+    if (!window.confirm('Clear all visualizations from this dashboard?')) return;
+
+    try {
+      await Promise.all(
+        pinnedCharts
+          .filter(c => c.visualization_id)
+          .map(c =>
+            fetch(
+              API_ENDPOINTS.DATASETS.DASHBOARD_REMOVE(datasetId, c.visualization_id),
+              {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${sessionToken}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            )
+          )
+      );
+      setPinnedCharts([]);
+      setChartLayout([]);
+      saveChartLayout([]);
+    } catch (err) {
+      console.error('Error clearing dashboard:', err);
+    }
+  };
+
   const handleUpdateDashboard = async (visualization_id, updatedConfig) => {
     const currentChart = pinnedCharts.find(c => c.visualization_id === visualization_id);
     if (!currentChart) return;
@@ -1367,82 +1413,86 @@ export default function DatasetDetails() {
               </div>
             ) : pinnedCharts.length > 0 ? (
               <>
-              <div className="dashboard-header-info">
-                <div className="dashboard-title-row">
-                  <h2>
-                    <LayoutDashboard size={20} />
-                    Your Dashboard
-                    <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
-                  </h2>
-                  <p>Visualizations pinned from your data exploration. Drag to reposition, resize from corners.</p>
+                <div className="dashboard-header-info">
+                  <div className="dashboard-title-row">
+                    <h2>
+                      <LayoutDashboard size={20} />
+                      Your Dashboard
+                      <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
+                    </h2>
+                    <button className="clear-dashboard-btn" onClick={handleClearDashboard}>
+                      <Trash2 size={14} />
+                      <span>Clear</span>
+                    </button>
+                  </div>
+                  <p className="dashboard-subtitle">Drag to reposition, resize from corners.</p>
                 </div>
-              </div>
-              <div className="dashboard-grid">
-                <div className="dashboard-paper-title">
-                  {editingTitle ? (
-                    <input
-                      className="dashboard-title-input"
-                      value={dashboardTitle}
-                      onChange={(e) => setDashboardTitle(e.target.value)}
-                      onBlur={() => {
-                        setEditingTitle(false);
-                        const title = dashboardTitle.trim() || dataset?.dataset_name || 'My Report';
-                        setDashboardTitle(title);
-                        localStorage.setItem(`dashboard-title-${datasetId}`, title);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.target.blur();
-                        if (e.key === 'Escape') {
-                          setDashboardTitle(localStorage.getItem(`dashboard-title-${datasetId}`) || dataset?.dataset_name || 'My Report');
+                <div className="dashboard-grid">
+                  <div className="dashboard-paper-title">
+                    {editingTitle ? (
+                      <input
+                        className="dashboard-title-input"
+                        value={dashboardTitle}
+                        onChange={(e) => setDashboardTitle(e.target.value)}
+                        onBlur={() => {
                           setEditingTitle(false);
-                        }
-                      }}
-                      autoFocus
-                    />
-                  ) : (
-                    <span
-                      className="dashboard-title-text"
-                      onClick={() => setEditingTitle(true)}
-                      title="Click to edit title"
-                    >
-                      {dashboardTitle}
-                    </span>
-                  )}
-                </div>
-                <div className="dashboard-grid-container" ref={containerRef}>
-                  {mounted && (
-                    <ResponsiveGridLayout
-                      className="charts-container"
-                      width={width}
-                      layouts={{ lg: chartLayout }}
-                      breakpoints={{ lg: 0 }}
-                      cols={{ lg: 12 }}
-                      rowHeight={10}
-                      onLayoutChange={handleLayoutChange}
-                      draggableHandle=".chart-drag-handle"
-                      compactType="vertical"
-                      preventCollision={false}
-                      isBounded={true}
-                      onResize={handleResize}
-                      margin={[20, 20]} // Spacing between items
-                    >
-                      {pinnedCharts.map((item) => (
-                        <div key={item.visualization_id} className="dashboard-grid-item">
-                          <div className="dashboard-chart-wrapper">
-                            <ChartRenderer
-                              data={item.data}
-                              suggestion={item.suggestion}
-                              isPinned={true}
-                              onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
-                              onUpdate={(config) => handleUpdateDashboard(item.visualization_id, config)}
-                            />
+                          const title = dashboardTitle.trim() || dataset?.dataset_name || 'My Report';
+                          setDashboardTitle(title);
+                          localStorage.setItem(`dashboard-title-${datasetId}`, title);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.target.blur();
+                          if (e.key === 'Escape') {
+                            setDashboardTitle(localStorage.getItem(`dashboard-title-${datasetId}`) || dataset?.dataset_name || 'My Report');
+                            setEditingTitle(false);
+                          }
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="dashboard-title-text"
+                        onClick={() => setEditingTitle(true)}
+                        title="Click to edit title"
+                      >
+                        {dashboardTitle}
+                      </span>
+                    )}
+                  </div>
+                  <div className="dashboard-grid-container" ref={containerRef}>
+                    {mounted && (
+                      <ResponsiveGridLayout
+                        className="charts-container"
+                        width={width}
+                        layouts={{ lg: chartLayout }}
+                        breakpoints={{ lg: 0 }}
+                        cols={{ lg: 12 }}
+                        rowHeight={10}
+                        onLayoutChange={handleLayoutChange}
+                        draggableHandle=".chart-drag-handle"
+                        compactType="vertical"
+                        preventCollision={false}
+                        isBounded={true}
+                        onResize={handleResize}
+                        margin={[20, 20]} // Spacing between items
+                      >
+                        {pinnedCharts.map((item) => (
+                          <div key={item.visualization_id} className="dashboard-grid-item">
+                            <div className="dashboard-chart-wrapper">
+                              <ChartRenderer
+                                data={item.data}
+                                suggestion={item.suggestion}
+                                isPinned={true}
+                                onRemove={() => handleRemoveFromDashboard(item.suggestion.title)}
+                                onUpdate={(config) => handleUpdateDashboard(item.visualization_id, config)}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </ResponsiveGridLayout>
-                  )}
+                        ))}
+                      </ResponsiveGridLayout>
+                    )}
+                  </div>
                 </div>
-              </div>
               </>
             ) : (
               <div className="dashboard-placeholder">

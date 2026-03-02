@@ -29,10 +29,16 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    container-type: inline-size;
 }
 
 .chart-container-root:hover {
     box-shadow: var(--shadow-md);
+}
+
+/* Table visualizations use fixed sizes, not adaptive */
+.chart-container-root.table-visualization {
+    container-type: normal;
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -41,12 +47,15 @@
 /* Editable Chart/Table Title */
 .chart-editable-title {
     text-align: center;
-    padding: 0.75rem 1rem 0.25rem 1rem;
+    padding: clamp(0.25rem, 2%, 0.75rem) clamp(0.5rem, 3%, 1rem) clamp(0.1rem, 1%, 0.25rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .chart-title-text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.1rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(0.65rem, 2.5cqi, 1.1rem);
     font-weight: 800;
     color: var(--text-primary);
     cursor: text;
@@ -59,8 +68,8 @@
 }
 
 .chart-title-input {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.1rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(0.65rem, 2.5cqi, 1.1rem);
     font-weight: 800;
     color: var(--text-primary);
     background: transparent;
@@ -68,16 +77,16 @@
     border-bottom: 2px solid var(--accent-blue);
     outline: none;
     padding: 0;
-    min-width: 120px;
+    min-width: 60px;
     width: 100%;
     text-align: center;
 }
 
 .svg-wrapper {
-    margin: 0 1.25rem 0 1.25rem;
+    margin: 0 clamp(0.25rem, 2%, 1.25rem);
     background: var(--color-base);
     border-radius: var(--radius-md);
-    padding: 0.5rem;
+    padding: clamp(0.125rem, 1%, 0.5rem);
     position: relative;
     flex: 1;
     min-height: 0;
@@ -85,12 +94,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    container-type: inline-size;
 }
 
 .d3-svg {
     display: block;
     width: 100%;
-    max-height: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -120,10 +132,10 @@
    ───────────────────────────────────────────────────────────────────── */
 .pin-btn {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    width: 36px;
-    height: 36px;
+    top: clamp(0.35rem, 2%, 0.75rem);
+    right: clamp(0.35rem, 2%, 0.75rem);
+    width: clamp(24px, 8cqi, 36px);
+    height: clamp(24px, 8cqi, 36px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -135,6 +147,11 @@
     transition: all 0.15s ease;
     z-index: 10;
     box-shadow: var(--shadow-sm);
+}
+
+.pin-btn svg {
+    width: clamp(12px, 3.5cqi, 16px);
+    height: clamp(12px, 3.5cqi, 16px);
 }
 
 .pin-btn:hover {
@@ -164,11 +181,10 @@
    ───────────────────────────────────────────────────────────────────── */
 .settings-btn {
     position: absolute;
-    top: 0.75rem;
-    right: 3.5rem;
-    /* Positioned to the left of Pin button */
-    width: 36px;
-    height: 36px;
+    top: clamp(0.35rem, 2%, 0.75rem);
+    right: clamp(2.25rem, 12cqi, 3.5rem);
+    width: clamp(24px, 8cqi, 36px);
+    height: clamp(24px, 8cqi, 36px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -180,6 +196,11 @@
     transition: all 0.15s ease;
     z-index: 10;
     box-shadow: var(--shadow-sm);
+}
+
+.settings-btn svg {
+    width: clamp(12px, 3.5cqi, 16px);
+    height: clamp(12px, 3.5cqi, 16px);
 }
 
 .settings-btn:hover,
@@ -195,10 +216,10 @@
    ───────────────────────────────────────────────────────────────────── */
 .chart-settings-panel {
     position: absolute;
-    top: 3.5rem;
-    right: 0.75rem;
-    width: 260px;
-    max-height: 400px;
+    top: clamp(2.25rem, 10cqi, 3.5rem);
+    right: clamp(0.35rem, 2%, 0.75rem);
+    width: min(260px, 90%);
+    max-height: min(400px, 80%);
     overflow-y: auto;
     background: var(--color-elevated);
     backdrop-filter: blur(12px);
@@ -329,9 +350,9 @@ input[type="color"]:hover::-webkit-color-swatch {
 
 .chart-drag-handle {
     position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    padding: 0.5rem;
+    top: clamp(0.35rem, 2%, 0.75rem);
+    left: clamp(0.35rem, 2%, 0.75rem);
+    padding: clamp(0.25rem, 1.5%, 0.5rem);
     cursor: grab;
     z-index: 10;
     border-radius: var(--radius-md);
@@ -410,12 +431,17 @@ input[type="color"]:hover::-webkit-color-swatch {
 /* ─────────────────────────────────────────────────────────────────────
    Table Visualization
    ───────────────────────────────────────────────────────────────────── */
+/* Layout fills card, text stays fixed */
 .table-visualization .table-wrapper {
     margin: 1rem 1.25rem 0 1.25rem;
     background: var(--color-base);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-default);
     overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 
@@ -428,12 +454,16 @@ input[type="color"]:hover::-webkit-color-swatch {
     border-bottom: 1px solid var(--border-default);
     font-size: 0.875rem;
     color: var(--text-secondary);
+    overflow: hidden;
 }
 
 .table-visualization .table-title {
     font-weight: 600;
     color: var(--text-primary);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .table-visualization .table-row-count {
@@ -447,8 +477,9 @@ input[type="color"]:hover::-webkit-color-swatch {
 
 .table-visualization .table-scroll-container {
     overflow-x: auto;
-    max-height: 320px;
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .table-visualization .viz-table {
@@ -495,6 +526,9 @@ input[type="color"]:hover::-webkit-color-swatch {
 /* Stat Cards - single row KPI display */
 .table-visualization .stat-cards-wrapper {
     margin: 1rem 1.25rem 0 1.25rem;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
 }
 
 .table-visualization .stat-cards-header {
@@ -508,7 +542,7 @@ input[type="color"]:hover::-webkit-color-swatch {
 
 .table-visualization .stat-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
     gap: 0.75rem;
 }
 
@@ -538,6 +572,9 @@ input[type="color"]:hover::-webkit-color-swatch {
     font-family: 'Plus Jakarta Sans', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .table-visualization .stat-card-value {
