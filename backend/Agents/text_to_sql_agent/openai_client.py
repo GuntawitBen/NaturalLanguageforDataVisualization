@@ -135,7 +135,8 @@ class TextToSQLOpenAIClient:
                 error_type=data.get("error_type"),
                 recommendations=data.get("recommendations"),
                 conversational=data.get("conversational"),
-                chart_change=data.get("chart_change")
+                chart_change=data.get("chart_change"),
+                analysis_request=data.get("analysis_request")
             )
 
         except json.JSONDecodeError as e:

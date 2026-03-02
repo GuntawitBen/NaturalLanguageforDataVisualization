@@ -211,6 +211,21 @@ def get_dataset(dataset_id: str) -> Optional[Dict]:
         print(f"Error getting dataset: {e}")
         return None
 
+def get_dataset_dataframe(dataset_id: str) -> Optional[pd.DataFrame]:
+    """Load entire dataset as pandas DataFrame for analysis"""
+    dataset = get_dataset(dataset_id)
+    if not dataset:
+        return None
+
+    engine = get_db_engine()
+    try:
+        table_name = dataset['table_name']
+        return pd.read_sql(f"SELECT * FROM `{table_name}`", engine)
+    except Exception as e:
+        print(f"Error loading dataset as DataFrame: {e}")
+        return None
+
+
 def get_user_datasets(user_id: str, include_deleted: bool = False) -> List[Dict]:
     """Get all datasets for a user"""
     engine = get_db_engine()

@@ -104,3 +104,4 @@ class GPTSQLResponse(BaseModel):
     recommendations: Optional[List[str]] = None  # List of recommended questions
     conversational: Optional[str] = None  # Free-form conversational response
     chart_change: Optional[str] = None  # Desired chart type: bar, line, pie, scatter, area, histogram
+    analysis_request: Optional[Dict[str, Any]] = None  # Statistical analysis request

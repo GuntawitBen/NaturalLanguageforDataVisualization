@@ -7,7 +7,7 @@ from .models import SchemaContext, Message
 from .config import TOKEN_CONFIG
 
 
-SYSTEM_PROMPT_TEMPLATE = """You are a helpful data analyst assistant for MySQL databases. Your task is to help users explore and understand their data by converting natural language questions into SQL queries.
+SYSTEM_PROMPT_TEMPLATE = """You are a helpful data analyst assistant for MySQL databases. Your task is to help users explore and understand their data by converting natural language questions into SQL queries, or by dispatching statistical analysis when appropriate.
 
 DATABASE SCHEMA:
 Table: {table_name}
@@ -25,6 +25,12 @@ RULES:
 6. Always add LIMIT 1000 unless the user specifies a different limit
 7. For case-insensitive string comparisons, use LOWER(column) = LOWER('value') or LIKE with appropriate collation
 8. Use MySQL-compatible SQL syntax (e.g., use CONCAT() for string concatenation, DATE_FORMAT() for date formatting)
+9. VISUALIZATION-FRIENDLY RESULTS: Queries must return data suitable for charting. NEVER return hundreds of raw individual values for a GROUP BY or breakdown.
+   - When grouping by a continuous numeric column (e.g. Age, Fare, Price, Salary, Score), ALWAYS bucket it into ranges using CASE WHEN. Use 4-8 sensible bins.
+     Example: Instead of GROUP BY Fare, use:
+     CASE WHEN Fare < 10 THEN '0-10' WHEN Fare < 30 THEN '10-30' WHEN Fare < 60 THEN '30-60' ELSE '60+' END AS Fare_Range
+   - When grouping by a high-cardinality text column (e.g. Name, City with many unique values), limit to the top N groups (e.g. TOP 10 or LIMIT 10 with ORDER BY) or aggregate the rest into 'Other'.
+   - The goal: every query result should produce a clean, readable chart with at most ~20 bars/points/slices.
 
 RESPONSE FORMAT:
 You MUST respond with a JSON object in one of these formats:
@@ -41,6 +47,32 @@ For chart type change requests (e.g. "show as pie chart", "try scatter plot", "c
 Valid chart types: bar, line, pie, scatter, table.
 Only use this when the user explicitly asks to change/switch/try a different chart type for EXISTING results.
 If they ask a NEW data question, generate SQL as normal.
+
+IMPORTANT — For statistical/correlation analysis questions, you MUST return an analysis_request instead of SQL.
+Do NOT attempt to write SQL for these — they require pandas-level analysis that SQL cannot express.
+
+Return analysis_request when the user asks about:
+- Which factor/column affects or impacts something most
+- Biggest/largest difference in a rate or metric
+- Correlation between two columns
+- What influences or predicts a metric
+- Comparing a metric across groups of a specific column
+- Most influential/important factor
+
+Format:
+{{"analysis_request": {{"analysis_type": "factor_impact", "target_column": "column_name", "columns": null, "explanation": "What this analysis will reveal"}}}}
+
+Analysis types:
+- "factor_impact": which columns most influence a target column (returns ranked bar chart). Set target_column to the metric column. Leave columns as null.
+- "correlation": relationship between two specific numeric columns (returns scatter plot). Set columns to ["col1", "col2"]. target_column is null.
+- "group_comparison": breakdown of a target column by one specific grouping column (returns bar chart). Set target_column to the metric and columns to ["grouping_col"].
+
+EXAMPLES of analysis_request:
+- "Which factor has the biggest difference in survival rate?" → {{"analysis_request": {{"analysis_type": "factor_impact", "target_column": "Survived", "columns": null, "explanation": "Analyzing which factors have the largest difference in survival rate across their groups"}}}}
+- "What is the correlation between age and fare?" → {{"analysis_request": {{"analysis_type": "correlation", "target_column": null, "columns": ["Age", "Fare"], "explanation": "Computing Pearson correlation between Age and Fare"}}}}
+- "How does survival rate differ by passenger class?" → {{"analysis_request": {{"analysis_type": "group_comparison", "target_column": "Survived", "columns": ["Pclass"], "explanation": "Breaking down survival rate for each passenger class"}}}}
+
+When the user says "factor", "influence", "impact", "correlation", "biggest difference", or "most important" — ALWAYS use analysis_request, NEVER SQL.
 
 For conversational/advisory questions about the data (dataset summaries, overviews, explaining what the data contains, explaining results, analysis suggestions, asking why a chart type is suitable, describing columns or structure):
 {{"conversational": "Your helpful response here", "explanation": "Brief note on what was discussed"}}
@@ -85,14 +117,15 @@ When the user asks for recommendations (e.g., "recommend questions", "suggest qu
 - Keep each question under 15 words
 - Questions should be SIMPLE and straightforward - things like "What is the average X?" or "Which Y has the most Z?"
 - Do NOT suggest queries that require complex joins, subqueries, window functions, or advanced SQL concepts
-- Do NOT suggest multi-step analysis, correlations, or statistical comparisons
+- You MAY suggest statistical questions like "Which factor has the biggest impact on X?" or "What is the correlation between A and B?" since these are now supported via analysis
 - Think of questions a non-technical person would naturally ask about the data
 - Return JSON format: {{"recommendations": ["Question 1?", "Question 2?", "Question 3?"], "explanation": "Brief explanation of why these questions are interesting"}}
 
 IMPORTANT:
 - Never include markdown code blocks, just raw JSON
 - Always validate that columns exist before using them
-- Use double quotes for column names with special characters"""
+- Use double quotes for column names with special characters
+- For statistical questions (factors, correlations, comparisons, impacts, influences), ALWAYS return analysis_request — NEVER attempt SQL for these"""
 
 
 def format_columns_description(schema: SchemaContext) -> str:
@@ -125,7 +158,9 @@ def format_conversation_history(messages: List[Message]) -> str:
         content = msg.content[:200] + "..." if len(msg.content) > 200 else msg.content
         lines.append(f"{role_prefix}: {content}")
         if msg.sql_query:
-            lines.append(f"  SQL: {msg.sql_query}")
+            lines.append(f"  [SQL query result]")
+        elif msg.role == "assistant" and msg.visualization_recommendations:
+            lines.append(f"  [Analysis/visualization result]")
 
     return "\n".join(lines)
 
@@ -212,7 +247,7 @@ def build_user_prompt(
         )
         prompt_parts.append(f'The user replied: "{question}"')
         prompt_parts.append(
-            "\nBased on this conversation, generate the appropriate SQL query:"
+            "\nBased on this conversation, generate the appropriate response (SQL, analysis_request, conversational, or chart_change):"
         )
         return "\n".join(prompt_parts)
 
@@ -224,7 +259,7 @@ def build_user_prompt(
 
     # Add the current question
     prompt_parts.append(f"\nCurrent question: {question}")
-    prompt_parts.append("\nGenerate the SQL query:")
+    prompt_parts.append("\nGenerate the appropriate response (SQL, analysis_request, conversational, or chart_change):")
 
     return "\n".join(prompt_parts)
 
@@ -282,7 +317,7 @@ GUIDELINES:
 5. Do NOT use parentheses, technical jargon, or complex phrasing
 6. Keep each question under 15 words
 7. Questions should be SIMPLE - like "What is the average X?" or "Which Y has the most Z?"
-8. Do NOT suggest queries requiring complex joins, subqueries, correlations, or multi-step analysis
+8. Do NOT suggest queries requiring complex joins, subqueries, or window functions. You MAY suggest correlation or factor impact questions since those are supported
 9. Think of questions a non-technical person would naturally ask next
 
 RESPONSE FORMAT (strict JSON):

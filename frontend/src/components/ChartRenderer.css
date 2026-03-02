@@ -575,6 +575,26 @@ input[type="color"]:hover::-webkit-color-swatch {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    cursor: pointer;
+}
+
+.table-visualization .stat-card-label:hover {
+    color: var(--text-primary);
+}
+
+.table-visualization .stat-card-label-input {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid var(--accent-yellow);
+    outline: none;
+    padding: 0 0 2px;
+    width: 100%;
 }
 
 .table-visualization .stat-card-value {

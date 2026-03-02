@@ -43,6 +43,8 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
     // Initialize colors from suggestion or defaults
     const [customColors, setCustomColors] = useState(suggestion.color_mapping || {});
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const [editableLabels, setEditableLabels] = useState(suggestion.custom_labels || {});
+    const [editingLabelIdx, setEditingLabelIdx] = useState(null);
     const MAX_TABLE_ROWS = 10;
 
     // Track container size via ResizeObserver
@@ -80,6 +82,16 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
         setEditableTitle(title);
         if (onUpdate) {
             onUpdate({ ...suggestion, title });
+        }
+    };
+
+    const saveLabel = (col, idx) => {
+        setEditingLabelIdx(null);
+        const label = (editableLabels[col] || '').trim() || formatColumnName(col);
+        const newLabels = { ...editableLabels, [col]: label };
+        setEditableLabels(newLabels);
+        if (onUpdate) {
+            onUpdate({ ...suggestion, custom_labels: newLabels });
         }
     };
 
@@ -166,7 +178,31 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                                 const cardColor = customColors[col] || CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length];
                                 return (
                                     <div key={idx} className="stat-card" style={{ borderTopColor: cardColor }}>
-                                        <span className="stat-card-label">{formatColumnName(col)}</span>
+                                        {editingLabelIdx === idx ? (
+                                            <input
+                                                className="stat-card-label-input"
+                                                value={editableLabels[col] ?? formatColumnName(col)}
+                                                onChange={(e) => setEditableLabels({ ...editableLabels, [col]: e.target.value })}
+                                                onBlur={() => saveLabel(col, idx)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') e.target.blur();
+                                                    if (e.key === 'Escape') {
+                                                        setEditableLabels({ ...editableLabels, [col]: suggestion.custom_labels?.[col] || '' });
+                                                        setEditingLabelIdx(null);
+                                                    }
+                                                }}
+                                                autoFocus
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <span
+                                                className="stat-card-label"
+                                                onClick={() => setEditingLabelIdx(idx)}
+                                                title="Click to edit label"
+                                            >
+                                                {editableLabels[col] || formatColumnName(col)}
+                                            </span>
+                                        )}
                                         <span className="stat-card-value" style={{ color: cardColor }}>
                                             {formatStatValue(data[0][col])}
                                         </span>
@@ -703,32 +739,49 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
             addAxisTitles();
 
         } else if (suggestion.chart_type === 'scatter') {
-            const x = d3.scaleLinear()
-                .domain([0, d3.max(cleanData, d => +d[xKey]) * 1.1])
-                .range([0, innerWidth]);
+            // Detect if axes are numeric or categorical
+            const xIsNumeric = cleanData.every(d => !isNaN(+d[xKey]) && d[xKey] !== '');
+            const yIsNumeric = cleanData.every(d => !isNaN(+d[yKey]) && d[yKey] !== '');
 
-            const y = d3.scaleLinear()
-                .domain([0, d3.max(cleanData, d => +d[yKey]) * 1.1])
-                .range([innerHeight, 0]);
+            const x = xIsNumeric
+                ? d3.scaleLinear()
+                    .domain([0, d3.max(cleanData, d => +d[xKey]) * 1.1])
+                    .range([0, innerWidth])
+                : d3.scalePoint()
+                    .domain(cleanData.map(d => String(d[xKey])))
+                    .range([0, innerWidth])
+                    .padding(0.5);
 
-            // Add grid lines
-            addGridLines(y);
+            const y = yIsNumeric
+                ? d3.scaleLinear()
+                    .domain([0, d3.max(cleanData, d => +d[yKey]) * 1.1])
+                    .range([innerHeight, 0])
+                : d3.scalePoint()
+                    .domain(cleanData.map(d => String(d[yKey])))
+                    .range([innerHeight, 0])
+                    .padding(0.5);
+
+            // Add grid lines only for numeric y
+            if (yIsNumeric) addGridLines(y);
 
             const xAxisG = g.append('g')
                 .attr('transform', `translate(0,${innerHeight})`)
-                .call(d3.axisBottom(x).ticks(tickCount));
+                .call(xIsNumeric ? d3.axisBottom(x).ticks(tickCount) : d3.axisBottom(x));
 
             const yAxisG = g.append('g')
-                .call(d3.axisLeft(y).ticks(tickCount));
+                .call(yIsNumeric ? d3.axisLeft(y).ticks(tickCount) : d3.axisLeft(y));
 
             styleAxes(xAxisG, yAxisG);
+
+            const xAccessor = xIsNumeric ? (d => x(+d[xKey])) : (d => x(String(d[xKey])));
+            const yAccessor = yIsNumeric ? (d => y(+d[yKey])) : (d => y(String(d[yKey])));
 
             const dots = g.selectAll('.dot')
                 .data(cleanData)
                 .enter().append('circle')
                 .attr('class', 'dot')
-                .attr('cx', d => x(+d[xKey]))
-                .attr('cy', d => y(+d[yKey]))
+                .attr('cx', xAccessor)
+                .attr('cy', yAccessor)
                 .attr('r', 0)
                 .attr('fill', customColors['Default'] || CHART_COLORS.primary)
                 .attr('fill-opacity', 0.7)
@@ -755,7 +808,9 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     .transition().duration(200)
                     .style('opacity', 0.4);
 
-                showTooltip(event, `X: ${(+d[xKey]).toLocaleString()}, Y: ${(+d[yKey]).toLocaleString()}`);
+                const xVal = xIsNumeric ? (+d[xKey]).toLocaleString() : String(d[xKey]);
+                const yVal = yIsNumeric ? (+d[yKey]).toLocaleString() : String(d[yKey]);
+                showTooltip(event, `${xKey}: ${xVal}, ${yKey}: ${yVal}`);
             })
                 .on('mousemove', (event) => {
                     const svgRect = svgRef.current.getBoundingClientRect();
@@ -773,6 +828,46 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                 });
 
             addAxisTitles();
+
+            // Trend line via simple linear regression (only for numeric-numeric)
+            if (xIsNumeric && yIsNumeric && cleanData.length >= 2) {
+                const xVals = cleanData.map(d => +d[xKey]);
+                const yVals = cleanData.map(d => +d[yKey]);
+                const n = xVals.length;
+                const sumX = xVals.reduce((a, b) => a + b, 0);
+                const sumY = yVals.reduce((a, b) => a + b, 0);
+                const sumXY = xVals.reduce((a, v, i) => a + v * yVals[i], 0);
+                const sumX2 = xVals.reduce((a, v) => a + v * v, 0);
+                const denom = n * sumX2 - sumX * sumX;
+                if (denom !== 0) {
+                    const slope = (n * sumXY - sumX * sumY) / denom;
+                    const intercept = (sumY - slope * sumX) / n;
+                    const xMin = d3.min(xVals);
+                    const xMax = d3.max(xVals);
+                    g.append('line')
+                        .attr('x1', x(xMin))
+                        .attr('y1', y(slope * xMin + intercept))
+                        .attr('x2', x(xMax))
+                        .attr('y2', y(slope * xMax + intercept))
+                        .attr('stroke', '#EF4444')
+                        .attr('stroke-width', 2)
+                        .attr('stroke-dasharray', '6,4')
+                        .attr('opacity', 0.7);
+                }
+            }
+
+            // Display correlation coefficient if provided
+            const corrR = suggestion.correlation_r;
+            if (corrR != null && !isNaN(corrR)) {
+                g.append('text')
+                    .attr('x', innerWidth - 10)
+                    .attr('y', 20)
+                    .attr('text-anchor', 'end')
+                    .attr('fill', CHART_COLORS.text)
+                    .attr('font-size', `${Math.max(11, 13 * clampedScale)}px`)
+                    .attr('font-weight', '600')
+                    .text(`r = ${Number(corrR).toFixed(3)}`);
+            }
 
         } else if (suggestion.chart_type === 'pie') {
             const radius = Math.min(innerWidth, innerHeight) / 2;
@@ -854,19 +949,34 @@ export default function ChartRenderer({ data, suggestion, onAdd, onRemove, isPin
                     hideTooltip();
                 });
 
-            // Add labels for larger slices
-            arcs.append('text')
+            // Add labels for larger slices — show value and percentage
+            const labelGroups = arcs.append('g')
                 .attr('transform', d => `translate(${labelArc.centroid(d)})`)
+                .style('opacity', 0);
+
+            labelGroups.append('text')
                 .attr('text-anchor', 'middle')
+                .attr('dy', '-0.35em')
                 .style('font-size', `${fontSize.label}px`)
                 .style('fill', CHART_COLORS.text)
                 .style('font-weight', '700')
-                .style('opacity', 0)
                 .text(d => {
                     const percent = (d.endAngle - d.startAngle) / (2 * Math.PI) * 100;
-                    return percent > 5 ? `${percent.toFixed(0)}%` : '';
-                })
-                .transition()
+                    return percent > 5 ? String(d.data[xKey]) : '';
+                });
+
+            labelGroups.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.85em')
+                .style('font-size', `${Math.max(fontSize.label - 2, 9)}px`)
+                .style('fill', CHART_COLORS.textMuted)
+                .style('font-weight', '500')
+                .text(d => {
+                    const percent = (d.endAngle - d.startAngle) / (2 * Math.PI) * 100;
+                    return percent > 5 ? `${(+d.data[yKey]).toLocaleString()} (${percent.toFixed(1)}%)` : '';
+                });
+
+            labelGroups.transition()
                 .delay(800)
                 .duration(400)
                 .style('opacity', 1);

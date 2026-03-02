@@ -20,6 +20,7 @@ from .db_utils import (
     # Dataset management
     create_dataset,
     get_dataset,
+    get_dataset_dataframe,
     get_user_datasets,
     delete_dataset,
     query_dataset,
@@ -60,6 +61,7 @@ __all__ = [
     # Dataset management
     'create_dataset',
     'get_dataset',
+    'get_dataset_dataframe',
     'get_user_datasets',
     'delete_dataset',
     'query_dataset',

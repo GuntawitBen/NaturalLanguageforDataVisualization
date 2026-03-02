@@ -16,8 +16,9 @@ from .state_manager import session_manager, build_schema_context
 from .config import SQL_CONFIG, VALIDATION_CONFIG
 from .sql_validator import SQLValidator, ValidationResult
 from ..chart_rec_agent import chart_rec_agent
+from ..analysis_agent import analysis_agent
 
-from database.db_utils import get_dataset, query_dataset
+from database.db_utils import get_dataset, query_dataset, get_dataset_dataframe
 
 
 class TextToSQLAgent:
@@ -130,9 +131,9 @@ class TextToSQLAgent:
         last_result = None
         last_sql = None
         for msg in reversed(db_messages):
-            if msg.get('role') == 'assistant' and msg.get('query_result') and msg.get('query_sql'):
+            if msg.get('role') == 'assistant' and msg.get('query_result'):
                 last_result = msg['query_result']
-                last_sql = msg['query_sql']
+                last_sql = msg.get('query_sql')  # May be None for analysis results
                 break
 
         if not last_result or not last_result.get('data'):
@@ -157,7 +158,7 @@ class TextToSQLAgent:
         # Re-run chart recommendations with preferred type
         viz_response = chart_rec_agent.get_recommendations(
             user_question=f"Show as {chart_type} chart",
-            sql_query=last_sql,
+            sql_query=last_sql or "-- analysis result (no SQL)",
             columns_info=columns_info,
             sample_data=results_data,
             preferred_chart_type=chart_type
@@ -187,6 +188,90 @@ class TextToSQLAgent:
             row_count=row_count,
             visualization_recommendations=viz_recommendations
         )
+
+    def _handle_analysis(
+        self,
+        session_id: str,
+        session: SessionState,
+        gpt_response: GPTSQLResponse
+    ) -> ChatResponse:
+        """
+        Handle a statistical analysis request by running pandas analysis.
+
+        Args:
+            session_id: Session identifier
+            session: Current session state
+            gpt_response: GPT response containing analysis_request
+
+        Returns:
+            ChatResponse with analysis results and visualization
+        """
+        try:
+            # Load dataset as DataFrame
+            df = get_dataset_dataframe(session.dataset_id)
+            if df is None or df.empty:
+                error_msg = "Could not load dataset for analysis."
+                session_manager.add_message(session_id, "assistant", error_msg)
+                return ChatResponse(status="error", message=error_msg)
+
+            # Run analysis
+            result = analysis_agent.run_analysis(
+                df=df,
+                analysis_request=gpt_response.analysis_request,
+                schema=session.schema,
+            )
+
+            if not result.data:
+                msg = result.summary or "Analysis returned no results."
+                session_manager.add_message(session_id, "assistant", msg)
+                return ChatResponse(status="error", message=msg)
+
+            # Build visualization recommendation from analysis result
+            viz_rec = {
+                "chart_type": result.chart_type,
+                "title": result.chart_config.get("title", "Analysis Result"),
+                "x_axis": result.chart_config.get("x_axis"),
+                "y_axis": result.chart_config.get("y_axis"),
+                "description": result.summary,
+                "explanation": gpt_response.analysis_request.get("explanation", ""),
+                "priority": 1,
+            }
+
+            # Include correlation_r for scatter plots
+            if result.chart_config.get("correlation_r") is not None:
+                viz_rec["correlation_r"] = result.chart_config["correlation_r"]
+
+            viz_recommendations = [viz_rec]
+
+            # Save to conversation history
+            query_result_for_db = {
+                "columns": result.columns,
+                "data": result.data,
+                "row_count": len(result.data),
+            }
+            session_manager.add_message(
+                session_id,
+                "assistant",
+                result.summary,
+                sql_query=None,
+                query_result=query_result_for_db,
+                visualization_recommendations=viz_recommendations,
+            )
+
+            return ChatResponse(
+                status="success",
+                message=result.summary,
+                results=result.data,
+                columns=result.columns,
+                row_count=len(result.data),
+                visualization_recommendations=viz_recommendations,
+            )
+
+        except Exception as e:
+            print(f"[AGENT] Analysis failed: {type(e).__name__}: {e}")
+            error_msg = f"Analysis failed: {str(e)}"
+            session_manager.add_message(session_id, "assistant", error_msg)
+            return ChatResponse(status="error", message=error_msg)
 
     def resume_session(self, session_id: str, user_id: str) -> StartSessionResponse:
         """
@@ -279,6 +364,10 @@ class TextToSQLAgent:
             return self._handle_chart_change(
                 session_id, session, gpt_response.chart_change, gpt_response.explanation
             )
+
+        # Handle analysis request
+        if gpt_response.analysis_request:
+            return self._handle_analysis(session_id, session, gpt_response)
 
         # Handle conversational response
         if gpt_response.conversational:
@@ -751,12 +840,12 @@ class TextToSQLAgent:
         if not session:
             raise ValueError(f"Session not found or expired: {session_id}")
 
-        # Find the last assistant message with SQL query and results
+        # Find the last assistant message with SQL query or analysis results
         last_message = None
         last_user_question = None
 
         for msg in reversed(session.messages):
-            if msg.role == "assistant" and msg.sql_query and last_message is None:
+            if msg.role == "assistant" and (msg.sql_query or msg.visualization_recommendations) and last_message is None:
                 last_message = msg
             elif msg.role == "user" and last_message is not None:
                 last_user_question = msg.content
