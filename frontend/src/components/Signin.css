@@ -39,7 +39,7 @@
     right: 0;
     bottom: 0;
     background:
-        radial-gradient(ellipse 80% 50% at 0% 0%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse 80% 50% at 0% 0%, rgba(27, 58, 107, 0.03) 0%, transparent 50%),
         radial-gradient(ellipse 60% 40% at 100% 100%, rgba(239, 68, 68, 0.02) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
@@ -70,9 +70,9 @@
     top: -50%;
     left: -50%;
     background:
-        radial-gradient(ellipse 40% 40% at 30% 30%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 40% at 30% 30%, rgba(27, 58, 107, 0.08) 0%, transparent 50%),
         radial-gradient(ellipse 35% 35% at 70% 60%, rgba(239, 68, 68, 0.05) 0%, transparent 50%),
-        radial-gradient(ellipse 30% 30% at 50% 80%, rgba(249, 115, 22, 0.04) 0%, transparent 50%);
+        radial-gradient(ellipse 30% 30% at 50% 80%, rgba(36, 59, 106, 0.04) 0%, transparent 50%);
     animation: ambientMove 20s ease-in-out infinite;
 }
 
@@ -175,7 +175,7 @@ input[type="email"]:focus,
 input[type="password"]:focus {
     outline: none;
     border-color: var(--accent-yellow, #f59e0b);
-    box-shadow: 0 0 0 3px var(--accent-yellow-subtle, rgba(245, 158, 11, 0.1));
+    box-shadow: 0 0 0 3px var(--accent-yellow-subtle, rgba(27, 58, 107, 0.1));
     background: var(--color-base);
 }
 
@@ -195,7 +195,7 @@ input[type="password"]:focus {
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-yellow, #f59e0b) 0%, var(--accent-orange, #f97316) 100%);
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);
+    box-shadow: 0 4px 14px rgba(27, 58, 107, 0.2);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -205,7 +205,7 @@ input[type="password"]:focus {
 
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 6px 20px rgba(27, 58, 107, 0.3);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -236,6 +236,7 @@ input[type="password"]:focus {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }
@@ -391,7 +392,7 @@ input[type="password"]:focus {
     gap: 10px;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-subtle);
-    background: rgba(245, 158, 11, 0.04);
+    background: rgba(27, 58, 107, 0.04);
 }
 
 .status-dot {
@@ -407,12 +408,12 @@ input[type="password"]:focus {
     0%,
     100% {
         opacity: 1;
-        box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+        box-shadow: 0 0 8px rgba(27, 58, 107, 0.4);
     }
 
     50% {
         opacity: 0.5;
-        box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
+        box-shadow: 0 0 4px rgba(27, 58, 107, 0.2);
     }
 }
 
@@ -439,7 +440,7 @@ input[type="password"]:focus {
 .panel-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    color: rgba(245, 158, 11, 0.8);
+    color: rgba(27, 58, 107, 0.8);
     letter-spacing: 1px;
     margin-bottom: 12px;
 }
@@ -588,19 +589,19 @@ input[type="password"]:focus {
 
 .bf-1 {
     width: 78%;
-    background: linear-gradient(90deg, #fbbf24, #f97316);
+    background: linear-gradient(90deg, #2B5EA7, #1B3A6B);
     animation-delay: 0.2s;
 }
 
 .bf-2 {
     width: 64%;
-    background: linear-gradient(90deg, #fbbf24, #f97316);
+    background: linear-gradient(90deg, #2B5EA7, #1B3A6B);
     animation-delay: 0.4s;
 }
 
 .bf-3 {
     width: 91%;
-    background: linear-gradient(90deg, #fbbf24, #f97316);
+    background: linear-gradient(90deg, #2B5EA7, #1B3A6B);
     animation-delay: 0.6s;
 }
 
@@ -828,7 +829,7 @@ input[type="password"]:focus {
 }
 
 .mb-2 .badge-icon {
-    color: #f59e0b;
+    color: #1B3A6B;
     animation: livePulse 1.5s ease-in-out infinite;
 }
 

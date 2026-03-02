@@ -78,7 +78,7 @@ function CubeAnimation() {
       ctx.closePath();
       ctx.fillStyle = color.replace(')', `, ${opacity})`).replace('rgb', 'rgba');
       ctx.fill();
-      ctx.strokeStyle = `rgba(251, 191, 36, ${opacity * 0.5})`;
+      ctx.strokeStyle = `rgba(99, 102, 241, ${opacity * 0.5})`;
       ctx.lineWidth = 1;
       ctx.stroke();
     };
@@ -113,12 +113,12 @@ function CubeAnimation() {
 
       // Define faces with their average z for sorting
       const faces = [
-        { indices: [0, 1, 2, 3], z: (vertices[0].z + vertices[1].z + vertices[2].z + vertices[3].z) / 4, color: colorType === 'yellow' ? 'rgb(251, 191, 36)' : 'rgb(239, 68, 68)', shade: 0.7 },
-        { indices: [4, 5, 6, 7], z: (vertices[4].z + vertices[5].z + vertices[6].z + vertices[7].z) / 4, color: colorType === 'yellow' ? 'rgb(251, 191, 36)' : 'rgb(239, 68, 68)', shade: 1 },
-        { indices: [0, 1, 5, 4], z: (vertices[0].z + vertices[1].z + vertices[5].z + vertices[4].z) / 4, color: colorType === 'yellow' ? 'rgb(200, 150, 20)' : 'rgb(200, 50, 50)', shade: 0.85 },
-        { indices: [2, 3, 7, 6], z: (vertices[2].z + vertices[3].z + vertices[7].z + vertices[6].z) / 4, color: colorType === 'yellow' ? 'rgb(200, 150, 20)' : 'rgb(200, 50, 50)', shade: 0.85 },
-        { indices: [0, 3, 7, 4], z: (vertices[0].z + vertices[3].z + vertices[7].z + vertices[4].z) / 4, color: colorType === 'yellow' ? 'rgb(180, 130, 10)' : 'rgb(180, 40, 40)', shade: 0.6 },
-        { indices: [1, 2, 6, 5], z: (vertices[1].z + vertices[2].z + vertices[6].z + vertices[5].z) / 4, color: colorType === 'yellow' ? 'rgb(255, 210, 60)' : 'rgb(255, 100, 100)', shade: 0.95 },
+        { indices: [0, 1, 2, 3], z: (vertices[0].z + vertices[1].z + vertices[2].z + vertices[3].z) / 4, color: colorType === 'blue' ? 'rgb(59, 130, 246)' : 'rgb(139, 92, 246)', shade: 0.7 },
+        { indices: [4, 5, 6, 7], z: (vertices[4].z + vertices[5].z + vertices[6].z + vertices[7].z) / 4, color: colorType === 'blue' ? 'rgb(59, 130, 246)' : 'rgb(139, 92, 246)', shade: 1 },
+        { indices: [0, 1, 5, 4], z: (vertices[0].z + vertices[1].z + vertices[5].z + vertices[4].z) / 4, color: colorType === 'blue' ? 'rgb(37, 99, 235)' : 'rgb(124, 58, 237)', shade: 0.85 },
+        { indices: [2, 3, 7, 6], z: (vertices[2].z + vertices[3].z + vertices[7].z + vertices[6].z) / 4, color: colorType === 'blue' ? 'rgb(37, 99, 235)' : 'rgb(124, 58, 237)', shade: 0.85 },
+        { indices: [0, 3, 7, 4], z: (vertices[0].z + vertices[3].z + vertices[7].z + vertices[4].z) / 4, color: colorType === 'blue' ? 'rgb(29, 78, 216)' : 'rgb(109, 40, 217)', shade: 0.6 },
+        { indices: [1, 2, 6, 5], z: (vertices[1].z + vertices[2].z + vertices[6].z + vertices[5].z) / 4, color: colorType === 'blue' ? 'rgb(96, 165, 250)' : 'rgb(167, 139, 250)', shade: 0.95 },
       ];
 
       // Sort faces by z (back to front)
@@ -149,7 +149,7 @@ function CubeAnimation() {
         time * 0.8,
         time,
         0,
-        'yellow'
+        'blue'
       );
 
       // Orbiting smaller cubes
@@ -167,7 +167,7 @@ function CubeAnimation() {
           time * 1.2 + i,
           -time * 0.9 + i,
           oz,
-          i % 2 === 0 ? 'yellow' : 'red'
+          i % 2 === 0 ? 'blue' : 'purple'
         );
       }
 
@@ -186,7 +186,7 @@ function CubeAnimation() {
           time * 2 + i * 2,
           time * 1.5 + i,
           oz + 50,
-          'yellow'
+          'blue'
         );
       }
 

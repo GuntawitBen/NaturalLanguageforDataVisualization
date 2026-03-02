@@ -22,20 +22,20 @@
   --text-tertiary: rgba(15, 23, 42, 0.5);
   --text-muted: rgba(15, 23, 42, 0.3);
 
-  /* Warm Accent Palette */
-  --accent-yellow: #f59e0b;
-  --accent-yellow-bright: #fbbf24;
-  --accent-yellow-glow: rgba(245, 158, 11, 0.25);
-  --accent-yellow-subtle: rgba(245, 158, 11, 0.08);
+  /* Navy Blue Accent Palette */
+  --accent-yellow: #1B3A6B;
+  --accent-yellow-bright: #2B5EA7;
+  --accent-yellow-glow: rgba(27, 58, 107, 0.25);
+  --accent-yellow-subtle: rgba(27, 58, 107, 0.08);
 
   --accent-red: #ef4444;
   --accent-red-bright: #f87171;
   --accent-red-glow: rgba(239, 68, 68, 0.2);
   --accent-red-subtle: rgba(239, 68, 68, 0.06);
 
-  --accent-orange: #f97316;
-  --accent-orange-glow: rgba(249, 115, 22, 0.2);
-  --accent-orange-subtle: rgba(249, 115, 22, 0.06);
+  --accent-orange: #243B6A;
+  --accent-orange-glow: rgba(36, 59, 106, 0.2);
+  --accent-orange-subtle: rgba(36, 59, 106, 0.06);
 
   /* Green Accent Family */
   --accent-green: #22c55e;
