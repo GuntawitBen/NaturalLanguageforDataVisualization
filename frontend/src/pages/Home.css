@@ -20,7 +20,7 @@
   transform: translateX(-50%);
   width: 120%;
   height: 500px;
-  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(251, 191, 36, 0.12) 0%, transparent 70%);
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(245, 158, 11, 0.06) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -42,7 +42,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
 .terminal-header {
@@ -60,9 +60,9 @@
   border-radius: 50%;
 }
 
-.terminal-dot.red { background: #ff5f57; }
-.terminal-dot.yellow { background: #ffbd2e; }
-.terminal-dot.green { background: #28c840; }
+.terminal-dot.red { background: var(--terminal-red); }
+.terminal-dot.yellow { background: var(--terminal-yellow); }
+.terminal-dot.green { background: var(--terminal-green); }
 
 .terminal-title {
   margin-left: auto;
@@ -156,14 +156,14 @@
   height: 320px;
   position: relative;
   border-radius: var(--radius-lg);
-  background: radial-gradient(circle at center, rgba(251, 191, 36, 0.15) 0%, rgba(239, 68, 68, 0.05) 50%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.08) 0%, rgba(239, 68, 68, 0.03) 50%, transparent 70%);
 }
 
 .hero-animation::before {
   content: '';
   position: absolute;
   inset: -40px;
-  background: radial-gradient(circle at center, rgba(251, 191, 36, 0.1) 0%, transparent 60%);
+  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.05) 0%, transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
@@ -193,7 +193,7 @@
 
 .hero-title .accent {
   color: var(--accent-yellow);
-  text-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
 .hero-description {
@@ -213,19 +213,19 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-md);
-  color: var(--color-void);
+  color: #ffffff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-fast);
-  box-shadow: 0 0 25px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
 }
 
 .hero-cta:hover {
   background: var(--accent-yellow-bright);
   transform: translateY(-1px);
-  box-shadow: 0 0 35px rgba(251, 191, 36, 0.45);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.35);
 }
 
 .hero-cta .cta-chevron {
@@ -353,9 +353,9 @@
 }
 
 .dataset-card:hover {
-  border-color: rgba(251, 191, 36, 0.2);
+  border-color: rgba(245, 158, 11, 0.2);
   background: var(--color-elevated);
-  box-shadow: 0 0 30px rgba(251, 191, 36, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 
 .card-header {
@@ -377,7 +377,6 @@
   border-radius: var(--radius-sm);
   color: var(--accent-yellow);
   flex-shrink: 0;
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
 }
 
 .card-meta {
@@ -454,7 +453,7 @@
   flex: 1;
   background: var(--accent-yellow);
   border-color: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
 }
 
 .card-btn.primary:hover {
@@ -526,7 +525,7 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-sm);
-  color: var(--color-void);
+  color: #ffffff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.8125rem;
   font-weight: 500;

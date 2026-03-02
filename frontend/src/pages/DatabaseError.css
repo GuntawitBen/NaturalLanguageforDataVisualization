@@ -22,9 +22,8 @@
     right: 0;
     bottom: 0;
     background:
-        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(239, 68, 68, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 45%),
-        radial-gradient(ellipse 50% 50% at 0% 80%, rgba(239, 68, 68, 0.06) 0%, transparent 40%);
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(239, 68, 68, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 100% 50%, rgba(239, 68, 68, 0.03) 0%, transparent 45%);
     pointer-events: none;
     z-index: -1;
 }
@@ -114,7 +113,7 @@
     padding: 0.75rem 2rem;
     font-size: 0.9rem;
     font-weight: 500;
-    color: var(--color-void);
+    color: #ffffff;
     background: var(--accent-yellow);
     border: none;
     border-radius: var(--radius-md);

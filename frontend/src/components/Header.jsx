@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Database, Clock, LogOut, ChevronDown, Zap } from 'lucide-react';
+import { Home, Database, Clock, LogOut, ChevronDown, Zap, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigationGuard } from '../contexts/NavigationGuardContext';
+import { useTheme } from '../contexts/ThemeContext';
 import './Header.css';
 
 export default function Header() {
@@ -10,6 +11,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { confirmNavigation } = useNavigationGuard();
+  const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -115,6 +117,11 @@ export default function Header() {
               <span className="dropdown-label">Signed in as</span>
               <span className="dropdown-email">{user?.email || 'user@email.com'}</span>
             </div>
+            <div className="dropdown-divider" />
+            <button onClick={toggleTheme} className="dropdown-action theme-toggle">
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+            </button>
             <div className="dropdown-divider" />
             <button onClick={handleLogout} className="dropdown-action logout">
               <LogOut size={14} />

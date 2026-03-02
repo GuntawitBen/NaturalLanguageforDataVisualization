@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'reac
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NavigationGuardProvider } from './contexts/NavigationGuardContext';
 import { DatabaseHealthProvider, useDatabaseHealth } from './contexts/DatabaseHealthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AppRoutes from './routes';
 import Signin from './components/Signin';
 import Signup from './components/Signup';
@@ -104,13 +105,15 @@ function AppContent() {
 function App() {
     return (
         <DatabaseHealthProvider>
-            <AuthProvider>
-                <BrowserRouter>
-                    <NavigationGuardProvider>
-                        <AppContent />
-                    </NavigationGuardProvider>
-                </BrowserRouter>
-            </AuthProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <BrowserRouter>
+                        <NavigationGuardProvider>
+                            <AppContent />
+                        </NavigationGuardProvider>
+                    </BrowserRouter>
+                </AuthProvider>
+            </ThemeProvider>
         </DatabaseHealthProvider>
     );
 }

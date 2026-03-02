@@ -55,7 +55,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
 .terminal-header {
@@ -74,15 +74,15 @@
 }
 
 .terminal-dot.red {
-  background: #ff5f57;
+  background: var(--terminal-red);
 }
 
 .terminal-dot.yellow {
-  background: #ffbd2e;
+  background: var(--terminal-yellow);
 }
 
 .terminal-dot.green {
-  background: #28c840;
+  background: var(--terminal-green);
 }
 
 .terminal-title {
@@ -214,7 +214,7 @@
 
 .retry-btn:hover {
   background: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
   box-shadow: 0 0 20px var(--accent-yellow-glow);
 }
 
@@ -299,7 +299,7 @@
 }
 
 .header-subtitle svg {
-  color: #28c840;
+  color: var(--accent-green);
 }
 
 .upload-btn {
@@ -311,7 +311,7 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-md);
-  color: var(--color-void);
+  color: #ffffff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
@@ -393,18 +393,18 @@
 }
 
 .stat-icon.blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: var(--accent-blue-subtle);
+  color: var(--accent-blue);
 }
 
 .stat-icon.purple {
-  background: rgba(168, 85, 247, 0.1);
-  color: #a855f7;
+  background: var(--accent-purple-subtle);
+  color: var(--accent-purple);
 }
 
 .stat-icon.green {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  background: var(--accent-green-subtle);
+  color: var(--accent-green);
 }
 
 .stat-content {
@@ -432,7 +432,7 @@
   position: absolute;
   top: 1rem;
   right: 1rem;
-  color: #22c55e;
+  color: var(--accent-green);
 }
 
 .stat-sparkline {
@@ -457,7 +457,7 @@
 
 .storage-fill {
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #4ade80);
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-green-bright));
   border-radius: 2px;
   transition: width 0.5s ease;
 }
@@ -696,7 +696,7 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-md);
-  color: var(--color-void);
+  color: #ffffff;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 1rem;
   font-weight: 600;
@@ -808,9 +808,9 @@
 }
 
 .dataset-card:hover {
-  border-color: rgba(251, 191, 36, 0.3);
+  border-color: rgba(245, 158, 11, 0.2);
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
 .card-glow {
@@ -954,7 +954,7 @@
   flex: 1;
   background: var(--accent-yellow);
   border-color: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
 }
 
 .card-action.view:hover {
@@ -1154,7 +1154,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;

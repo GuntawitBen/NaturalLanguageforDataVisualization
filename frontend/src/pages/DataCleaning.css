@@ -189,7 +189,7 @@
 .pipeline-stage.active .stage-node {
   background: var(--accent-yellow);
   border-color: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
   box-shadow: 0 0 20px var(--accent-yellow-glow);
 }
 
@@ -407,8 +407,8 @@
 }
 
 .status-badge.success {
-  background: rgba(72, 187, 120, 0.15);
-  color: #48bb78;
+  background: var(--accent-green-subtle);
+  color: var(--accent-green);
 }
 
 .status-badge.warning {
@@ -594,7 +594,7 @@
 
 .action-btn.primary {
   background: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
 }
 
 .action-btn.primary:hover:not(:disabled) {
@@ -603,13 +603,13 @@
 }
 
 .action-btn.success {
-  background: #48bb78;
+  background: var(--accent-green);
   color: white;
 }
 
 .action-btn.success:hover:not(:disabled) {
-  background: #38a169;
-  box-shadow: 0 0 25px rgba(72, 187, 120, 0.4);
+  background: var(--accent-green-dark);
+  box-shadow: 0 0 25px var(--accent-green-glow);
 }
 
 .action-btn:disabled {

@@ -28,7 +28,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
 .terminal-header {
@@ -46,9 +46,9 @@
   border-radius: 50%;
 }
 
-.terminal-dot.red { background: #ff5f57; }
-.terminal-dot.yellow { background: #ffbd2e; }
-.terminal-dot.green { background: #28c840; }
+.terminal-dot.red { background: var(--terminal-red); }
+.terminal-dot.yellow { background: var(--terminal-yellow); }
+.terminal-dot.green { background: var(--terminal-green); }
 
 .terminal-title {
   margin-left: auto;
@@ -146,7 +146,7 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-md);
-  color: var(--color-void);
+  color: #ffffff;
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition-fast);
@@ -406,7 +406,7 @@
 .filter-chip.active {
   background: var(--accent-yellow);
   border-color: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
 }
 
 .filter-chip svg {
@@ -498,7 +498,7 @@
   background: var(--accent-yellow);
   border: none;
   border-radius: var(--radius-md);
-  color: var(--color-void);
+  color: #ffffff;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -664,8 +664,8 @@
 }
 
 .timeline-card.hovered .card-content {
-  border-color: rgba(251, 191, 36, 0.3);
-  box-shadow: 0 0 30px rgba(251, 191, 36, 0.1);
+  border-color: rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.06);
   transform: translateX(4px);
 }
 
@@ -784,7 +784,7 @@
   flex: 1;
   background: var(--accent-yellow);
   border-color: var(--accent-yellow);
-  color: var(--color-void);
+  color: #ffffff;
 }
 
 .action-btn.resume:hover:not(:disabled) {

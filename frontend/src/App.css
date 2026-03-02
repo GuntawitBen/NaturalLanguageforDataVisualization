@@ -1,4 +1,4 @@
-/* src/App.css - Technical Dark Theme with Detailed Background */
+/* src/App.css - Clean Light Theme with Subtle Background */
 
 html, body {
   margin: 0;
@@ -28,7 +28,7 @@ body {
   position: relative;
 }
 
-/* Base gradient layer - Ambient lighting */
+/* Base gradient layer - Subtle ambient warmth */
 body::before {
   content: '';
   position: fixed;
@@ -37,16 +37,14 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(251, 191, 36, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 100% 20%, rgba(251, 191, 36, 0.12) 0%, transparent 45%),
-    radial-gradient(ellipse 70% 50% at 0% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(251, 191, 36, 0.1) 0%, transparent 45%),
-    radial-gradient(ellipse 50% 50% at 20% 100%, rgba(239, 68, 68, 0.06) 0%, transparent 40%);
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(245, 158, 11, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 100% 20%, rgba(245, 158, 11, 0.04) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 0% 50%, rgba(239, 68, 68, 0.02) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Noise texture overlay */
+/* Noise texture overlay - very subtle on light */
 body::after {
   content: '';
   position: fixed;
@@ -54,16 +52,16 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  opacity: 0.4;
+  opacity: 0.12;
   pointer-events: none;
   z-index: 1;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 200px 200px;
-  mix-blend-mode: overlay;
+  mix-blend-mode: multiply;
 }
 
-/* Grid pattern container */
+/* Grid pattern container - subtle on light */
 .layout-container::before {
   content: '';
   position: fixed;
@@ -72,8 +70,8 @@ body::after {
   right: 0;
   bottom: 0;
   background-image:
-    linear-gradient(rgba(250, 250, 250, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(250, 250, 250, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
@@ -81,7 +79,7 @@ body::after {
   -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 20%, black 0%, transparent 60%);
 }
 
-/* Dot pattern accent */
+/* Dot pattern accent - subtle on light */
 .layout-container::after {
   content: '';
   position: fixed;
@@ -89,12 +87,12 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: radial-gradient(rgba(251, 191, 36, 0.25) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(rgba(245, 158, 11, 0.15) 1.5px, transparent 1.5px);
   background-size: 20px 20px;
   background-position: 10px 10px;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.5;
+  opacity: 0.35;
   mask-image:
     radial-gradient(ellipse 40% 50% at 85% 15%, black 0%, transparent 70%),
     radial-gradient(ellipse 35% 40% at 5% 75%, black 0%, transparent 60%),
@@ -149,7 +147,7 @@ body::after {
 }
 
 .logo:hover {
-  filter: drop-shadow(0 0 1em var(--accent-yellow-glow));
+  filter: drop-shadow(0 0 0.5em var(--accent-yellow-glow));
 }
 
 .card {
@@ -178,7 +176,7 @@ body::after {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
 .database-loading .terminal-header {
@@ -196,9 +194,9 @@ body::after {
   border-radius: 50%;
 }
 
-.database-loading .terminal-dot.red { background: #ff5f57; }
-.database-loading .terminal-dot.yellow { background: #ffbd2e; }
-.database-loading .terminal-dot.green { background: #28c840; }
+.database-loading .terminal-dot.red { background: var(--terminal-red); }
+.database-loading .terminal-dot.yellow { background: var(--terminal-yellow); }
+.database-loading .terminal-dot.green { background: var(--terminal-green); }
 
 .database-loading .terminal-title {
   margin-left: auto;
