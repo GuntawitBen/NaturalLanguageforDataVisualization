@@ -140,7 +140,13 @@
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6, .mono {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.mono {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
 }
 
@@ -158,7 +164,7 @@ body {
 
 html {
   background: var(--color-void);
-  font-size: 17.5px;
+  font-size: 15px;
   transition: background-color 0.2s ease;
 }
 
