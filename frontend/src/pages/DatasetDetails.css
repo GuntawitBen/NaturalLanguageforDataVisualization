@@ -2186,3 +2186,106 @@
     width: calc(100% - 2rem);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dark Mode Override — Keep visualization / table cards in light theme
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* --- Viz Card (chart recommendation wrapper) --- */
+[data-theme="dark"] .viz-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .viz-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .viz-card h5 {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .viz-card-header .viz-type {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+}
+
+[data-theme="dark"] .viz-axes {
+  color: rgba(15, 23, 42, 0.3);
+}
+
+[data-theme="dark"] .viz-axes strong {
+  color: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .viz-header {
+  color: rgba(15, 23, 42, 0.7);
+}
+
+[data-theme="dark"] .chart-explanation-text {
+  color: #0f172a;
+}
+
+/* --- SQL Block --- */
+[data-theme="dark"] .sql-block {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .sql-header {
+  background: #e2e8f0;
+  color: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .sql-header:hover {
+  background: #f1f5f9;
+}
+
+[data-theme="dark"] .sql-block code {
+  color: #d97706;
+}
+
+/* --- Results Block --- */
+[data-theme="dark"] .results-block {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .results-header {
+  background: #e2e8f0;
+  color: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .results-header:hover {
+  background: #f1f5f9;
+}
+
+[data-theme="dark"] .results-count {
+  color: rgba(15, 23, 42, 0.3);
+}
+
+/* --- Results Table --- */
+[data-theme="dark"] .results-table thead {
+  background: #e2e8f0;
+}
+
+[data-theme="dark"] .results-table th {
+  color: rgba(15, 23, 42, 0.7);
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="dark"] .results-table td {
+  color: rgba(15, 23, 42, 0.5);
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="dark"] .results-table tbody tr:hover {
+  background: #f1f5f9;
+}
+
+/* --- Suggestion Buttons --- */
+[data-theme="dark"] .suggestion-btn {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  color: rgba(15, 23, 42, 0.7);
+}

@@ -681,6 +681,196 @@ input[type="color"]:hover::-webkit-color-swatch {
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+   Dark Mode Override — Keep chart cards in light theme
+   ───────────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .chart-container-root {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root .svg-wrapper {
+    background: #ffffff;
+}
+
+[data-theme="dark"] .chart-container-root .chart-title-text {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root .chart-title-text:hover {
+    border-bottom-color: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .chart-container-root .chart-title-input {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root .chart-editable-title {
+    color: #0f172a;
+}
+
+/* Buttons */
+[data-theme="dark"] .chart-container-root .pin-btn {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.1);
+    color: rgba(15, 23, 42, 0.7);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .chart-container-root .settings-btn {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.1);
+    color: rgba(15, 23, 42, 0.7);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .chart-container-root .settings-btn:hover,
+[data-theme="dark"] .chart-container-root .settings-btn.active {
+    background: #f1f5f9;
+    border-color: rgba(15, 23, 42, 0.5);
+    color: #0f172a;
+}
+
+/* Drag handle */
+[data-theme="dark"] .chart-container-root .chart-drag-handle {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root .chart-drag-handle:hover {
+    background: #f1f5f9;
+}
+
+[data-theme="dark"] .chart-container-root .chart-drag-handle:active {
+    background: var(--accent-yellow);
+}
+
+[data-theme="dark"] .chart-container-root .grip-dot {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+/* Settings Panel */
+[data-theme="dark"] .chart-container-root .chart-settings-panel {
+    background: #f1f5f9;
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root .settings-header {
+    border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="dark"] .chart-container-root .settings-title {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root .close-settings {
+    color: rgba(15, 23, 42, 0.3);
+}
+
+[data-theme="dark"] .chart-container-root .close-settings:hover {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root .category-label {
+    color: rgba(15, 23, 42, 0.7);
+}
+
+[data-theme="dark"] .chart-container-root .settings-footer {
+    background: #f1f5f9;
+    border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root .save-settings-btn {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+/* Tooltip */
+[data-theme="dark"] .chart-container-root .chart-tooltip {
+    background: #f1f5f9;
+    border-color: rgba(15, 23, 42, 0.1);
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root .chart-tooltip-label {
+    color: #0f172a;
+}
+
+/* D3 axis overrides inside chart card */
+[data-theme="dark"] .chart-container-root .d3-svg .domain {
+    stroke: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .chart-container-root .d3-svg .tick line {
+    stroke: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .chart-container-root .d3-svg .tick text {
+    fill: rgba(15, 23, 42, 0.7);
+}
+
+/* Table visualization (same element as chart-container-root) */
+[data-theme="dark"] .chart-container-root.table-visualization .table-wrapper {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .table-header-bar {
+    background: #f1f5f9;
+    border-bottom-color: rgba(15, 23, 42, 0.1);
+    color: rgba(15, 23, 42, 0.7);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .table-title {
+    color: #0f172a;
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .viz-table th {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .viz-table td {
+    color: rgba(15, 23, 42, 0.7);
+    border-bottom-color: #f1f5f9;
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .viz-table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .stat-card {
+    background: #f1f5f9;
+    border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .stat-card-label {
+    color: rgba(15, 23, 42, 0.7);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .table-more-rows {
+    background: #f1f5f9;
+    color: rgba(15, 23, 42, 0.5);
+    border-top-color: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .table-row-count {
+    background: #f1f5f9;
+    color: rgba(15, 23, 42, 0.5);
+}
+
+[data-theme="dark"] .chart-container-root.table-visualization .stat-cards-header {
+    color: rgba(15, 23, 42, 0.7);
+}
+
+/* Crosshair */
+[data-theme="dark"] .chart-container-root .chart-crosshair {
+    stroke: rgba(15, 23, 42, 0.3);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
    Responsive Adjustments
    ───────────────────────────────────────────────────────────────────── */
 
