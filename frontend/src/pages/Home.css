@@ -60,9 +60,17 @@
   border-radius: 50%;
 }
 
-.terminal-dot.red { background: var(--terminal-red); }
-.terminal-dot.yellow { background: var(--terminal-yellow); }
-.terminal-dot.green { background: var(--terminal-green); }
+.terminal-dot.red {
+  background: var(--terminal-red);
+}
+
+.terminal-dot.yellow {
+  background: var(--terminal-yellow);
+}
+
+.terminal-dot.green {
+  background: var(--terminal-green);
+}
 
 .terminal-title {
   margin-left: auto;
@@ -100,7 +108,9 @@
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 .loading-bar {
@@ -119,9 +129,19 @@
 }
 
 @keyframes loadingSlide {
-  0% { transform: translateX(-100%); width: 30%; }
-  50% { width: 60%; }
-  100% { transform: translateX(400%); width: 30%; }
+  0% {
+    transform: translateX(-100%);
+    width: 30%;
+  }
+
+  50% {
+    width: 60%;
+  }
+
+  100% {
+    transform: translateX(400%);
+    width: 30%;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -346,6 +366,7 @@
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -536,6 +557,28 @@
 .empty-cta:hover {
   background: var(--accent-yellow-bright);
   transform: translateY(-1px);
+}
+
+/* Dark mode — dark text on white accent buttons */
+[data-theme="dark"] .hero-cta {
+  color: #0f172a;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .hero-cta:hover {
+  box-shadow: 0 6px 24px rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .hero-title .accent {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .card-btn.primary {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .empty-cta {
+  color: #0f172a;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

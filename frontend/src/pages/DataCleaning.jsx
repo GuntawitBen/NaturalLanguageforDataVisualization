@@ -720,7 +720,7 @@ export default function DataCleaning() {
               className="action-btn primary"
               disabled={!tempFilePath}
             >
-              <span>Continue</span>
+              <span>Start Cleaning</span>
               <ArrowRight size={18} />
             </button>
           ) : (
@@ -736,7 +736,7 @@ export default function DataCleaning() {
                 </>
               ) : (
                 <>
-                  <span>{sessionComplete ? 'Save Dataset' : 'Resolve Issues First'}</span>
+                  <span>{sessionComplete ? 'Save Changes' : 'Resolve Issues First'}</span>
                   {sessionComplete ? <CheckCircle2 size={18} /> : <ArrowRight size={18} />}
                 </>
               )}

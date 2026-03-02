@@ -133,6 +133,16 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  /* Accent overrides — white in dark mode */
+  --accent-yellow: #ffffff;
+  --accent-yellow-bright: #e2e8f0;
+  --accent-yellow-glow: rgba(255, 255, 255, 0.2);
+  --accent-yellow-subtle: rgba(255, 255, 255, 0.08);
+
+  --accent-orange: #e2e8f0;
+  --accent-orange-glow: rgba(226, 232, 240, 0.15);
+  --accent-orange-subtle: rgba(226, 232, 240, 0.06);
 }
 
 /* Typography */
@@ -172,6 +182,10 @@ html {
 ::selection {
   background: var(--accent-yellow);
   color: #ffffff;
+}
+
+[data-theme="dark"] ::selection {
+  color: #0f172a;
 }
 
 /* Scrollbar */

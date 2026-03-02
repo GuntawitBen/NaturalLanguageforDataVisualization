@@ -36,7 +36,7 @@
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03),
     0 4px 24px rgba(0, 0, 0, 0.3),
-    0 0 60px rgba(245, 158, 11, 0.05);
+    0 0 60px rgba(255, 255, 255, 0.03);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -157,7 +157,11 @@
 .nav-item.active {
   color: #ffffff;
   background: var(--accent-yellow);
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 20px var(--accent-yellow-glow);
+}
+
+[data-theme="dark"] .nav-item.active {
+  color: #0f172a;
 }
 
 .nav-item.active svg {
@@ -216,9 +220,9 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(239, 68, 68, 0.12) 100%);
+  background: linear-gradient(135deg, var(--accent-yellow-subtle) 0%, var(--accent-orange-subtle) 100%);
   border-radius: 50%;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1px solid var(--accent-yellow-glow);
 }
 
 .user-avatar span {
@@ -226,6 +230,10 @@
   font-size: 0.6875rem;
   font-weight: 600;
   color: var(--accent-yellow);
+}
+
+[data-theme="dark"] .logo-mark {
+  color: #0f172a;
 }
 
 .user-name {
@@ -278,6 +286,7 @@
     opacity: 0;
     transform: translateY(-8px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);

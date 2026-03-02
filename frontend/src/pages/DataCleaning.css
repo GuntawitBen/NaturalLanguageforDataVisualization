@@ -741,3 +741,14 @@
     gap: 0.5rem;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dark Mode — accent text fix (white accent needs dark text)
+   ═══════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .pipeline-stage.active .stage-node {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .action-btn.primary {
+  color: #0f172a;
+}

@@ -677,3 +677,16 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Dark Mode — accent text fix */
+[data-theme="dark"] .intro-start-btn {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .confirm-btn {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .operation-overlay {
+  background: rgba(15, 22, 41, 0.85);
+}

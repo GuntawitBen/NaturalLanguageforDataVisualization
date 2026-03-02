@@ -2573,9 +2573,9 @@
 }
 
 [data-theme="dark"] .pdf-download-btn {
-  background: var(--accent-yellow-bright, #2B5EA7);
-  border-color: var(--accent-yellow-bright, #2B5EA7);
-  color: #ffffff;
+  background: var(--accent-yellow);
+  border-color: var(--accent-yellow);
+  color: #0f172a;
 }
 
 [data-theme="dark"] .pdf-page-preview img {
@@ -2584,6 +2584,34 @@
 }
 
 [data-theme="dark"] .pinned-count {
-  color: var(--accent-yellow-bright, #2B5EA7);
-  background: rgba(43, 94, 167, 0.15);
+  color: var(--accent-yellow);
+  background: var(--accent-yellow-subtle);
+}
+
+[data-theme="dark"] .export-pdf-btn:hover {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .clear-dashboard-btn:hover {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .tab-btn.active {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .message.user .message-bubble {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .chat-error button:hover {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .new-chat-btn {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .empty-cta {
+  color: #0f172a;
 }

@@ -853,6 +853,16 @@ input[type="password"]:focus {
     color: var(--accent-green);
 }
 
+/* Dark mode — dark text on white accent buttons */
+[data-theme="dark"] .btn-primary {
+    color: #0f172a;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .login-page {

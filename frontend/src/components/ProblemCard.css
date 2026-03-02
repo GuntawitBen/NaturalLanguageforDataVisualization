@@ -705,3 +705,24 @@
     width: 100%;
   }
 }
+
+/* Dark Mode — accent text fix */
+[data-theme="dark"] .option-radio.checked {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .info-btn.active {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .option-info-btn.active {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .option-apply-btn {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .confirm-btn {
+  color: #0f172a;
+}

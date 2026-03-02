@@ -1371,3 +1371,22 @@
     width: calc(100% - 2rem);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dark Mode — accent text fix (white accent needs dark text)
+   ═══════════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .upload-btn {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .retry-btn:hover {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .empty-cta {
+  color: #0f172a;
+}
+
+[data-theme="dark"] .card-action.view {
+  color: #0f172a;
+}
