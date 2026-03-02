@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import DataTable from '../components/DataTable';
 import ChartRenderer from '../components/ChartRenderer';
+import PdfExportModal from '../components/PdfExportModal';
 import '../components/DataPreviewPanel.css';
 import './DatasetDetails.css';
 
@@ -68,6 +69,7 @@ export default function DatasetDetails() {
   const [sqlError, setSqlError] = useState(null);
   const [pinnedCharts, setPinnedCharts] = useState([]); // Array of {data, suggestion, visualization_id}
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [dashboardTitle, setDashboardTitle] = useState(() => {
     return localStorage.getItem(`dashboard-title-${datasetId}`) || '';
   });
@@ -1420,10 +1422,16 @@ export default function DatasetDetails() {
                       Your Dashboard
                       <span className="pinned-count">{pinnedCharts.length} chart{pinnedCharts.length !== 1 ? 's' : ''}</span>
                     </h2>
-                    <button className="clear-dashboard-btn" onClick={handleClearDashboard}>
-                      <Trash2 size={14} />
-                      <span>Clear</span>
-                    </button>
+                    <div className="dashboard-title-actions">
+                      <button className="export-pdf-btn" onClick={() => setShowPdfPreview(true)}>
+                        <FileText size={14} />
+                        <span>Export PDF</span>
+                      </button>
+                      <button className="clear-dashboard-btn" onClick={handleClearDashboard}>
+                        <Trash2 size={14} />
+                        <span>Clear</span>
+                      </button>
+                    </div>
                   </div>
                   <p className="dashboard-subtitle">Drag to reposition, resize from corners.</p>
                 </div>
@@ -1493,6 +1501,11 @@ export default function DatasetDetails() {
                     )}
                   </div>
                 </div>
+              <PdfExportModal
+                open={showPdfPreview}
+                onClose={() => setShowPdfPreview(false)}
+                dashboardTitle={dashboardTitle}
+              />
               </>
             ) : (
               <div className="dashboard-placeholder">
