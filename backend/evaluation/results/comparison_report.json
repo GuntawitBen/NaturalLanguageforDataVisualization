@@ -1,0 +1,614 @@
+{
+  "our_summary": {
+    "total": 500,
+    "correct": 308,
+    "accuracy": 61.6,
+    "by_difficulty": {
+      "simple": {
+        "count": 148,
+        "correct": 108,
+        "accuracy": 72.97297297297297
+      },
+      "moderate": {
+        "count": 250,
+        "correct": 147,
+        "accuracy": 58.8
+      },
+      "challenging": {
+        "count": 102,
+        "correct": 53,
+        "accuracy": 51.9607843137255
+      }
+    },
+    "errors": 2,
+    "timeouts": 2
+  },
+  "baseline_summary": {
+    "model": "gpt-4o",
+    "total": 500,
+    "correct": 268,
+    "accuracy": 53.6,
+    "by_difficulty": {
+      "simple": {
+        "count": 148,
+        "correct": 104,
+        "accuracy": 70.27027027027027
+      },
+      "moderate": {
+        "count": 250,
+        "correct": 121,
+        "accuracy": 48.4
+      },
+      "challenging": {
+        "count": 102,
+        "correct": 43,
+        "accuracy": 42.15686274509804
+      }
+    },
+    "errors": 11,
+    "timeouts": 2
+  },
+  "error_categories": {
+    "timeout": 2,
+    "syntax_error": 0,
+    "no_such_table": 0,
+    "no_such_column": 0,
+    "wrong_result": 190,
+    "other_error": 0
+  },
+  "disagreements_count": 100,
+  "our_wins": 70,
+  "our_losses": 30,
+  "disagreements": [
+    {
+      "idx": 1,
+      "question": "In 2012, who had the least consumption in LAM?",
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT T1.CustomerID\nFROM customers AS T1\nINNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID\nWHERE T1.Segment = 'LAM' AND SUBSTR(T2.Date, 1, 4) = '2012'\nGROUP BY T1.CustomerID\nORDER BY SUM(T2",
+      "baseline_sql": "SELECT c.CustomerID, MIN(y.Consumption) AS MinConsumption\nFROM yearmonth y\nJOIN customers c ON y.CustomerID = c.CustomerID\nWHERE y.Date BETWEEN '201201' AND '201212' AND c.Segment = 'LAM'\nGROUP BY c.C",
+      "gold_sql": "SELECT T1.CustomerID FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Segment = 'LAM' AND SUBSTR(T2.Date, 1, 4) = '2012' GROUP BY T1.CustomerID ORDER BY SUM(T2"
+    },
+    {
+      "idx": 4,
+      "question": "Which year recorded the most consumption of gas paid in CZK?",
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT SUBSTR(T2.Date, 1, 4)\nFROM customers AS T1\nINNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID\nWHERE T1.Currency = 'CZK'\nGROUP BY SUBSTR(T2.Date, 1, 4)\nORDER BY SUM(T2.Consumption) DESC",
+      "baseline_sql": "SELECT SUBSTR(y.Date, 1, 4) AS Year, SUM(y.Consumption) AS TotalConsumption\nFROM yearmonth y\nJOIN customers c ON y.CustomerID = c.CustomerID\nWHERE c.Currency = 'CZK'\nGROUP BY Year\nORDER BY TotalConsum",
+      "gold_sql": "SELECT SUBSTR(T2.Date, 1, 4) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency = 'CZK' GROUP BY SUBSTR(T2.Date, 1, 4) ORDER BY SUM(T2.Consumption) DESC"
+    },
+    {
+      "idx": 14,
+      "question": "Please list the product description of the products consumed in September, 2013.",
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT DISTINCT p.Description\nFROM transactions_1k AS t\nJOIN products AS p ON p.ProductID = t.ProductID\nWHERE SUBSTR(t.Date, 1, 4) = '2013'\n  AND SUBSTR(t.Date, 6, 2) = '09'",
+      "baseline_sql": "SELECT DISTINCT p.Description\nFROM transactions_1k t\nJOIN yearmonth ym ON t.CustomerID = ym.CustomerID\nJOIN products p ON t.ProductID = p.ProductID\nWHERE ym.Date LIKE '201309%'",
+      "gold_sql": "SELECT T3.Description FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID INNER JOIN products AS T3 ON T1.ProductID = T3.ProductID WHERE T2.Date = '201309'"
+    },
+    {
+      "idx": 29,
+      "question": "For all the people who paid more than 29.00 per unit of product id No.5. Give their consumption status in the August of 2012.",
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT DISTINCT y.Consumption\nFROM yearmonth AS y\nJOIN transactions_1k AS t ON t.CustomerID = y.CustomerID\nWHERE t.ProductID = 5\n  AND t.Price * 1.0 / t.Amount > 29.00\n  AND y.Date = '201208'",
+      "baseline_sql": "SELECT y.CustomerID, y.Consumption\nFROM transactions_1k t\nJOIN yearmonth y ON t.CustomerID = y.CustomerID\nWHERE t.ProductID = 5\nAND (t.Price / t.Amount) > 29.00\nAND y.Date = '201208'",
+      "gold_sql": "SELECT T2.Consumption FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Price / T1.Amount > 29.00 AND T1.ProductID = 5 AND T2.Date = '201208'"
+    },
+    {
+      "idx": 31,
+      "question": "Among the students from the Student_Club who attended the event \"Women's Soccer\", how many of them want a T-shirt that's in medium size?",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(*)\nFROM attendance AS a\nJOIN event AS e ON e.event_id = a.link_to_event\nJOIN member AS m ON m.member_id = a.link_to_member\nWHERE e.event_name = 'Women''s Soccer'\n  AND m.position = 'Stude",
+      "baseline_sql": "SELECT COUNT(*) \nFROM attendance \nJOIN event ON attendance.link_to_event = event.event_id \nJOIN member ON attendance.link_to_member = member.member_id \nWHERE event.event_name = \"Women's Soccer\" \nAND m",
+      "gold_sql": "SELECT COUNT(T1.event_id) FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event INNER JOIN member AS T3 ON T2.link_to_member = T3.member_id WHERE T1.event_name = 'Women''s Soc"
+    },
+    {
+      "idx": 32,
+      "question": "Among the events attended by more than 10 members of the Student_Club, how many of them are meetings?",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(*)\nFROM (\n  SELECT event.event_id\n  FROM event\n  JOIN attendance ON attendance.link_to_event = event.event_id\n  WHERE event.type = 'Meeting'\n  GROUP BY event.event_id\n  HAVING COUNT(atten",
+      "baseline_sql": "SELECT COUNT(DISTINCT e.event_id) \nFROM event e\nJOIN attendance a ON e.event_id = a.link_to_event\nWHERE e.type = 'Meeting'\nGROUP BY e.event_id\nHAVING COUNT(a.link_to_member) > 10",
+      "gold_sql": "SELECT COUNT(DISTINCT T1.event_id) FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event WHERE T1.type = 'Meeting' GROUP BY T1.event_id HAVING COUNT(T2.link_to_event) > 10"
+    },
+    {
+      "idx": 35,
+      "question": "List the full name of the Student_Club members that grew up in Illinois state.",
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT m.first_name, m.last_name\nFROM member AS m\nJOIN zip_code AS z ON z.zip_code = m.zip\nWHERE z.state = 'Illinois'",
+      "baseline_sql": "SELECT first_name || ' ' || last_name AS full_name\nFROM member\nJOIN zip_code ON member.zip = zip_code.zip_code\nWHERE zip_code.state = 'Illinois'",
+      "gold_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN zip_code AS T2 ON T1.zip = T2.zip_code WHERE T2.state = 'Illinois'"
+    },
+    {
+      "idx": 39,
+      "question": "What was the notes of the fundraising on 2019/9/14?",
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT notes\nFROM income\nWHERE source = 'Fundraising' AND date_received = '2019-09-14'",
+      "baseline_sql": "SELECT e.notes\nFROM event e\nJOIN budget b ON e.event_id = b.link_to_event\nJOIN income i ON b.budget_id = i.link_to_member\nWHERE i.source = 'Fundraising' AND i.date_received = '2019-09-14'",
+      "gold_sql": "SELECT notes FROM income WHERE source = 'Fundraising' AND date_received = '2019-09-14'"
+    },
+    {
+      "idx": 41,
+      "question": "What is the status of the event which bought \"Post Cards, Posters\" on 2019/8/20?",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT b.event_status\nFROM expense AS e\nJOIN budget AS b ON b.budget_id = e.link_to_budget\nWHERE e.expense_description = 'Post Cards, Posters'\n  AND e.expense_date = '2019-08-20'",
+      "baseline_sql": "SELECT e.status \nFROM event e\nJOIN budget b ON e.event_id = b.link_to_event\nJOIN expense ex ON b.budget_id = ex.link_to_budget\nWHERE ex.expense_description = 'Post Cards, Posters' \nAND ex.expense_date",
+      "gold_sql": "SELECT T1.event_status FROM budget AS T1 INNER JOIN expense AS T2 ON T1.budget_id = T2.link_to_budget WHERE T2.expense_description = 'Post Cards, Posters' AND T2.expense_date = '2019-08-20'"
+    },
+    {
+      "idx": 45,
+      "question": "State the date Connor Hilton paid his/her dues.",
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT i.date_received\nFROM income AS i\nJOIN member AS m ON i.link_to_member = m.member_id\nWHERE m.first_name = 'Connor'\n  AND m.last_name = 'Hilton'\n  AND i.source = 'Dues'\nLIMIT 1",
+      "baseline_sql": "SELECT i.date_received\nFROM income i\nJOIN member m ON i.link_to_member = m.member_id\nWHERE m.first_name = 'Connor' AND m.last_name = 'Hilton' AND i.source = 'Dues'",
+      "gold_sql": "SELECT T2.date_received FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.first_name = 'Connor' AND T1.last_name = 'Hilton' AND T2.source = 'Dues'"
+    },
+    {
+      "idx": 46,
+      "question": "How many times was the budget in Advertisement for \"Yearly Kickoff\" meeting more than \"October Meeting\"?",
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  CAST(SUM(CASE WHEN e.event_name = 'Yearly Kickoff' THEN b.amount ELSE 0 END) AS FLOAT)\n  / SUM(CASE WHEN e.event_name = 'October Meeting' THEN b.amount ELSE 0 END)\nFROM budget AS b\nJOIN event",
+      "baseline_sql": "SELECT \n    (SELECT SUM(amount) \n     FROM budget \n     JOIN event ON budget.link_to_event = event.event_id \n     WHERE event.event_name = 'Yearly Kickoff' AND budget.category = 'Advertisement') / \n  ",
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T2.event_name = 'Yearly Kickoff' THEN T1.amount ELSE 0 END) AS REAL) / SUM(CASE WHEN T2.event_name = 'October Meeting' THEN T1.amount ELSE 0 END) FROM budget AS T1 INNER JOIN"
+    },
+    {
+      "idx": 51,
+      "question": "List all the members of the \"School of Applied Sciences, Technology and Education\" department.",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT m.first_name, m.last_name\nFROM member AS m\nINNER JOIN major AS j ON m.link_to_major = j.major_id\nWHERE j.department = 'School of Applied Sciences, Technology and Education'",
+      "baseline_sql": "SELECT m.first_name || ' ' || m.last_name AS full_name\nFROM member m\nJOIN major ma ON m.link_to_major = ma.major_id\nWHERE ma.department = 'School of Applied Sciences, Technology and Education'",
+      "gold_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T2.department = 'School of Applied Sciences, Technology and Education'"
+    },
+    {
+      "idx": 52,
+      "question": "Among all the closed events, which event has the highest spend-to-budget ratio?",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT e.event_name\nFROM event AS e\nJOIN budget AS b ON b.link_to_event = e.event_id\nWHERE e.status = 'Closed'\n  AND b.amount IS NOT NULL\n  AND b.amount <> 0\nORDER BY (b.spent * 1.0 / b.amount) DESC\nL",
+      "baseline_sql": "SELECT e.event_name, MAX(b.spent / b.amount) AS spend_to_budget_ratio\nFROM event e\nJOIN budget b ON e.event_id = b.link_to_event\nWHERE e.status = 'Closed'\nGROUP BY e.event_name\nORDER BY spend_to_budge",
+      "gold_sql": "SELECT T2.event_name FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.status = 'Closed' ORDER BY T1.spent / T1.amount DESC LIMIT 1"
+    },
+    {
+      "idx": 55,
+      "question": "List the name of students that have attended more than 7 events.",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT m.first_name, m.last_name\nFROM member AS m\nJOIN attendance AS a ON a.link_to_member = m.member_id\nGROUP BY m.member_id, m.first_name, m.last_name\nHAVING COUNT(a.link_to_event) > 7",
+      "baseline_sql": "SELECT m.first_name || ' ' || m.last_name AS full_name\nFROM attendance a\nJOIN member m ON a.link_to_member = m.member_id\nGROUP BY a.link_to_member\nHAVING COUNT(a.link_to_event) > 7",
+      "gold_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN attendance AS T2 ON T1.member_id = T2.link_to_member GROUP BY T2.link_to_member HAVING COUNT(T2.link_to_event) > 7"
+    },
+    {
+      "idx": 56,
+      "question": "Which student has been entrusted to manage the budget for the Yearly Kickoff?",
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT DISTINCT m.first_name, m.last_name\nFROM event AS e\nJOIN budget AS b ON b.link_to_event = e.event_id\nJOIN expense AS x ON x.link_to_budget = b.budget_id\nJOIN member AS m ON m.member_id = x.link_",
+      "baseline_sql": "SELECT m.first_name || ' ' || m.last_name AS full_name\nFROM member m\nJOIN budget b ON m.member_id = b.budget_id\nJOIN event e ON b.link_to_event = e.event_id\nWHERE e.event_name = 'Yearly Kickoff'",
+      "gold_sql": "SELECT T4.first_name, T4.last_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget INNER JOIN member AS T4 ON T3"
+    },
+    {
+      "idx": 57,
+      "question": "Which event has the lowest cost?",
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT e.event_name\nFROM event AS e\nJOIN budget AS b ON b.link_to_event = e.event_id\nJOIN expense AS x ON x.link_to_budget = b.budget_id\nGROUP BY e.event_id, e.event_name\nORDER BY MIN(x.cost) ASC\nLIMI",
+      "baseline_sql": "SELECT e.event_name\nFROM event e\nJOIN budget b ON e.event_id = b.link_to_event\nJOIN expense ex ON b.budget_id = ex.link_to_budget\nORDER BY ex.cost ASC\nLIMIT 1",
+      "gold_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget ORDER BY T3.cost LIMIT 1"
+    },
+    {
+      "idx": 76,
+      "question": "Write the full name of the member who spent money for water, veggie tray and supplies and include the cost of it.",
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT m.first_name, m.last_name, e.cost\nFROM expense AS e\nJOIN member AS m ON m.member_id = e.link_to_member\nWHERE e.expense_description = 'Water, Veggie tray, supplies'",
+      "baseline_sql": "SELECT m.first_name || ' ' || m.last_name AS full_name, e.cost\nFROM expense e\nJOIN member m ON e.link_to_member = m.member_id\nWHERE e.expense_description = 'Water, Veggie tray, supplies'",
+      "gold_sql": "SELECT T2.first_name, T2.last_name, T1.cost FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T1.expense_description = 'Water, Veggie tray, supplies'"
+    },
+    {
+      "idx": 77,
+      "question": "Write the full names of students who received funds on the date of 9/9/2019 and include the amount received.",
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT m.first_name, m.last_name, i.amount\nFROM income AS i\nJOIN member AS m ON m.member_id = i.link_to_member\nWHERE i.date_received = '2019-09-09'",
+      "baseline_sql": "SELECT member.first_name, member.last_name, income.amount\nFROM income\nJOIN member ON income.link_to_member = member.member_id\nWHERE income.date_received = '9/9/2019'",
+      "gold_sql": "SELECT DISTINCT T3.first_name, T3.last_name, T4.amount FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event INNER JOIN member AS T3 ON T3.member_id = T2.link_to_member INNER "
+    },
+    {
+      "idx": 79,
+      "question": "What is the percentage of female patient were born after 1930?",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  100.0 * SUM(CASE WHEN STRFTIME('%Y', Birthday) > '1930' THEN 1 ELSE 0 END) / COUNT(ID)\nFROM Patient\nWHERE SEX = 'F'",
+      "baseline_sql": "SELECT (CAST(COUNT(CASE WHEN strftime('%Y', Birthday) > '1930' AND SEX = 'F' THEN 1 END) AS FLOAT) / COUNT(CASE WHEN SEX = 'F' THEN 1 END)) * 100 AS percentage_of_female_patients_born_after_1930 FROM ",
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN STRFTIME('%Y', Birthday) > '1930' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(*) FROM Patient WHERE SEX = 'F'"
+    },
+    {
+      "idx": 81,
+      "question": "What is the disease patient '30609' diagnosed with. List all the date of laboratory tests done for this patient.",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT Diagnosis, `First Date` AS Date\nFROM Patient\nWHERE ID = 30609\n\nUNION ALL\n\nSELECT NULL AS Diagnosis, Date\nFROM Laboratory\nWHERE ID = 30609",
+      "baseline_sql": "SELECT p.Diagnosis, l.Date \nFROM Patient p \nJOIN Laboratory l ON p.ID = l.ID \nWHERE p.ID = 30609",
+      "gold_sql": "SELECT T1.Diagnosis, T2.Date FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 30609"
+    },
+    {
+      "idx": 84,
+      "question": "For patients with severe degree of thrombosis, list their ID, sex and disease the patient is diagnosed with.",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT p.ID, p.SEX, e.Diagnosis\nFROM Patient AS p\nJOIN Examination AS e ON p.ID = e.ID\nWHERE e.Thrombosis = 2",
+      "baseline_sql": "SELECT Patient.ID, Patient.SEX, Patient.Diagnosis\nFROM Patient\nJOIN Examination ON Patient.ID = Examination.ID\nWHERE Examination.Thrombosis = 2",
+      "gold_sql": "SELECT DISTINCT T1.ID, T1.SEX, T1.Diagnosis FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T2.Thrombosis = 2"
+    },
+    {
+      "idx": 89,
+      "question": "What is the ratio of male to female patients among all those with abnormal uric acid counts?",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  1.0 * SUM(CASE WHEN p.SEX = 'M' AND l.UA <= 8.0 THEN 1 ELSE 0 END)\n  / NULLIF(SUM(CASE WHEN p.SEX = 'F' AND l.UA <= 6.5 THEN 1 ELSE 0 END), 0) AS ratio\nFROM Laboratory AS l\nJOIN Patient AS p ",
+      "baseline_sql": "SELECT \n    (SELECT COUNT(*) FROM Patient p \n     JOIN Laboratory l ON p.ID = l.ID \n     WHERE p.SEX = 'M' AND l.UA <= 8.0) \n    / \n    (SELECT COUNT(*) FROM Patient p \n     JOIN Laboratory l ON p.ID ",
+      "gold_sql": "SELECT CAST(SUM(CASE WHEN T2.UA <= 8.0 AND T1.SEX = 'M' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN T2.UA <= 6.5 AND T1.SEX = 'F' THEN 1 ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T"
+    },
+    {
+      "idx": 93,
+      "question": "For the patient who was born on 1959/2/18, what is the decrease rate for his/her total cholesterol from November to December in 1981?",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  (SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.`T-CHO` ELSE 0 END) -\n   SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.`T-CHO` ELSE 0 END)) * 1.0\n  / NULLIF(SUM(CASE WHEN T2.Date LIKE '1981-",
+      "baseline_sql": "SELECT \n    (SUM(CASE WHEN Date LIKE '1981-11-%' THEN `T-CHO` ELSE 0 END) - \n     SUM(CASE WHEN Date LIKE '1981-12-%' THEN `T-CHO` ELSE 0 END)) / \n    SUM(CASE WHEN Date LIKE '1981-12-%' THEN `T-CHO` ",
+      "gold_sql": "SELECT CAST((SUM(CASE WHEN T2.Date LIKE '1981-11-%' THEN T2.`T-CHO` ELSE 0 END) - SUM(CASE WHEN T2.Date LIKE '1981-12-%' THEN T2.`T-CHO` ELSE 0 END)) AS REAL) / SUM(CASE WHEN T2.Date LIKE '1981-12-%' "
+    },
+    {
+      "idx": 94,
+      "question": "How many patients who were examined between 1987/7/6 and 1996/1/31 had a GPT level greater than 30 and an ALB level less than 4? List them by their ID.",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT ID\nFROM Laboratory\nWHERE Date BETWEEN '1987-07-06' AND '1996-01-31'\n  AND GPT > 30\n  AND ALB < 4",
+      "baseline_sql": "SELECT DISTINCT L.ID\nFROM Laboratory L\nJOIN Examination E ON L.ID = E.ID\nWHERE L.Date BETWEEN '1987-07-06' AND '1996-01-31'\nAND L.GPT > 30\nAND L.ALB < 4",
+      "gold_sql": "SELECT DISTINCT ID FROM Laboratory WHERE Date BETWEEN '1987-07-06' AND '1996-01-31' AND GPT > 30 AND ALB < 4"
+    },
+    {
+      "idx": 96,
+      "question": "List all patients who were followed up at the outpatient clinic who underwent a laboratory test in October 1991 and had a total blood bilirubin level within the normal range.",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT DISTINCT T1.ID\nFROM Patient AS T1\nINNER JOIN Laboratory AS T2 ON T1.ID = T2.ID\nWHERE T1.Admission = '-'\n  AND T2.Date LIKE '1991-10%'\n  AND T2.`T-BIL` < 2.0",
+      "baseline_sql": "SELECT DISTINCT p.ID, p.SEX, p.Birthday, p.Description, p.`First Date`, p.Admission, p.Diagnosis\nFROM Patient p\nJOIN Laboratory l ON p.ID = l.ID\nWHERE p.Admission = '-'\nAND l.Date LIKE '1991-10%'\nAND ",
+      "gold_sql": "SELECT DISTINCT T1.ID FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.Admission = '-' AND T2.`T-BIL` < 2.0 AND T2.Date LIKE '1991-10-%'"
+    },
+    {
+      "idx": 97,
+      "question": "What is the average blood albumin level for female patients with a PLT greater than 400 who have been diagnosed with SLE?",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT AVG(L.ALB)\nFROM Patient AS P\nJOIN Laboratory AS L ON P.ID = L.ID\nJOIN Examination AS E ON E.ID = P.ID\nWHERE P.SEX = 'F'\n  AND L.PLT > 400\n  AND E.Diagnosis = 'SLE'",
+      "baseline_sql": "SELECT AVG(Laboratory.ALB)\nFROM Laboratory\nJOIN Patient ON Laboratory.ID = Patient.ID\nWHERE Patient.SEX = 'F'\nAND Laboratory.PLT > 400\nAND Patient.Diagnosis = 'SLE'",
+      "gold_sql": "SELECT AVG(T2.ALB) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.PLT > 400 AND T1.Diagnosis = 'SLE' AND T1.SEX = 'F'"
+    },
+    {
+      "idx": 111,
+      "question": "Name the ID and age of patient with two or more laboratory examinations which show their hematoclit level exceeded the normal range.",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  p.ID,\n  CAST(STRFTIME('%Y', CURRENT_TIMESTAMP) AS INTEGER) - CAST(STRFTIME('%Y', p.Birthday) AS INTEGER) AS age\nFROM Patient AS p\nJOIN Laboratory AS l ON l.ID = p.ID\nWHERE l.HCT >= 52\nGROUP B",
+      "baseline_sql": "SELECT p.ID, (strftime('%Y', 'now') - strftime('%Y', p.Birthday)) AS age\nFROM Patient p\nJOIN Laboratory l ON p.ID = l.ID\nWHERE l.HCT >= 52\nGROUP BY p.ID\nHAVING COUNT(l.ID) > 2",
+      "gold_sql": "SELECT DISTINCT T1.ID, STRFTIME('%Y', CURRENT_TIMESTAMP) - STRFTIME('%Y', T1.Birthday) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID IN ( SELECT ID FROM Laboratory WHERE "
+    },
+    {
+      "idx": 124,
+      "question": "Among the patients who has a normal anti-scl70, how many of them are female and does not have any symptom?",
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(DISTINCT T2.ID)\nFROM Patient AS T2\nJOIN Laboratory AS T1\n  ON T1.ID = T2.ID\nLEFT JOIN Examination AS T3\n  ON T3.ID = T2.ID\nWHERE T1.SC170 IN ('negative', '0')\n  AND T2.SEX = 'F'\n  AND T3.",
+      "baseline_sql": "SELECT COUNT(DISTINCT p.ID)\nFROM Patient p\nJOIN Examination e ON p.ID = e.ID\nJOIN Laboratory l ON p.ID = l.ID\nWHERE p.SEX = 'F'\nAND e.Symptoms IS NULL\nAND l.SC170 IN ('negative', '0')",
+      "gold_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Examination AS T3 ON T3.ID = T2.ID WHERE (T2.SC170 = 'negative' OR T2.SC170 = '0') AND T1.SEX = "
+    },
+    {
+      "idx": 129,
+      "question": "In Scotland Premier League, which away team won the most during the 2010 season?",
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT t.team_long_name\nFROM \"Match\" AS m\nJOIN League AS l ON l.id = m.league_id\nJOIN Team AS t ON t.team_api_id = m.away_team_api_id\nWHERE l.name = 'Scotland Premier League'\n  AND m.season = '2009/20",
+      "baseline_sql": "SELECT T.team_long_name\nFROM Match M\nJOIN League L ON M.league_id = L.id\nJOIN Team T ON M.away_team_api_id = T.team_api_id\nWHERE L.name = 'Scotland Premier League'\nAND M.season = '2009/2010'\nAND M.awa",
+      "gold_sql": "SELECT teamInfo.team_long_name FROM League AS leagueData INNER JOIN Match AS matchData ON leagueData.id = matchData.league_id INNER JOIN Team AS teamInfo ON matchData.away_team_api_id = teamInfo.team_"
+    },
+    {
+      "idx": 133,
+      "question": "Give the name of the league with the highest matches of all time and how many matches were played in the said league.",
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT l.name, COUNT(*) AS match_count\nFROM \"Match\" AS m\nJOIN League AS l ON l.id = m.league_id\nGROUP BY l.id, l.name\nORDER BY match_count DESC\nLIMIT 1",
+      "baseline_sql": "SELECT l.name, COUNT(m.id) AS match_count\nFROM Match m\nJOIN League l ON m.league_id = l.id\nGROUP BY m.league_id\nORDER BY match_count DESC\nLIMIT 1",
+      "gold_sql": "SELECT t2.name, t1.max_count FROM League AS t2 JOIN (SELECT league_id, MAX(cnt) AS max_count FROM (SELECT league_id, COUNT(id) AS cnt FROM Match GROUP BY league_id) AS subquery) AS t1 ON t1.league_id "
+    },
+    {
+      "idx": 138,
+      "question": "List the top 10 players' names whose heights are above 180 in descending order of average heading accuracy.",
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT p.player_name\nFROM Player AS p\nJOIN Player_Attributes AS pa\n  ON pa.player_api_id = p.player_api_id\nWHERE p.height > 180\nGROUP BY p.player_api_id, p.player_name\nORDER BY AVG(pa.heading_accuracy",
+      "baseline_sql": "SELECT p.player_name\nFROM Player p\nJOIN Player_Attributes pa ON p.player_fifa_api_id = pa.player_fifa_api_id\nWHERE p.height > 180\nGROUP BY p.player_name\nORDER BY AVG(pa.heading_accuracy) DESC\nLIMIT 10",
+      "gold_sql": "SELECT t1.player_name FROM Player AS t1 INNER JOIN Player_Attributes AS t2 ON t1.player_api_id = t2.player_api_id WHERE t1.height > 180 GROUP BY t1.id ORDER BY CAST(SUM(t2.heading_accuracy) AS REAL) /"
+    },
+    {
+      "idx": 148,
+      "question": "Among the players whose preferred foot was the left foot when attacking, how many of them would remain in his position when the team attacked?",
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(DISTINCT player_api_id)\nFROM Player_Attributes\nWHERE preferred_foot = 'left'\n  AND attacking_work_rate = 'low'",
+      "baseline_sql": "SELECT COUNT(*) FROM Player_Attributes WHERE preferred_foot = 'left' AND attacking_work_rate = 'low'",
+      "gold_sql": "SELECT COUNT(player_api_id) FROM Player_Attributes WHERE preferred_foot = 'left' AND attacking_work_rate = 'low'"
+    },
+    {
+      "idx": 163,
+      "question": "What percentage is Landon Donovan's overall rating higher than Jordan Bowery on 2013/7/12?",
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT\n  (CAST(ld.overall_rating - jb.overall_rating AS REAL) / ld.overall_rating) * 100\nFROM Player_Attributes AS ld\nJOIN Player AS pld\n  ON pld.player_api_id = ld.player_api_id\nJOIN Player_Attribute",
+      "baseline_sql": "SELECT \n    ((ld.overall_rating - jb.overall_rating) / ld.overall_rating) * 100 AS percentage_difference\nFROM \n    Player_Attributes ld\nJOIN \n    Player p_ld ON ld.player_api_id = p_ld.player_api_id\nJ",
+      "gold_sql": "SELECT (SUM(CASE WHEN t1.player_name = 'Landon Donovan' THEN t2.overall_rating ELSE 0 END) * 1.0 - SUM(CASE WHEN t1.player_name = 'Jordan Bowery' THEN t2.overall_rating ELSE 0 END)) * 100 / SUM(CASE W"
+    },
+    {
+      "idx": 168,
+      "question": "How many football players born after the 1990s have the first name \"Aaron\"?",
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(*)\nFROM Player\nWHERE player_name LIKE 'Aaron%'\n  AND birthday > '1990-12-31'",
+      "baseline_sql": "SELECT COUNT(*) FROM Player WHERE player_name LIKE 'Aaron%' AND birthday > '1990'",
+      "gold_sql": "SELECT COUNT(id) FROM Player WHERE birthday > '1990' AND player_name LIKE 'Aaron%'"
+    },
+    {
+      "idx": 171,
+      "question": "How many players had the highest potential score for crossing that preferred to use their left foots while attacking?",
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT COUNT(DISTINCT player_api_id)\nFROM Player_Attributes\nWHERE preferred_foot = 'left'\n  AND crossing = (SELECT MAX(crossing) FROM Player_Attributes)",
+      "baseline_sql": "SELECT COUNT(*) \nFROM Player_Attributes \nWHERE crossing = (SELECT MAX(crossing) FROM Player_Attributes) \nAND preferred_foot = 'left'",
+      "gold_sql": "SELECT COUNT(t1.id) FROM Player_Attributes AS t1 WHERE t1.preferred_foot = 'left' AND t1.crossing = ( SELECT MAX(crossing) FROM Player_Attributes)"
+    },
+    {
+      "idx": 173,
+      "question": "Does the KSV Cercle Brugge team have a slow, balanced or fast speed class?",
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT ta.buildUpPlaySpeedClass\nFROM Team_Attributes AS ta\nJOIN Team AS t ON t.team_api_id = ta.team_api_id\nWHERE t.team_long_name = 'KSV Cercle Brugge'\nORDER BY ta.date DESC\nLIMIT 1",
+      "baseline_sql": "SELECT buildUpPlaySpeedClass FROM Team_Attributes WHERE team_api_id = (SELECT team_api_id FROM Team WHERE team_long_name = 'KSV Cercle Brugge')",
+      "gold_sql": "SELECT DISTINCT t1.buildUpPlaySpeedClass FROM Team_Attributes AS t1 INNER JOIN Team AS t2 ON t1.team_api_id = t2.team_api_id WHERE t2.team_long_name = 'KSV Cercle Brugge'"
+    },
+    {
+      "idx": 175,
+      "question": "Which top 4 leagues had the most games in the 2015-2016 season?",
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT l.name\nFROM \"Match\" AS m\nJOIN League AS l ON l.id = m.league_id\nWHERE m.season = '2015/2016'\nGROUP BY l.name\nORDER BY COUNT(m.id) DESC\nLIMIT 4",
+      "baseline_sql": "SELECT l.name, COUNT(m.id) AS game_count\nFROM Match m\nJOIN League l ON m.league_id = l.id\nWHERE m.season = '2015/2016'\nGROUP BY l.name\nORDER BY game_count DESC\nLIMIT 4",
+      "gold_sql": "SELECT t1.name FROM League AS t1 INNER JOIN Match AS t2 ON t1.id = t2.league_id WHERE t2.season = '2015/2016' GROUP BY t1.name ORDER BY COUNT(t2.id) DESC LIMIT 4"
+    },
+    {
+      "idx": 180,
+      "question": "What is the surname of the driver with the best lap time in race number 19 in the second qualifying period?",
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT d.surname\nFROM qualifying AS q\nJOIN drivers AS d ON d.driverId = q.driverId\nWHERE q.raceId = 19\n  AND q.q2 IS NOT NULL\nORDER BY q.q2 ASC\nLIMIT 1",
+      "baseline_sql": "SELECT d.surname\nFROM qualifying q\nJOIN drivers d ON q.driverId = d.driverId\nWHERE q.raceId = 19\nORDER BY q.q2 ASC\nLIMIT 1",
+      "gold_sql": "SELECT T2.surname FROM qualifying AS T1 INNER JOIN drivers AS T2 ON T2.driverId = T1.driverId WHERE T1.raceId = 19 ORDER BY T1.q2 ASC LIMIT 1"
+    },
+    {
+      "idx": 198,
+      "question": "State the driver with the most points scored. Find his full name with that points.",
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT d.forename || ' ' || d.surname AS full_name,\n       SUM(r.points) AS points\nFROM results AS r\nJOIN drivers AS d ON d.driverId = r.driverId\nGROUP BY d.driverId, d.forename, d.surname\nORDER BY po",
+      "baseline_sql": "SELECT d.forename, d.surname, MAX(ds.points) AS max_points\nFROM driverStandings ds\nJOIN drivers d ON ds.driverId = d.driverId\nGROUP BY ds.driverId\nORDER BY max_points DESC\nLIMIT 1",
+      "gold_sql": "SELECT T3.forename, T3.surname, T2.points FROM races AS T1 INNER JOIN driverStandings AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId ORDER BY T2.points DESC LIMIT"
+    },
+    {
+      "idx": 206,
+      "question": "State the race and year of race in which Michael Schumacher had his fastest lap.",
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT ra.name,\n       ra.year\nFROM lapTimes AS lt\nJOIN drivers AS d ON d.driverId = lt.driverId\nJOIN races AS ra ON ra.raceId = lt.raceId\nWHERE d.forename = 'Michael'\n  AND d.surname = 'Schumacher'\n ",
+      "baseline_sql": "SELECT r.name, r.year\nFROM results res\nJOIN drivers d ON res.driverId = d.driverId\nJOIN races r ON res.raceId = r.raceId\nWHERE d.forename = 'Michael' AND d.surname = 'Schumacher'\nORDER BY res.millisec",
+      "gold_sql": "SELECT T1.name, T1.year FROM races AS T1 INNER JOIN lapTimes AS T2 ON T2.raceId = T1.raceId INNER JOIN drivers AS T3 ON T3.driverId = T2.driverId WHERE T3.forename = 'Michael' AND T3.surname = 'Schuma"
+    },
+    {
+      "idx": 214,
+      "question": "What was the fastest lap speed among all drivers in the 2009 Spanish Grand Prix?",
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT r.fastestLapSpeed\nFROM results AS r\nINNER JOIN races AS ra ON ra.raceId = r.raceId\nWHERE ra.year = 2009\n  AND ra.name = 'Spanish Grand Prix'\nORDER BY r.fastestLapSpeed DESC\nLIMIT 1",
+      "baseline_sql": "SELECT MAX(CAST(fastestLapSpeed AS REAL)) AS fastest_lap_speed\nFROM results\nJOIN races ON results.raceId = races.raceId\nWHERE races.name = 'Spanish Grand Prix' AND races.year = 2009",
+      "gold_sql": "SELECT T2.fastestLapSpeed FROM races AS T1 INNER JOIN results AS T2 ON T2.raceId = T1.raceId WHERE T1.name = 'Spanish Grand Prix' AND T1.year = 2009 AND T2.fastestLapSpeed IS NOT NULL ORDER BY T2.fast"
+    },
+    {
+      "idx": 216,
+      "question": "What's the finish time for the driver who ranked second in 2008's AustChineseralian Grand Prix?",
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT res.time\nFROM results AS res\nJOIN races AS r ON r.raceId = res.raceId\nWHERE r.year = 2008\n  AND r.name = 'Chinese Grand Prix'\n  AND res.positionOrder = 2",
+      "baseline_sql": "SELECT r.time\nFROM results r\nJOIN races ra ON r.raceId = ra.raceId\nWHERE ra.year = 2008\nAND ra.name = 'Chinese Grand Prix'\nAND r.rank = 2",
+      "gold_sql": "SELECT T1.time FROM results AS T1 INNER JOIN races AS T2 on T1.raceId = T2.raceId WHERE T1.rank = 2 AND T2.name = 'Chinese Grand Prix' AND T2.year = 2008"
+    },
+    {
+      "idx": 220,
+      "question": "What are the maximum points of British constructors?",
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT MAX(points)\nFROM constructorStandings AS cs\nJOIN constructors AS c ON c.constructorId = cs.constructorId\nWHERE c.nationality = 'British'",
+      "baseline_sql": "SELECT MAX(cr.points) AS max_points\nFROM constructorResults cr\nJOIN constructors c ON cr.constructorId = c.constructorId\nWHERE c.nationality = 'British'",
+      "gold_sql": "SELECT MAX(T1.points) FROM constructorStandings AS T1 INNER JOIN constructors AS T2 on T1.constructorId = T2.constructorId WHERE T2.nationality = 'British'"
+    },
+    {
+      "idx": 223,
+      "question": "Please calculate the race completion percentage of Japanese drivers from 2007 to 2009.",
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT CAST(SUM(CASE WHEN res.time IS NOT NULL THEN 1 ELSE 0 END) AS REAL) * 100.0 / COUNT(*)\nFROM results AS res\nJOIN drivers AS d ON d.driverId = res.driverId\nJOIN races AS r ON r.raceId = res.raceI",
+      "baseline_sql": "SELECT \n    (CAST(SUM(CASE WHEN r.time IS NOT NULL THEN 1 ELSE 0 END) AS FLOAT) / COUNT(r.driverId)) * 100 AS completion_percentage\nFROM \n    results r\nJOIN \n    drivers d ON r.driverId = d.driverId\nJ",
+      "gold_sql": "SELECT CAST(SUM(IIF(T1.time IS NOT NULL, 1, 0)) AS REAL) * 100 / COUNT(T1.raceId) FROM results AS T1 INNER JOIN races AS T2 on T1.raceId = T2.raceId INNER JOIN drivers AS T3 on T1.driverId = T3.driver"
+    },
+    {
+      "idx": 232,
+      "question": "Which drivers who were born in 1971 and has the fastest lap time on the race? Give id and code of these drivers.",
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT d.driverId, d.code\nFROM drivers AS d\nJOIN results AS r ON r.driverId = d.driverId\nWHERE STRFTIME('%Y', d.dob) = '1971'\n  AND r.fastestLapTime IS NOT NULL\nORDER BY r.fastestLapTime ASC\nLIMIT 1",
+      "baseline_sql": "SELECT d.driverId, d.code\nFROM drivers d\nJOIN results r ON d.driverId = r.driverId\nWHERE strftime('%Y', d.dob) = '1971' AND r.fastestLapTime IS NOT NULL",
+      "gold_sql": "SELECT T2.driverId, T2.code FROM results AS T1 INNER JOIN drivers AS T2 on T1.driverId = T2.driverId WHERE STRFTIME('%Y', T2.dob) = '1971' AND T1.fastestLapTime IS NOT NULL"
+    },
+    {
+      "idx": 234,
+      "question": "How many times the circuits were held in Austria? Please give their location and coordinates.",
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT c.location,\n       c.lat,\n       c.lng,\n       COUNT(r.raceId) AS times\nFROM circuits c\nJOIN races r ON r.circuitId = c.circuitId\nWHERE c.country = 'Austria'\nGROUP BY c.location, c.lat, c.lng",
+      "baseline_sql": "SELECT location, lat, lng FROM circuits WHERE country = 'Austria'",
+      "gold_sql": "SELECT DISTINCT location, lat, lng FROM circuits WHERE country = 'Austria'"
+    },
+    {
+      "idx": 236,
+      "question": "List down top 3 German drivers who has the shortest average pit stop duration and were born between 1980-1985.",
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT d.forename,\n       d.surname\nFROM drivers AS d\nJOIN pitStops AS p ON p.driverId = d.driverId\nWHERE d.nationality = 'German'\n  AND CAST(STRFTIME('%Y', d.dob) AS INTEGER) BETWEEN 1980 AND 1985\nGR",
+      "baseline_sql": "SELECT d.forename || ' ' || d.surname AS full_name, AVG(CAST(p.duration AS REAL)) AS avg_duration\nFROM drivers d\nJOIN pitStops p ON d.driverId = p.driverId\nWHERE d.nationality = 'German'\nAND strftime(",
+      "gold_sql": "SELECT T2.forename, T2.surname FROM pitStops AS T1 INNER JOIN drivers AS T2 on T1.driverId = T2.driverId WHERE T2.nationality = 'German' AND STRFTIME('%Y', T2.dob) BETWEEN '1980' AND '1985' GROUP BY T"
+    },
+    {
+      "idx": 240,
+      "question": "Which constructor scored most points from Monaco Grand Prix between 1980 and 2010? List the score, name and nationality of this team.",
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT SUM(cr.points) AS score,\n       c.name,\n       c.nationality\nFROM constructorResults AS cr\nJOIN races AS r ON r.raceId = cr.raceId\nJOIN constructors AS c ON c.constructorId = cr.constructorId\nW",
+      "baseline_sql": "SELECT constructors.name, constructors.nationality, SUM(constructorResults.points) AS total_points\nFROM races\nJOIN constructorResults ON races.raceId = constructorResults.raceId\nJOIN constructors ON c",
+      "gold_sql": "SELECT SUM(T1.points), T2.name, T2.nationality FROM constructorResults AS T1 INNER JOIN constructors AS T2 ON T1.constructorId = T2.constructorId INNER JOIN races AS T3 ON T3.raceid = T1.raceid WHERE "
+    },
+    {
+      "idx": 241,
+      "question": "What is full name of the racer who ranked 1st in the 3rd qualifying race held in the Marina Bay Street Circuit in 2008?",
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "ours_correct": false,
+      "baseline_correct": true,
+      "our_sql": "SELECT d.forename, d.surname\nFROM qualifying AS q\nJOIN races AS r ON r.raceId = q.raceId\nJOIN circuits AS c ON c.circuitId = r.circuitId\nJOIN drivers AS d ON d.driverId = q.driverId\nWHERE c.name = 'Ma",
+      "baseline_sql": "SELECT d.forename, d.surname\nFROM qualifying q\nJOIN races r ON q.raceId = r.raceId\nJOIN circuits c ON r.circuitId = c.circuitId\nJOIN drivers d ON q.driverId = d.driverId\nWHERE r.year = 2008\nAND c.name",
+      "gold_sql": "SELECT T2.forename, T2.surname FROM qualifying AS T1 INNER JOIN drivers AS T2 on T1.driverId = T2.driverId INNER JOIN races AS T3 ON T1.raceid = T3.raceid WHERE q3 IS NOT NULL AND T3.year = 2008 AND T"
+    },
+    {
+      "idx": 243,
+      "question": "How many accidents did the driver who had the highest number accidents in the Canadian Grand Prix have?",
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "ours_correct": true,
+      "baseline_correct": false,
+      "our_sql": "SELECT COUNT(*) \nFROM results AS re\nJOIN races AS ra ON ra.raceId = re.raceId\nWHERE ra.name = 'Canadian Grand Prix'\n  AND re.statusId = 3\nGROUP BY re.driverId\nORDER BY COUNT(*) DESC\nLIMIT 1",
+      "baseline_sql": "SELECT COUNT(*) \nFROM results \nWHERE statusId = 3 \nAND raceId = (\n    SELECT raceId \n    FROM races \n    WHERE name = 'Canadian Grand Prix'\n) \nAND driverId = (\n    SELECT driverId \n    FROM results \n ",
+      "gold_sql": "SELECT COUNT(T1.driverId) FROM results AS T1 INNER JOIN races AS T2 on T1.raceId = T2.raceId INNER JOIN status AS T3 on T1.statusId = T3.statusId WHERE T3.statusId = 3 AND T2.name = 'Canadian Grand Pr"
+    }
+  ]
+}
