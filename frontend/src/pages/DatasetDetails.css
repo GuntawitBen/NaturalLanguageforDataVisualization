@@ -1043,6 +1043,23 @@
   line-height: 1.5;
 }
 
+.message-text div {
+  margin-bottom: 0.15rem;
+}
+
+.chat-bullet-item {
+  display: block;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.chat-bullet-item::before {
+  content: '\2022';
+  position: absolute;
+  left: 0;
+  color: var(--text-secondary);
+}
+
 .message.assistant .message-text {
   color: var(--text-primary);
 }

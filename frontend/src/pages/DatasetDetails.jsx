@@ -1189,7 +1189,21 @@ export default function DatasetDetails() {
                         return (
                           <div key={index} className={`message ${msg.role || 'assistant'} ${msg.error ? 'error' : ''}`}>
                             <div className="message-bubble">
-                              <p className="message-text">{msg.content || ''}</p>
+                              <div className="message-text">
+                                {(msg.content || '').split('\n').map((line, idx) => {
+                                  let processedLine = line;
+                                  processedLine = processedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                  if (processedLine.trim().startsWith('- ')) {
+                                    processedLine = `<span class="chat-bullet-item">${processedLine.trim().substring(2)}</span>`;
+                                  }
+                                  if (processedLine.trim().startsWith('\u2022')) {
+                                    processedLine = `<span class="chat-bullet-item">${processedLine}</span>`;
+                                  }
+                                  return (
+                                    <div key={idx} dangerouslySetInnerHTML={{ __html: processedLine || '<br/>' }} />
+                                  );
+                                })}
+                              </div>
 
                               {msg.sql_query && (
                                 <div className={`sql-block ${expandedSections[`sql-${index}`] ? 'expanded' : 'collapsed'}`}>

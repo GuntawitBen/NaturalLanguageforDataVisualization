@@ -240,7 +240,7 @@ class TextToSQLOpenAIClient:
 Write a concise message that:
 1. Starts with "I've analyzed your data" or similar phrasing (NOT "Welcome" or "fascinating dataset")
 2. Briefly states what the data contains (1-2 sentences max)
-3. Lists 3-4 specific questions they could explore (based on actual column names)
+3. Do NOT list questions or suggestions in the intro message - those will be shown separately as clickable buttons
 
 Keep it professional and to the point - like a data analyst giving a quick briefing. Avoid flowery language, excessive enthusiasm, or words like "fascinating", "exciting", "wonderful".
 
@@ -253,11 +253,11 @@ IMPORTANT - Keep recommendations SIMPLE:
 
 Return JSON:
 {
-    "intro_message": "Your direct, analytical message here...",
+    "intro_message": "Your brief dataset summary here (no questions)...",
     "recommendations": ["Question 1?", "Question 2?", "Question 3?"]
 }
 
-The recommendations array should contain the exact questions mentioned in your intro_message, so they can be displayed as clickable buttons."""
+The intro_message should only describe the data. The recommendations will be displayed as clickable buttons below the message."""
 
             response = self._call_with_retry(
                 self.client.chat.completions.create,
