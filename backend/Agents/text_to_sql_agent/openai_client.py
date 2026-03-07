@@ -116,6 +116,13 @@ class TextToSQLOpenAIClient:
         Returns:
             GPTSQLResponse object
         """
+        # Guard against None or empty responses from GPT
+        if not content or not content.strip():
+            print("[WARNING] GPT returned empty or None response")
+            return GPTSQLResponse(
+                error="Received empty response from AI. Please try again."
+            )
+
         try:
             # Try to parse as JSON
             # Handle potential markdown code blocks
@@ -202,6 +209,9 @@ class TextToSQLOpenAIClient:
 
             # Parse response
             content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content for SQL generation")
+                return GPTSQLResponse(error="Received empty response from AI. Please try again.")
             return self._parse_gpt_response(content)
 
         except Exception as e:
@@ -271,6 +281,9 @@ The recommendations array should contain the exact questions mentioned in your i
 
             # Parse response
             content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content for proactive intro")
+                return "", []
             parsed = self._parse_gpt_response(content)
 
             # intro_message maps to explanation field in GPTSQLResponse
@@ -339,6 +352,9 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
             )
 
             content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content for SQL fix")
+                return GPTSQLResponse(error="Received empty response from AI. Please try again.")
             return self._parse_gpt_response(content)
 
         except Exception as e:
@@ -408,7 +424,11 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
                       f"Cached: {cached_tokens}")
 
             # Parse response
-            content = response.choices[0].message.content.strip()
+            content = response.choices[0].message.content
+            if not content:
+                print("[WARNING] GPT returned empty content for follow-up suggestions")
+                return {"intro_message": "", "suggestions": []}
+            content = content.strip()
 
             # Handle potential markdown code blocks
             if content.startswith("```"):
