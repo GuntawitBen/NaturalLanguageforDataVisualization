@@ -107,7 +107,8 @@ class CleaningOpenAIClient:
         problem: Problem,
         options: List[CleaningOption],
         dataset_stats: DatasetStats,
-        dataset_name: str
+        dataset_name: str,
+        dataset_description: str = None
     ) -> Tuple[Optional[str], Optional[str]]:
         """
         Generate GPT recommendation for which cleaning option is best.
@@ -134,7 +135,8 @@ class CleaningOpenAIClient:
                 "dataset": {
                     "name": dataset_name,
                     "total_rows": dataset_stats.row_count,
-                    "total_columns": dataset_stats.column_count
+                    "total_columns": dataset_stats.column_count,
+                    "description": dataset_description or ""
                 },
                 "problem": {
                     "type": problem.problem_type.value,

@@ -66,7 +66,8 @@ async def start_cleaning_session(
         # Start cleaning session
         response = cleaning_agent.start_session(
             temp_file_path=temp_file_path,
-            dataset_name=request.dataset_name
+            dataset_name=request.dataset_name,
+            description=request.description
         )
 
         return response

@@ -24,7 +24,7 @@ from database import (
     delete_visualization,
     update_visualization,
 )
-from utils.csv_validator import validate_csv_file as validate_csv_structure, ValidationConfig
+from utils.csv_validator import validate_csv_file as validate_csv_structure, ValidationConfig, sanitize_column_name, detect_encoding
 
 router = APIRouter(prefix="/datasets", tags=["Datasets"])
 
@@ -242,6 +242,7 @@ async def test_post_endpoint():
 async def upload_csv_temp(
     file: UploadFile = File(...),
     dataset_name: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     current_user_email: str = Depends(get_current_user)
 ):
     """
@@ -287,6 +288,9 @@ async def upload_csv_temp(
             "original_filename": file.filename,
             "file_size_bytes": file_size,
             "validation": validation_result,
+            "has_header": validation_result["metadata"].get("has_header", True),
+            "headers_auto_generated": validation_result["metadata"].get("headers_auto_generated", False),
+            "description": description,
             "message": "File uploaded and validated successfully. Complete the cleaning process to finalize."
         }
 
@@ -335,6 +339,7 @@ async def cleanup_temp_file(
 async def preview_temp_csv(
     temp_file_path: str = Form(...),
     limit: int = Form(1000),  # Increased for virtualization support
+    has_header: bool = Form(True),
     current_user_email: str = Depends(get_current_user)
 ):
     """
@@ -359,7 +364,11 @@ async def preview_temp_csv(
         # Read CSV with pandas
         import pandas as pd
 
-        df = pd.read_csv(temp_file_path)
+        if has_header:
+            df = pd.read_csv(temp_file_path)
+        else:
+            df = pd.read_csv(temp_file_path, header=None)
+            df.columns = [f"Column {i+1}" for i in range(len(df.columns))]
 
         # Get column info with data types
         columns_info = []
@@ -403,6 +412,85 @@ async def preview_temp_csv(
             status_code=500,
             detail=f"Error previewing CSV: {str(e)}"
         )
+
+@router.post("/confirm-headers")
+async def confirm_headers(
+    temp_file_path: str = Form(...),
+    headers: str = Form(...),       # JSON array of header names
+    has_header: bool = Form(True),
+    current_user_email: str = Depends(get_current_user)
+):
+    """
+    Confirm or update CSV headers before proceeding to cleaning.
+    If has_header=False, rewrites the CSV with the provided header row.
+    If has_header=True and headers changed, renames columns accordingly.
+    """
+    import json
+    import pandas as pd
+
+    # Validate path is in uploads directory
+    if not temp_file_path or not temp_file_path.startswith("./uploads"):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not os.path.exists(temp_file_path):
+        raise HTTPException(status_code=404, detail="Temporary file not found")
+
+    try:
+        # Parse headers JSON
+        header_list = json.loads(headers)
+        if not isinstance(header_list, list) or len(header_list) == 0:
+            raise HTTPException(status_code=400, detail="Headers must be a non-empty JSON array")
+
+        # Sanitize each header
+        sanitized = [sanitize_column_name(h) for h in header_list]
+
+        # Check for duplicates after sanitization
+        if len(set(sanitized)) != len(sanitized):
+            duplicates = [h for h in sanitized if sanitized.count(h) > 1]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Duplicate column names after sanitization: {', '.join(set(duplicates))}"
+            )
+
+        # Detect encoding to preserve it
+        encoding = detect_encoding(temp_file_path)
+
+        if not has_header:
+            # No header row — read without header, assign columns, write back with header
+            df = pd.read_csv(temp_file_path, header=None, encoding=encoding)
+            if len(sanitized) != len(df.columns):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Header count ({len(sanitized)}) doesn't match column count ({len(df.columns)})"
+                )
+            df.columns = sanitized
+            df.to_csv(temp_file_path, index=False, encoding='utf-8')
+        else:
+            # Has header — read CSV, check if headers changed, rename if needed
+            df = pd.read_csv(temp_file_path, encoding=encoding)
+            original_cols = list(df.columns)
+            if len(sanitized) != len(original_cols):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Header count ({len(sanitized)}) doesn't match column count ({len(original_cols)})"
+                )
+            # Only rewrite if headers actually changed
+            if sanitized != original_cols:
+                df.columns = sanitized
+                df.to_csv(temp_file_path, index=False, encoding='utf-8')
+
+        return {
+            "success": True,
+            "sanitized_headers": sanitized
+        }
+
+    except HTTPException:
+        raise
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON in headers parameter")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error confirming headers: {str(e)}")
+
 
 @router.post("/finalize", response_model=DatasetResponse)
 async def finalize_dataset(

@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     FINALIZE: `${API_BASE_URL}/datasets/finalize`,
     CLEANUP_TEMP: `${API_BASE_URL}/datasets/cleanup-temp`,
     PREVIEW_TEMP: `${API_BASE_URL}/datasets/preview-temp`,
+    CONFIRM_HEADERS: `${API_BASE_URL}/datasets/confirm-headers`,
     LIST: `${API_BASE_URL}/datasets/`,
     GET: (id) => `${API_BASE_URL}/datasets/${id}`,
     QUERY: (id) => `${API_BASE_URL}/datasets/${id}/query`,

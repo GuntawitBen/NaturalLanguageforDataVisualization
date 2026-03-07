@@ -55,7 +55,8 @@ class CleaningAgent:
     def start_session(
         self,
         temp_file_path: str,
-        dataset_name: str
+        dataset_name: str,
+        description: str = None
     ) -> StartSessionResponse:
         """
         Start a new cleaning session.
@@ -63,12 +64,14 @@ class CleaningAgent:
         Args:
             temp_file_path: Path to the temporary CSV file
             dataset_name: Name of the dataset
+            description: Optional dataset description for GPT context
 
         Returns:
             StartSessionResponse with session info and first problem
         """
-        # Store dataset name for later use in recommendations
+        # Store dataset name and description for later use in recommendations
         self._current_dataset_name = dataset_name
+        self._current_dataset_description = description or ""
 
         # Load DataFrame to detect problems
         df = pd.read_csv(temp_file_path)
@@ -486,11 +489,13 @@ class CleaningAgent:
                 dataset_name = getattr(self, '_current_dataset_name', 'dataset')
 
                 # Call OpenAI for recommendation
+                dataset_description = getattr(self, '_current_dataset_description', '')
                 recommended_id, reason = self.openai_client.generate_recommendation(
                     problem=problem,
                     options=options,
                     dataset_stats=dataset_stats,
-                    dataset_name=dataset_name
+                    dataset_name=dataset_name,
+                    dataset_description=dataset_description
                 )
 
                 if recommended_id and reason:
@@ -722,12 +727,14 @@ class CleaningAgent:
                 )
 
                 dataset_name = getattr(self, '_current_dataset_name', 'dataset')
+                dataset_description = getattr(self, '_current_dataset_description', '')
 
                 recommended_id, reason = self.openai_client.generate_recommendation(
                     problem=problem,
                     options=options,
                     dataset_stats=dataset_stats,
-                    dataset_name=dataset_name
+                    dataset_name=dataset_name,
+                    dataset_description=dataset_description
                 )
 
                 if recommended_id and reason:

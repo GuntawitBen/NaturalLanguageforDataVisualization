@@ -367,7 +367,8 @@ def build_schema_context(dataset_id: str) -> Optional[SchemaContext]:
     return SchemaContext(
         table_name=table_name,
         columns=columns,
-        row_count=row_count
+        row_count=row_count,
+        description=dataset.get('description')
     )
 
 

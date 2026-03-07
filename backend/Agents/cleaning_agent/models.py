@@ -114,6 +114,7 @@ class StartSessionRequest(BaseModel):
     """Request to start a cleaning session"""
     temp_file_path: str
     dataset_name: str
+    description: Optional[str] = None
 
 
 class StartSessionResponse(BaseModel):

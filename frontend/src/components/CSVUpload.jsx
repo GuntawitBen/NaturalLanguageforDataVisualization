@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, X, CheckCircle, AlertCircle, FileText, Loader } from 'lucide-react';
+import { Upload, X, CheckCircle, AlertCircle, FileText, Loader, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_ENDPOINTS } from '../config';
 import './CSVUpload.css';
@@ -22,7 +22,10 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
 
+  const [readmeFile, setReadmeFile] = useState(null);
+
   const fileInputRef = useRef(null);
+  const readmeInputRef = useRef(null);
   const dragCounter = useRef(0);
 
   // ============================================================================
@@ -138,6 +141,29 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
     setUploadedDataset(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  // ============================================================================
+  // README FILE HANDLER
+  // ============================================================================
+
+  const handleReadmeSelect = (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setDescription(evt.target.result);
+      setReadmeFile(selectedFile);
+    };
+    reader.readAsText(selectedFile);
+  };
+
+  const handleRemoveReadme = () => {
+    setReadmeFile(null);
+    setDescription('');
+    if (readmeInputRef.current) {
+      readmeInputRef.current.value = '';
     }
   };
 
@@ -260,8 +286,12 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
     setUploadStatus(null);
     setErrorMessage('');
     setUploadedDataset(null);
+    setReadmeFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (readmeInputRef.current) {
+      readmeInputRef.current.value = '';
     }
   };
 
@@ -289,7 +319,7 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
               Dataset <strong>{uploadedDataset.dataset_name}</strong> uploaded successfully.
             </p>
             <p className="text-sm">
-              {uploadedDataset.row_count.toLocaleString()} rows × {uploadedDataset.column_count} columns
+              {(uploadedDataset.validation?.metadata?.row_count ?? uploadedDataset.row_count ?? 0).toLocaleString()} rows × {uploadedDataset.validation?.metadata?.column_count ?? uploadedDataset.column_count ?? 0} columns
             </p>
           </div>
         </div>
@@ -372,18 +402,58 @@ export default function CSVUpload({ onUploadSuccess, onUploadError }) {
             />
           </div>
 
-          {/*<div className="form-group">*/}
-          {/*  <label htmlFor="description">Description</label>*/}
-          {/*  <textarea*/}
-          {/*    id="description"*/}
-          {/*    value={description}*/}
-          {/*    onChange={(e) => setDescription(e.target.value)}*/}
-          {/*    placeholder="Brief description of your dataset..."*/}
-          {/*    rows={3}*/}
-          {/*    disabled={uploading}*/}
-          {/*    className="form-input"*/}
-          {/*  />*/}
-          {/*</div>*/}
+          <div className="form-group">
+            <label htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                if (readmeFile) {
+                  setReadmeFile(null);
+                  if (readmeInputRef.current) readmeInputRef.current.value = '';
+                }
+              }}
+              placeholder="Describe your dataset — what it contains, where it's from, what the columns mean..."
+              rows={3}
+              disabled={uploading}
+              className="form-input"
+            />
+            <div className="readme-upload-row">
+              <input
+                ref={readmeInputRef}
+                type="file"
+                accept=".txt,.md"
+                onChange={handleReadmeSelect}
+                style={{ display: 'none' }}
+                disabled={uploading}
+              />
+              {readmeFile ? (
+                <span className="readme-file-badge">
+                  <BookOpen size={14} />
+                  <span>{readmeFile.name}</span>
+                  <button
+                    type="button"
+                    className="readme-remove-btn"
+                    onClick={handleRemoveReadme}
+                    aria-label="Remove README"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="readme-upload-btn"
+                  onClick={() => readmeInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <BookOpen size={14} />
+                  <span>or upload README</span>
+                </button>
+              )}
+            </div>
+          </div>
 
           {/*<div className="form-group">*/}
           {/*  <label htmlFor="tags">Tags</label>*/}

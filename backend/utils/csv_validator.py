@@ -182,6 +182,21 @@ def validate_encoding(file_path: str, config: ValidationConfig = None) -> Tuple[
         return False, f"Could not detect encoding: {str(e)}", None
 
 
+def detect_has_header(file_path: str, encoding: str = 'utf-8') -> bool:
+    """
+    Detect whether a CSV file has a header row using csv.Sniffer.
+
+    Returns:
+        bool: True if header row is detected, False otherwise
+    """
+    with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+        sample = f.read(8192)
+        try:
+            return csv.Sniffer().has_header(sample)
+        except csv.Error:
+            return True  # Default: assume header exists
+
+
 def detect_csv_dialect(file_path: str, encoding: str = 'utf-8') -> csv.Dialect:
     """
     Detect CSV dialect (delimiter, quote char, etc.)
@@ -458,28 +473,53 @@ def validate_csv_file(file_path: str, config: ValidationConfig = None) -> Dict:
 
         metadata["delimiter"] = dialect.delimiter
 
-        # 4. Validate headers
-        valid, error, sanitized_headers = validate_headers(file_path, encoding, dialect, config)
-        if not valid:
-            # Check if it's a reserved keyword warning
-            if "reserved keywords" in error.lower():
-                warnings.append(error)
-                # Extract headers manually for sanitization
-                with open(file_path, 'r', encoding=encoding, errors='replace') as f:
-                    reader = csv.reader(f, dialect=dialect)
-                    original_headers = next(reader)
-                    sanitized_headers = [sanitize_column_name(h.strip()) for h in original_headers]
-            else:
-                errors.append(error)
+        # 3.5. Detect whether file has a header row
+        has_header = detect_has_header(file_path, encoding)
+        metadata["has_header"] = has_header
+
+        if has_header:
+            # 4. Validate headers (file has header row)
+            valid, error, sanitized_headers = validate_headers(file_path, encoding, dialect, config)
+            if not valid:
+                # Check if it's a reserved keyword warning
+                if "reserved keywords" in error.lower():
+                    warnings.append(error)
+                    # Extract headers manually for sanitization
+                    with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+                        reader = csv.reader(f, dialect=dialect)
+                        original_headers = next(reader)
+                        sanitized_headers = [sanitize_column_name(h.strip()) for h in original_headers]
+                else:
+                    errors.append(error)
+                    return {"valid": False, "errors": errors, "warnings": warnings, "metadata": metadata}
+
+            with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+                reader = csv.reader(f, dialect=dialect)
+                original_headers = next(reader)
+
+            metadata["headers"] = [h.strip() for h in original_headers]
+            metadata["sanitized_headers"] = sanitized_headers
+            metadata["column_count"] = len(sanitized_headers)
+            metadata["headers_auto_generated"] = False
+        else:
+            # 4. No header row — generate default column names
+            with open(file_path, 'r', encoding=encoding, errors='replace') as f:
+                reader = csv.reader(f, dialect=dialect)
+                first_row = next(reader)
+            col_count = len(first_row)
+
+            # Check column count limits
+            if col_count < config.MIN_COLUMNS:
+                errors.append(f"Too few columns ({col_count}). Minimum is {config.MIN_COLUMNS}")
+                return {"valid": False, "errors": errors, "warnings": warnings, "metadata": metadata}
+            if col_count > config.MAX_COLUMNS:
+                errors.append(f"Too many columns ({col_count}). Maximum is {config.MAX_COLUMNS}")
                 return {"valid": False, "errors": errors, "warnings": warnings, "metadata": metadata}
 
-        with open(file_path, 'r', encoding=encoding, errors='replace') as f:
-            reader = csv.reader(f, dialect=dialect)
-            original_headers = next(reader)
-
-        metadata["headers"] = [h.strip() for h in original_headers]
-        metadata["sanitized_headers"] = sanitized_headers
-        metadata["column_count"] = len(sanitized_headers)
+            metadata["headers"] = [f"Column {i+1}" for i in range(col_count)]
+            metadata["sanitized_headers"] = [f"column_{i+1}" for i in range(col_count)]
+            metadata["column_count"] = col_count
+            metadata["headers_auto_generated"] = True
 
         # 5. Validate row count
         valid, error, row_count = validate_row_count(file_path, encoding, dialect, config)
@@ -490,7 +530,7 @@ def validate_csv_file(file_path: str, config: ValidationConfig = None) -> Dict:
         metadata["row_count"] = row_count
 
         # 6. Validate column consistency
-        valid, error = validate_column_consistency(file_path, encoding, dialect, len(sanitized_headers))
+        valid, error = validate_column_consistency(file_path, encoding, dialect, metadata["column_count"])
         if not valid:
             errors.append(error)
             return {"valid": False, "errors": errors, "warnings": warnings, "metadata": metadata}

@@ -27,6 +27,7 @@ class SchemaContext(BaseModel):
     table_name: str
     columns: List[ColumnInfo]
     row_count: int
+    description: Optional[str] = None
 
 
 class Message(BaseModel):

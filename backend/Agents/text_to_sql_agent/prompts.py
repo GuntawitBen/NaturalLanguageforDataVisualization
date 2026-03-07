@@ -15,7 +15,7 @@ Columns:
 {columns_description}
 
 Row count: {row_count:,}
-
+{dataset_description}
 RULES:
 1. ONLY use the table name: {table_name}
 2. ONLY use columns that exist in the schema above
@@ -169,10 +169,15 @@ def build_system_prompt(schema: SchemaContext) -> str:
     """Build the system prompt with schema information"""
     columns_desc = format_columns_description(schema)
 
+    description_section = ""
+    if schema.description:
+        description_section = f"\nDataset Description:\n{schema.description}\n"
+
     return SYSTEM_PROMPT_TEMPLATE.format(
         table_name=schema.table_name,
         columns_description=columns_desc,
-        row_count=schema.row_count
+        row_count=schema.row_count,
+        dataset_description=description_section
     )
 
 

@@ -31,12 +31,15 @@ def generate_recommendation_prompt(context: Dict[str, Any]) -> str:
     metadata = problem.get("metadata", {})
     metadata_str = json.dumps(metadata, indent=2)
 
+    description = dataset.get('description', '')
+    description_line = f"\n- Description: {description}" if description else ""
+
     prompt = f"""# Data Cleaning Recommendation Request
 
 ## Dataset Context
 - Dataset: {dataset.get('name', 'Unknown')}
 - Total Rows: {dataset.get('total_rows', 'N/A')}
-- Total Columns: {dataset.get('total_columns', 'N/A')}
+- Total Columns: {dataset.get('total_columns', 'N/A')}{description_line}
 
 ## Problem Details
 - Type: {problem.get('type', 'Unknown')}
