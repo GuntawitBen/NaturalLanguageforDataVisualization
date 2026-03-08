@@ -23,6 +23,7 @@ from database import (
     get_dataset_visualizations,
     delete_visualization,
     update_visualization,
+    update_dataset_description,
 )
 from utils.csv_validator import validate_csv_file as validate_csv_structure, ValidationConfig, sanitize_column_name, detect_encoding
 
@@ -42,6 +43,10 @@ class DatasetResponse(BaseModel):
     upload_date: str
     file_size_bytes: int
     table_name: str
+    description: Optional[str] = None
+
+class UpdateDescriptionRequest(BaseModel):
+    description: str
 
 class QueryRequest(BaseModel):
     sql_query: str
@@ -188,7 +193,8 @@ async def upload_csv(
             columns_info=dataset['columns_info'],
             upload_date=dataset['upload_date'].isoformat() if dataset['upload_date'] else None,
             file_size_bytes=dataset['file_size_bytes'],
-            table_name=dataset['table_name']
+            table_name=dataset['table_name'],
+            description=dataset.get('description')
         )
 
     except HTTPException:
@@ -217,7 +223,8 @@ async def list_datasets(
                 columns_info=ds['columns_info'],
                 upload_date=ds['upload_date'].isoformat() if ds['upload_date'] else None,
                 file_size_bytes=ds['file_size_bytes'],
-                table_name=ds['table_name']
+                table_name=ds['table_name'],
+                description=ds.get('description')
             )
             for ds in datasets
         ]
@@ -548,7 +555,8 @@ async def finalize_dataset(
             columns_info=dataset['columns_info'],
             upload_date=dataset['upload_date'].isoformat() if dataset['upload_date'] else None,
             file_size_bytes=dataset['file_size_bytes'],
-            table_name=dataset['table_name']
+            table_name=dataset['table_name'],
+            description=dataset.get('description')
         )
 
     except HTTPException:
@@ -557,6 +565,30 @@ async def finalize_dataset(
         # Clean up file on error
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{dataset_id}/description")
+async def update_dataset_description_endpoint(
+    dataset_id: str,
+    request: UpdateDescriptionRequest,
+    current_user_email: str = Depends(get_current_user)
+):
+    """Update a dataset's description"""
+    try:
+        dataset = get_dataset(dataset_id)
+        if not dataset:
+            raise HTTPException(status_code=404, detail="Dataset not found")
+        if dataset['user_id'] != current_user_email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        success = update_dataset_description(dataset_id, request.description)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update description")
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{dataset_id}", response_model=DatasetResponse)
@@ -584,7 +616,8 @@ async def get_dataset_info(
             columns_info=dataset['columns_info'],
             upload_date=dataset['upload_date'].isoformat() if dataset['upload_date'] else None,
             file_size_bytes=dataset['file_size_bytes'],
-            table_name=dataset['table_name']
+            table_name=dataset['table_name'],
+            description=dataset.get('description')
         )
 
     except HTTPException:

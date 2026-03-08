@@ -55,6 +55,11 @@ export default function DatasetDetails() {
   const [activeTab, setActiveTab] = useState('conversations');
   const [showInfoPanel, setShowInfoPanel] = useState(false);
 
+  // Description tab state
+  const [descriptionValue, setDescriptionValue] = useState('');
+  const [descriptionSaving, setDescriptionSaving] = useState(false);
+  const [descriptionDirty, setDescriptionDirty] = useState(false);
+
   // Conversations tab state
   const [conversationsView, setConversationsView] = useState('list');
   const [conversations, setConversations] = useState([]);
@@ -313,6 +318,27 @@ export default function DatasetDetails() {
     }
   };
 
+  const handleSaveDescription = async () => {
+    setDescriptionSaving(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.DATASETS.UPDATE_DESCRIPTION(datasetId), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ description: descriptionValue }),
+      });
+      if (!response.ok) throw new Error('Failed to save description');
+      setDescriptionDirty(false);
+      setDataset(prev => ({ ...prev, description: descriptionValue }));
+    } catch (err) {
+      console.error('Error saving description:', err);
+    } finally {
+      setDescriptionSaving(false);
+    }
+  };
+
   const handleNewChat = async () => {
     if (sqlSessionId) {
       await endSqlSession(sqlSessionId);
@@ -407,6 +433,7 @@ export default function DatasetDetails() {
 
       const metadata = await metadataResponse.json();
       setDataset(metadata);
+      setDescriptionValue(metadata.description || '');
 
       const previewResponse = await fetch(`${API_ENDPOINTS.DATASETS.PREVIEW(datasetId)}?limit=1000`, {
         headers: {
@@ -1041,6 +1068,13 @@ export default function DatasetDetails() {
           <Table size={16} />
           <span>Data Preview</span>
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'description' ? 'active' : ''}`}
+          onClick={() => setActiveTab('description')}
+        >
+          <FileText size={16} />
+          <span>Description</span>
+        </button>
       </nav>
 
       {/* Tab Content */}
@@ -1568,6 +1602,32 @@ export default function DatasetDetails() {
                 columnsInfo={dataset?.columns_info}
                 loading={loading}
                 error={error}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'description' && (
+          <div className="description-tab">
+            <div className="description-header">
+              <div className="description-title">
+                <FileText size={20} />
+                <h2>Dataset Description</h2>
+              </div>
+              <div className="description-actions">
+                {descriptionDirty && (
+                  <button className="desc-save-btn" onClick={handleSaveDescription} disabled={descriptionSaving}>
+                    {descriptionSaving ? <Loader2 size={14} className="spin" /> : <span>Save</span>}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="description-body">
+              <textarea
+                className="description-textarea"
+                value={descriptionValue}
+                onChange={(e) => { setDescriptionValue(e.target.value); setDescriptionDirty(true); }}
+                placeholder="Add a description for this dataset — what it contains, where it's from, what the columns mean..."
               />
             </div>
           </div>

@@ -34,6 +34,7 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `${API_BASE_URL}/datasets/${id}`,
     PREVIEW: (id) => `${API_BASE_URL}/datasets/${id}/preview`,
     STATS: (id) => `${API_BASE_URL}/datasets/${id}/stats`,
+    UPDATE_DESCRIPTION: (id) => `${API_BASE_URL}/datasets/${id}/description`,
     VALIDATION_CONFIG: `${API_BASE_URL}/datasets/validation/config`,
     // Dashboard / Saved Visualizations
     DASHBOARD: (id) => `${API_BASE_URL}/datasets/${id}/dashboard`,

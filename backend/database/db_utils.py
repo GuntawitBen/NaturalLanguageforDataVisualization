@@ -261,6 +261,21 @@ def get_user_datasets(user_id: str, include_deleted: bool = False) -> List[Dict]
         print(f"Error getting user datasets: {e}")
         return []
 
+def update_dataset_description(dataset_id: str, description: str) -> bool:
+    """Update a dataset's description"""
+    engine = get_db_engine()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                UPDATE datasets SET description = :description
+                WHERE dataset_id = :dataset_id AND is_deleted = FALSE
+            """), {"dataset_id": dataset_id, "description": description})
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Error updating dataset description: {e}")
+        return False
+
 def delete_dataset(dataset_id: str, hard_delete: bool = False) -> bool:
     """
     Delete a dataset (soft delete by default)
