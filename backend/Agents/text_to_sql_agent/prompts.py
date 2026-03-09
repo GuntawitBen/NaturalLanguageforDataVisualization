@@ -51,13 +51,14 @@ If they ask a NEW data question, generate SQL as normal.
 IMPORTANT — For statistical/correlation analysis questions, you MUST return an analysis_request instead of SQL.
 Do NOT attempt to write SQL for these — they require pandas-level analysis that SQL cannot express.
 
-Return analysis_request when the user asks about:
-- Which factor/column affects or impacts something most
-- Biggest/largest difference in a rate or metric
-- Correlation between two columns
-- What influences or predicts a metric
-- Comparing a metric across groups of a specific column
+Return analysis_request ONLY when the user asks about:
+- Which factor/column affects or impacts something most (across ALL columns, not a specific one)
+- Biggest/largest difference in a rate or metric (without specifying a specific grouping column)
+- Correlation between two NUMERIC columns (e.g., "correlation between age and fare")
+- What influences or predicts a metric (broad question, no specific column)
 - Most influential/important factor
+
+Do NOT return analysis_request when the user asks about a SPECIFIC column's effect on another (e.g., "how does sex affect survived", "show survived by pclass", "what is the survival rate by sex"). These should be answered with SQL using GROUP BY.
 
 Format:
 {{"analysis_request": {{"analysis_type": "factor_impact", "target_column": "column_name", "columns": null, "explanation": "What this analysis will reveal"}}}}
@@ -67,12 +68,18 @@ Analysis types:
 - "correlation": relationship between two specific numeric columns (returns scatter plot). Set columns to ["col1", "col2"]. target_column is null.
 - "group_comparison": breakdown of a target column by one specific grouping column (returns bar chart). Set target_column to the metric and columns to ["grouping_col"].
 
-EXAMPLES of analysis_request:
+EXAMPLES of analysis_request (broad questions, no specific column named):
 - "Which factor has the biggest difference in survival rate?" → {{"analysis_request": {{"analysis_type": "factor_impact", "target_column": "Survived", "columns": null, "explanation": "Analyzing which factors have the largest difference in survival rate across their groups"}}}}
 - "What is the correlation between age and fare?" → {{"analysis_request": {{"analysis_type": "correlation", "target_column": null, "columns": ["Age", "Fare"], "explanation": "Computing Pearson correlation between Age and Fare"}}}}
-- "How does survival rate differ by passenger class?" → {{"analysis_request": {{"analysis_type": "group_comparison", "target_column": "Survived", "columns": ["Pclass"], "explanation": "Breaking down survival rate for each passenger class"}}}}
+- "What are the most important features for survival?" → {{"analysis_request": {{"analysis_type": "factor_impact", "target_column": "Survived", "columns": null, "explanation": "Ranking all features by importance for survival prediction"}}}}
 
-When the user says "factor", "influence", "impact", "correlation", "biggest difference", or "most important" — ALWAYS use analysis_request, NEVER SQL.
+EXAMPLES that should use SQL (specific column named):
+- "How does sex affect survived?" → {{"sql": "SELECT Sex, COUNT(*) AS Total, SUM(Survived) AS Survived_Count, ROUND(AVG(Survived) * 100, 1) AS Survival_Rate FROM tablename GROUP BY Sex", "explanation": "Survival rate breakdown by sex"}}
+- "How does survival rate differ by passenger class?" → {{"sql": "SELECT Pclass, COUNT(*) AS Total, ROUND(AVG(Survived) * 100, 1) AS Survival_Rate FROM tablename GROUP BY Pclass ORDER BY Pclass", "explanation": "Survival rate for each passenger class"}}
+- "Does embarked port impact survival?" → {{"sql": "SELECT Embarked, COUNT(*) AS Total, ROUND(AVG(Survived) * 100, 1) AS Survival_Rate FROM tablename GROUP BY Embarked", "explanation": "Survival rate by embarkation port"}}
+
+When the user asks a BROAD question using words like "factor", "influence", "most important", "biggest difference", or "what predicts" WITHOUT specifying a particular column to group by — use analysis_request.
+When the user asks about a SPECIFIC column's relationship to another (e.g., "how does Sex affect Survived", "does Pclass impact survival") — generate SQL with GROUP BY instead.
 
 For conversational/advisory questions about the data (dataset summaries, overviews, explaining what the data contains, explaining results, analysis suggestions, asking why a chart type is suitable, describing columns or structure):
 {{"conversational": "Your helpful response here", "explanation": "Brief note on what was discussed"}}
