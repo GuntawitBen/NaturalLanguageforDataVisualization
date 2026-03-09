@@ -329,15 +329,16 @@ async def cleanup_temp_file(
         # Delete file if it exists
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
-            return {
-                "success": True,
-                "message": "Temporary file deleted successfully"
-            }
-        else:
-            return {
-                "success": True,
-                "message": "File already deleted or does not exist"
-            }
+
+        # Also delete sidecar types file if it exists
+        sidecar_path = f"{temp_file_path}.types.json"
+        if os.path.exists(sidecar_path):
+            os.remove(sidecar_path)
+
+        return {
+            "success": True,
+            "message": "Temporary file deleted successfully"
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting temp file: {str(e)}")
@@ -425,6 +426,7 @@ async def confirm_headers(
     temp_file_path: str = Form(...),
     headers: str = Form(...),       # JSON array of header names
     has_header: bool = Form(True),
+    column_types: Optional[str] = Form(None),  # JSON dict {col_name: dtype}
     current_user_email: str = Depends(get_current_user)
 ):
     """
@@ -486,6 +488,21 @@ async def confirm_headers(
                 df.columns = sanitized
                 df.to_csv(temp_file_path, index=False, encoding='utf-8')
 
+        # Save column type overrides as sidecar JSON file
+        if column_types:
+            try:
+                types_dict = json.loads(column_types)
+                if isinstance(types_dict, dict) and types_dict:
+                    # Re-key using sanitized column names to stay in sync
+                    sanitized_types = {}
+                    for orig_name, dtype in types_dict.items():
+                        sanitized_types[sanitize_column_name(orig_name)] = dtype
+                    sidecar_path = f"{temp_file_path}.types.json"
+                    with open(sidecar_path, 'w') as f:
+                        json.dump(sanitized_types, f)
+            except (json.JSONDecodeError, TypeError):
+                pass  # Non-critical — ignore malformed column_types
+
         return {
             "success": True,
             "sanitized_headers": sanitized
@@ -522,7 +539,19 @@ async def finalize_dataset(
     # Parse tags
     tag_list = [tag.strip() for tag in tags.split(',')] if tags else []
 
+    sidecar_path = f"{temp_file_path}.types.json"
+
     try:
+        # Load column type overrides from sidecar file if present
+        import json as _json
+        column_types = None
+        if os.path.exists(sidecar_path):
+            try:
+                with open(sidecar_path, 'r') as f:
+                    column_types = _json.load(f)
+            except Exception:
+                column_types = None
+
         # Create dataset in database
         dataset_id = create_dataset(
             user_id=current_user_email,
@@ -530,7 +559,8 @@ async def finalize_dataset(
             original_filename=original_filename,
             file_path=temp_file_path,
             description=description,
-            tags=tag_list
+            tags=tag_list,
+            column_types=column_types
         )
 
         if not dataset_id:
@@ -542,9 +572,11 @@ async def finalize_dataset(
         # Get dataset metadata
         dataset = get_dataset(dataset_id)
 
-        # Clean up temp file (data is now in MySQL)
+        # Clean up temp file and sidecar (data is now in MySQL)
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+        if os.path.exists(sidecar_path):
+            os.remove(sidecar_path)
 
         return DatasetResponse(
             dataset_id=dataset['dataset_id'],
@@ -562,9 +594,11 @@ async def finalize_dataset(
     except HTTPException:
         raise
     except Exception as e:
-        # Clean up file on error
+        # Clean up file and sidecar on error
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+        if os.path.exists(sidecar_path):
+            os.remove(sidecar_path)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{dataset_id}/description")

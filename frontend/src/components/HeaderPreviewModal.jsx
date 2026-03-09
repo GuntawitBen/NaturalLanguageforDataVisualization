@@ -3,6 +3,24 @@ import { X, Info, FileSpreadsheet } from 'lucide-react';
 import { API_ENDPOINTS } from '../config';
 import './HeaderPreviewModal.css';
 
+const TYPE_OPTIONS = [
+  { label: 'text',    dtype: 'object' },
+  { label: 'integer', dtype: 'Int64' },
+  { label: 'decimal', dtype: 'float64' },
+  { label: 'boolean', dtype: 'bool' },
+  { label: 'date',    dtype: 'datetime64[ns]' },
+];
+
+function pandasDtypeToDropdownValue(rawDtype) {
+  const d = rawDtype.toLowerCase();
+  if (d === 'object' || d === 'string')          return 'object';
+  if (d.startsWith('int'))                       return 'Int64';
+  if (d.startsWith('float') || d === 'double')   return 'float64';
+  if (d === 'bool' || d === 'boolean')            return 'bool';
+  if (d.startsWith('datetime'))                   return 'datetime64[ns]';
+  return 'object'; // fallback
+}
+
 export default function HeaderPreviewModal({
   open,
   onConfirm,
@@ -19,6 +37,7 @@ export default function HeaderPreviewModal({
   const [dataRows, setDataRows] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
   const [editedHeaders, setEditedHeaders] = useState([]);
+  const [editedTypes, setEditedTypes] = useState([]);
   const [confirming, setConfirming] = useState(false);
 
   const fetchPreview = useCallback(async () => {
@@ -50,6 +69,9 @@ export default function HeaderPreviewModal({
       setDataRows(data.data || []);
       setTotalRows(data.row_count || 0);
       setEditedHeaders(data.columns || []);
+      setEditedTypes(
+        (data.columns_info || []).map(ci => pandasDtypeToDropdownValue(ci.type))
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,16 +93,31 @@ export default function HeaderPreviewModal({
     });
   };
 
+  const handleTypeChange = (index, value) => {
+    setEditedTypes(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
   const handleConfirm = async () => {
     setConfirming(true);
     setError(null);
 
     try {
+      // Build column_types dict: {col_name: dtype}
+      const columnTypes = {};
+      editedHeaders.forEach((header, i) => {
+        if (editedTypes[i]) columnTypes[header] = editedTypes[i];
+      });
+
       // Always call confirm-headers to sanitize
       const formData = new FormData();
       formData.append('temp_file_path', tempFilePath);
       formData.append('headers', JSON.stringify(editedHeaders));
       formData.append('has_header', String(hasHeader));
+      formData.append('column_types', JSON.stringify(columnTypes));
 
       const response = await fetch(API_ENDPOINTS.DATASETS.CONFIRM_HEADERS, {
         method: 'POST',
@@ -164,7 +201,17 @@ export default function HeaderPreviewModal({
                     <td className="row-num"></td>
                     {columnsInfo.map((col, i) => (
                       <td key={i}>
-                        <span className="type-badge">{col.type}</span>
+                        <select
+                          className="type-select"
+                          value={editedTypes[i] || 'object'}
+                          onChange={e => handleTypeChange(i, e.target.value)}
+                        >
+                          {TYPE_OPTIONS.map(opt => (
+                            <option key={opt.dtype} value={opt.dtype}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     ))}
                   </tr>

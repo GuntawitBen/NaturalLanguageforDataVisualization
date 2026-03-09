@@ -69,7 +69,8 @@ def create_dataset(
     file_path: str,
     description: str = None,
     tags: List[str] = None,
-    extract_stats: bool = False
+    extract_stats: bool = False,
+    column_types: Dict[str, str] = None
 ) -> Optional[str]:
     """
     Create a new dataset by importing CSV file
@@ -93,6 +94,36 @@ def create_dataset(
     try:
         # 1. Read CSV file using pandas
         df = pd.read_csv(file_path)
+
+        # 1b. Apply user-specified column type overrides
+        if column_types:
+            for col, dtype in column_types.items():
+                if col not in df.columns:
+                    continue
+                try:
+                    if dtype == 'object':
+                        df[col] = df[col].astype(str).replace('nan', None)
+                    elif dtype == 'Int64':
+                        df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+                    elif dtype == 'float64':
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                    elif dtype == 'bool':
+                        truthy = {'true', 'yes', '1', 't', 'y'}
+                        falsy = {'false', 'no', '0', 'f', 'n'}
+                        def _to_bool(v):
+                            if pd.isna(v):
+                                return None
+                            s = str(v).strip().lower()
+                            if s in truthy:
+                                return True
+                            if s in falsy:
+                                return False
+                            return None
+                        df[col] = df[col].map(_to_bool).astype('object')
+                    elif dtype == 'datetime64[ns]':
+                        df[col] = pd.to_datetime(df[col], errors='coerce')
+                except Exception as conv_err:
+                    print(f"[WARNING] Column type conversion failed for '{col}' -> {dtype}: {conv_err}")
 
         # 2. Create dynamic table using pandas to_sql
         df.to_sql(
