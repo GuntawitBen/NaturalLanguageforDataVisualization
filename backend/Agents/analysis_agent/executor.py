@@ -47,7 +47,7 @@ def _prepare_features(df: pd.DataFrame, target_col: str) -> tuple:
     # Encode categorical/object columns via label encoding
     encoded_col_names = []
     for col in feature_cols:
-        if working[col].dtype == 'object' or working[col].dtype.name == 'category':
+        if not pd.api.types.is_numeric_dtype(working[col]):
             # Label encode — NaN gets its own code
             working[col] = working[col].astype('category').cat.codes
         encoded_col_names.append(col)

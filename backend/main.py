@@ -68,7 +68,7 @@ except Exception as e:
     test_db_connection = None
     get_db_status = lambda: (False, "Database module failed to import")
 
-load_dotenv()
+load_dotenv(override=False)
 print("Environment Variables Check:")
 print(f"SECRET_KEY: {'Loaded' if os.getenv('SECRET_KEY') else 'NOT FOUND'}")
 print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT FOUND'}")

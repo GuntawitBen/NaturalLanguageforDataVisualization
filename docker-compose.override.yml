@@ -1,6 +1,6 @@
 # Docker Compose Override for Local Development
 # This file is automatically merged with docker-compose.yml when you run:
-#   docker-compose up
+#   docker compose up
 #
 # It mounts your local code as volumes for hot-reloading
 
@@ -8,7 +8,7 @@ services:
   mysql:
     # Health check to ensure MySQL is ready before backend starts
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -34,8 +34,6 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
       - FRONTEND_URL=http://localhost:5173
-      # No SSL for local MySQL
-      # MYSQL_SSL_MODE is NOT set
     depends_on:
       mysql:
         condition: service_healthy
