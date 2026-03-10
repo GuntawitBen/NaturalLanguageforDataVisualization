@@ -156,6 +156,28 @@ async def upload_csv(
             for warning in validation_result["warnings"]:
                 print(f"  - {warning}")
 
+        # --- Indirect Injection Guard (scan CSV content) ---
+        try:
+            import pandas as pd
+            from safety import check_data_content
+            df_sample = pd.read_csv(file_path, nrows=50)
+            # Build a string of column names + sample cell values to scan
+            content_to_scan = " ".join(df_sample.columns.tolist())
+            for col in df_sample.columns:
+                content_to_scan += " " + " ".join(df_sample[col].astype(str).tolist())
+            guard_result = await check_data_content(content_to_scan)
+            if not guard_result.is_safe:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(
+                    status_code=400,
+                    detail=guard_result.message or "Suspicious content detected in your CSV data."
+                )
+        except HTTPException:
+            raise
+        except Exception as guard_err:
+            print(f"[WARNING] Data content check failed (proceeding): {guard_err}")
+
         # Create dataset in database
         dataset_id = create_dataset(
             user_id=current_user_email,
@@ -275,6 +297,27 @@ async def upload_csv_temp(
             # Return validation errors
             error_message = "CSV validation failed:\n" + "\n".join(validation_result["errors"])
             raise HTTPException(status_code=400, detail=error_message)
+
+        # --- Indirect Injection Guard (scan CSV content) ---
+        try:
+            import pandas as pd
+            from safety import check_data_content
+            df_sample = pd.read_csv(file_path, nrows=50)
+            content_to_scan = " ".join(df_sample.columns.tolist())
+            for col in df_sample.columns:
+                content_to_scan += " " + " ".join(df_sample[col].astype(str).tolist())
+            guard_result = await check_data_content(content_to_scan)
+            if not guard_result.is_safe:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(
+                    status_code=400,
+                    detail=guard_result.message or "Suspicious content detected in your CSV data."
+                )
+        except HTTPException:
+            raise
+        except Exception as guard_err:
+            print(f"[WARNING] Data content check failed (proceeding): {guard_err}")
 
         # Get file size
         file_size = os.path.getsize(file_path)

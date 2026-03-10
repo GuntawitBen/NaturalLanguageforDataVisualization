@@ -112,10 +112,11 @@ async def chat(
     Send a chat message to generate SQL and get results.
 
     This endpoint:
-    1. Generates SQL from the natural language question
-    2. Executes the SQL on the dataset
-    3. Returns the SQL query and results
-    4. Handles errors with automatic retry (1 attempt)
+    1. Checks user input for prompt injection via Guardrails AI
+    2. Generates SQL from the natural language question
+    3. Executes the SQL on the dataset
+    4. Returns the SQL query and results
+    5. Handles errors with automatic retry (1 attempt)
 
     Args:
         request: ChatRequest with session_id and message
@@ -125,6 +126,22 @@ async def chat(
         ChatResponse with status, message, sql_query, results, etc.
     """
     try:
+        # --- Prompt Injection Guard ---
+        try:
+            from safety import check_input
+            guardrail_result = await check_input(request.message)
+            if not guardrail_result.is_safe:
+                return ChatResponse(
+                    status="blocked",
+                    message=guardrail_result.message
+                    or "Your message was blocked by our safety filters. Please ask a data-related question."
+                )
+        except ImportError:
+            # Guardrails module not available, proceed without check
+            pass
+        except Exception as guard_err:
+            print(f"[WARNING] Guardrails check failed (proceeding): {guard_err}")
+
         response = text_to_sql_agent.chat(
             session_id=request.session_id,
             message=request.message
