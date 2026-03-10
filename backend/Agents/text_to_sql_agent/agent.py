@@ -442,6 +442,24 @@ class TextToSQLAgent:
             # Use normalized SQL if available
             sql_query = validation_result.normalized_sql
 
+        # SQL Safety Guard — block dangerous operations before execution
+        try:
+            from safety.guardrails_service import _get_sql_validator
+            from guardrails.validator_base import PassResult as _PassResult
+            sql_check = _get_sql_validator().validate(sql_query)
+            if not isinstance(sql_check, _PassResult):
+                error_msg = "The generated query contains unsafe SQL operations. Only SELECT queries are allowed."
+                session_manager.add_message(session_id, "assistant", error_msg, sql_query)
+                return ChatResponse(
+                    status="blocked",
+                    message=error_msg,
+                    sql_query=sql_query,
+                )
+        except ImportError:
+            pass
+        except Exception as guard_err:
+            print(f"[WARNING] SQL safety check failed (proceeding): {guard_err}")
+
         # Execute SQL query
         result = self._execute_sql(session.dataset_id, sql_query)
 

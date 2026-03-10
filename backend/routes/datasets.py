@@ -11,6 +11,8 @@ import tempfile
 import shutil
 from datetime import datetime
 
+import pandas as pd
+
 from Auth.firebase_auth import verify_firebase_token, get_firebase_user_email
 from Auth.Auth_utils import get_current_user
 from database import (
@@ -69,6 +71,32 @@ class QueryResponse(BaseModel):
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
+async def scan_csv_for_injection(file_path: str) -> None:
+    """
+    Scan CSV content for indirect prompt injection.
+    Raises HTTPException if suspicious content is found.
+    Fails open (logs warning) if the check itself errors.
+    """
+    try:
+        from safety import check_data_content
+        df_sample = pd.read_csv(file_path, nrows=50)
+        content_to_scan = " ".join(df_sample.columns.tolist())
+        for col in df_sample.columns:
+            content_to_scan += " " + " ".join(df_sample[col].astype(str).tolist())
+        guard_result = await check_data_content(content_to_scan)
+        if not guard_result.is_safe:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            raise HTTPException(
+                status_code=400,
+                detail=guard_result.message or "Suspicious content detected in your CSV data."
+            )
+    except HTTPException:
+        raise
+    except Exception as guard_err:
+        print(f"[WARNING] Data content check failed (proceeding): {guard_err}")
+
 
 def validate_upload_file(file: UploadFile) -> bool:
     """Validate uploaded file is a CSV"""
@@ -160,6 +188,9 @@ async def upload_csv(
             print(f"[WARNING] CSV validation warnings for {file.filename}:")
             for warning in validation_result["warnings"]:
                 print(f"  - {warning}")
+
+        # --- Indirect Injection Guard (scan CSV content) ---
+        await scan_csv_for_injection(file_path)
 
         # Create dataset in database
         dataset_id = create_dataset(
@@ -283,6 +314,9 @@ async def upload_csv_temp(
             # Return validation errors
             error_message = "CSV validation failed:\n" + "\n".join(validation_result["errors"])
             raise HTTPException(status_code=400, detail=error_message)
+
+        # --- Indirect Injection Guard (scan CSV content) ---
+        await scan_csv_for_injection(file_path)
 
         # Get file size
         file_size = os.path.getsize(file_path)
