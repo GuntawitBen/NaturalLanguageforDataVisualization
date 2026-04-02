@@ -31,11 +31,6 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 ### Data Cleaning Agent
 ![Data Cleaning Panel](./docs/images/cleaning.png)
 
-### Conversation History
-![History View](./docs/images/history.png)
-
-> **Note:** To add screenshots, create a `docs/images/` folder in the project root and add your screenshots there.
-
 ## Tech Stack
 
 ### Frontend
