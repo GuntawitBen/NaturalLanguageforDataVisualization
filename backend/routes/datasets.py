@@ -576,6 +576,9 @@ async def finalize_dataset(
     sidecar_path = f"{temp_file_path}.types.json"
 
     try:
+        # --- Indirect Injection Guard (scan CSV content before saving) ---
+        await scan_csv_for_injection(temp_file_path)
+
         # Load column type overrides from sidecar file if present
         import json as _json
         column_types = None
