@@ -16,19 +16,19 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 
 ## Screenshots
 
-### Dashboard Home
+### Home Page
 ![Dashboard Preview](./docs/images/dashboard.png)
 
-### CSV Upload & Data Exploration
+### CSV Upload
 ![CSV Upload Interface](./docs/images/upload.png)
 
 ### Natural Language Query
 ![Query Interface](./docs/images/query-example.png)
 
-### Interactive Visualizations
+### Visualizations & Dashboard
 ![Chart Visualization](./docs/images/visualizations.png)
 
-### Data Cleaning Agent
+### Automated Data Cleaning
 ![Data Cleaning Panel](./docs/images/cleaning.png)
 
 ## Tech Stack
