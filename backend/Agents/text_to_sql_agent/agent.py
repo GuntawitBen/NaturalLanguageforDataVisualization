@@ -2,6 +2,7 @@
 Main Text-to-SQL Agent orchestrator.
 """
 
+import logging
 from typing import Optional, Dict, Any, List, Union
 
 from .models import (
@@ -19,6 +20,8 @@ from ..chart_rec_agent import chart_rec_agent
 from ..analysis_agent import analysis_agent
 
 from database.db_utils import get_dataset, query_dataset, get_dataset_dataframe
+
+logger = logging.getLogger(__name__)
 
 
 class TextToSQLAgent:
@@ -57,8 +60,8 @@ class TextToSQLAgent:
         # Generate proactive intro and recommendations
         intro_message, recommendations = self._generate_proactive_intro(schema)
 
-        print(f"[AGENT] Started session {session.session_id} for dataset {dataset_id}")
-        print(f"[AGENT] Schema: {len(schema.columns)} columns, {schema.row_count:,} rows")
+        logger.info(f"Started session {session.session_id} for dataset {dataset_id}")
+        logger.info(f"Schema: {len(schema.columns)} columns, {schema.row_count:,} rows")
 
         # Save the intro message to conversation history with recommendations
         # Wrap in try-catch to prevent breaking session start if persistence fails
@@ -74,7 +77,7 @@ class TextToSQLAgent:
                     visualization_recommendations=intro_data
                 )
             except Exception as e:
-                print(f"[AGENT] Warning: Failed to persist intro message: {e}")
+                logger.warning(f"Failed to persist intro message: {e}")
 
         return StartSessionResponse(
             session_id=session.session_id,
@@ -96,10 +99,10 @@ class TextToSQLAgent:
         try:
             intro, recommendations = self.openai_client.generate_proactive_intro(schema)
             if intro and recommendations:
-                print(f"[AGENT] Generated proactive intro with {len(recommendations)} suggestions")
+                logger.info(f"Generated proactive intro with {len(recommendations)} suggestions")
                 return intro, recommendations
         except Exception as e:
-            print(f"[AGENT] Failed to generate proactive intro: {e}")
+            logger.error(f"Failed to generate proactive intro: {e}")
 
         # Fallback - return empty values
         return "", []
@@ -268,7 +271,7 @@ class TextToSQLAgent:
             )
 
         except Exception as e:
-            print(f"[AGENT] Analysis failed: {type(e).__name__}: {e}")
+            logger.error(f"Analysis failed: {type(e).__name__}: {e}")
             error_msg = f"Analysis failed: {str(e)}"
             session_manager.add_message(session_id, "assistant", error_msg)
             return ChatResponse(status="error", message=error_msg)
@@ -311,7 +314,7 @@ class TextToSQLAgent:
         if not session:
             raise ValueError(f"Failed to restore session: {session_id}")
 
-        print(f"[AGENT] Resumed session {session_id} with {len(session.messages)} messages")
+        logger.info(f"Resumed session {session_id} with {len(session.messages)} messages")
 
         return StartSessionResponse(
             session_id=session.session_id,
@@ -458,7 +461,7 @@ class TextToSQLAgent:
         except ImportError:
             pass
         except Exception as guard_err:
-            print(f"[WARNING] SQL safety check failed (proceeding): {guard_err}")
+            logger.warning(f"SQL safety check failed (proceeding): {guard_err}")
 
         # Execute SQL query
         result = self._execute_sql(session.dataset_id, sql_query)
@@ -626,7 +629,7 @@ class TextToSQLAgent:
         if max_retries <= 0:
             return None
 
-        print(f"[AGENT] Attempting to fix SQL error: {error_message}")
+        logger.info(f"Attempting to fix SQL error: {error_message}")
 
         # Ask GPT to fix the SQL
         fix_response = self.openai_client.fix_sql_error(
@@ -636,7 +639,7 @@ class TextToSQLAgent:
         )
 
         if fix_response.error or not fix_response.sql:
-            print(f"[AGENT] Failed to fix SQL: {fix_response.error}")
+            logger.info(f"Failed to fix SQL: {fix_response.error}")
             return None
 
         fixed_sql = fix_response.sql
@@ -645,7 +648,7 @@ class TextToSQLAgent:
         result = self._execute_sql(session.dataset_id, fixed_sql)
 
         if not result["success"]:
-            print(f"[AGENT] Fixed SQL also failed: {result['error']}")
+            logger.info(f"Fixed SQL also failed: {result['error']}")
             return None
 
         # Success with fixed SQL
@@ -741,7 +744,7 @@ class TextToSQLAgent:
                 full_msg = f"{error_msg} {suggestion}"
 
                 # Try to auto-fix by asking GPT to regenerate with correct column names
-                print(f"[AGENT] Attempting to auto-fix column error: {error_msg}")
+                logger.info(f"Attempting to auto-fix column error: {error_msg}")
                 fix_hint = f"The column might be misspelled. Valid columns are: {', '.join([col.name for col in session.schema.columns])}"
 
                 fix_response = self.openai_client.fix_sql_error(
@@ -755,7 +758,7 @@ class TextToSQLAgent:
                     fixed_validation = self._validate_sql(fix_response.sql, session.schema)
                     if fixed_validation.is_valid:
                         # Return the fixed SQL to use
-                        print(f"[AGENT] Auto-fixed SQL: {fix_response.sql}")
+                        logger.info(f"Auto-fixed SQL: {fix_response.sql}")
                         return fixed_validation.normalized_sql or fix_response.sql
             else:
                 full_msg = error_msg
@@ -906,7 +909,7 @@ class TextToSQLAgent:
             )
             return result
         except Exception as e:
-            print(f"[AGENT] Failed to generate follow-up suggestions: {e}")
+            logger.error(f"Failed to generate follow-up suggestions: {e}")
             return {"intro_message": "", "suggestions": []}
 
 

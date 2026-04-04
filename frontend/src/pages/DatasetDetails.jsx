@@ -664,7 +664,7 @@ export default function DatasetDetails() {
       }
 
       const data = await response.json();
-      console.log('[DEBUG] Chat response data:', JSON.stringify({ status: data.status, sql_query: data.sql_query, has_results: !!data.results, has_columns: !!data.columns }));
+
 
       if (data.status === 'recommendations' && data.recommendations) {
         setSqlMessages(prev => [...prev, {

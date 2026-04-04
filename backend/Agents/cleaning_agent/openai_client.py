@@ -2,6 +2,7 @@
 OpenAI API client for generating cleaning option recommendations.
 """
 
+import logging
 from openai import OpenAI, RateLimitError
 import json
 import time
@@ -12,6 +13,8 @@ from typing import List, Optional, Tuple
 from .models import Problem, CleaningOption, DatasetStats
 from .prompts import generate_recommendation_prompt
 from .config import OPENAI_CONFIG, RECOMMENDATION_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 class CleaningOpenAIClient:
@@ -81,21 +84,21 @@ class CleaningOpenAIClient:
 
                 # If this is the last attempt, raise the error
                 if attempt >= max_retries:
-                    print(f"[WARNING] Rate limit exceeded after {max_retries} retries.")
+                    logger.warning(f"Rate limit exceeded after {max_retries} retries.")
                     raise
 
                 # Parse retry_after from error message
                 retry_after = self._parse_retry_after(error_msg)
                 backoff = min(retry_after, 2 ** attempt)
 
-                print(f"[WARNING] Rate limit hit (attempt {attempt + 1}/{max_retries + 1}). "
+                logger.warning(f"Rate limit hit (attempt {attempt + 1}/{max_retries + 1}). "
                       f"Waiting {backoff:.1f}s before retry...")
 
                 time.sleep(backoff)
 
             except Exception as e:
                 last_error = e
-                print(f"[ERROR] OpenAI API call failed: {type(e).__name__}: {str(e)}")
+                logger.error(f"OpenAI API call failed: {type(e).__name__}: {str(e)}")
                 raise
 
         # Should never reach here, but just in case
@@ -171,14 +174,14 @@ class CleaningOpenAIClient:
             if response.usage:
                 prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
                 cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
-                print(f"[GPT] Token usage - Input: {response.usage.prompt_tokens}, "
+                logger.info(f"Token usage - Input: {response.usage.prompt_tokens}, "
                       f"Output: {response.usage.completion_tokens}, "
                       f"Cached: {cached_tokens}")
 
             # Parse response
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content")
+                logger.warning("GPT returned empty content")
                 return None, None
 
             # Handle potential markdown code blocks
@@ -196,13 +199,13 @@ class CleaningOpenAIClient:
             # Validate recommended_id exists in options
             option_ids = [opt.option_id for opt in options]
             if recommended_id not in option_ids:
-                print(f"[WARNING] GPT recommended invalid option_id: {recommended_id}")
-                print(f"[INFO] Valid option IDs: {option_ids}")
+                logger.warning(f"GPT recommended invalid option_id: {recommended_id}")
+                logger.info(f"Valid option IDs: {option_ids}")
                 return None, None
 
             return recommended_id, reason
 
         except Exception as e:
             # Fail silently - return None, None
-            print(f"[WARNING] Failed to generate GPT recommendation: {type(e).__name__}: {str(e)}")
+            logger.warning(f"Failed to generate GPT recommendation: {type(e).__name__}: {str(e)}")
             return None, None

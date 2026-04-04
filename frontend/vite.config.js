@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ['nlviz-frontend-s2jig.ondigitalocean.app']
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS
+      ? process.env.VITE_ALLOWED_HOSTS.split(',')
+      : ['localhost']
   }
 })

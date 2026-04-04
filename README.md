@@ -17,19 +17,34 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 ## Screenshots
 
 ### Home Page
-![Dashboard Preview](./docs/images/dashboard.png)
+![Home Page](./docs/images/homePage.png)
 
-### CSV Upload
-![CSV Upload Interface](./docs/images/upload.png)
+### Login Page
+![Login Page](./docs/images/loginPage.png)
 
-### Natural Language Query
-![Query Interface](./docs/images/query-example.png)
+### Register Page
+![Register Page](./docs/images/registerPage.png)
 
-### Visualizations & Dashboard
-![Chart Visualization](./docs/images/visualizations.png)
+### Datasets Page
+![Datasets Page](./docs/images/datasetsPage.png)
 
-### Automated Data Cleaning
-![Data Cleaning Panel](./docs/images/cleaning.png)
+### Dataset Details
+![Dataset Details](./docs/images/datasetDetails.png)
+
+### Dashboard
+![Dashboard](./docs/images/dashboardPage.png)
+
+### Uploading a Dataset
+![Uploading a Dataset](./docs/images/uploadingPage.png)
+
+### Conversation Page
+![Conversation Page](./docs/images/conversationPage.png)
+
+### Correlation Analysis
+![Correlation Analysis](./docs/images/correlationPage.png)
+
+### Data Cleaning
+![Data Cleaning](./docs/images/cleaningPage.png)
 
 ## Tech Stack
 
@@ -206,4 +221,4 @@ Full interactive documentation is available at `/docs` when the backend is runni
 | `npm run dev` | Start development server with hot reload |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build locally |
-| `npm run lint` | Run ESLint |
+| `npm run lint` | Run ESLint |                                                                                                                                                                                                                                                                                                        

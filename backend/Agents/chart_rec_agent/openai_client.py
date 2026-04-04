@@ -2,12 +2,15 @@
 OpenAI client for the Chart Recommendation agent.
 """
 
+import logging
 import os
 import json
 import openai
 from typing import List, Dict, Any, Optional
 from .models import VisualizationResponse, ChartRecommendation
 from .prompts import CHART_REC_SYSTEM_PROMPT, CHART_REC_USER_PROMPT_TEMPLATE
+
+logger = logging.getLogger(__name__)
 
 class ChartRecOpenAIClient:
     """Client for interacting with OpenAI for chart recommendations"""
@@ -16,8 +19,8 @@ class ChartRecOpenAIClient:
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.model = os.getenv("OPENAI_MODEL", "gpt-5.2")
         if not self.api_key:
-            print("[WARNING] OPENAI_API_KEY not found in environment")
-        
+            logger.warning("OPENAI_API_KEY not found in environment")
+
         self.client = openai.OpenAI(api_key=self.api_key)
 
     def recommend_charts(
@@ -63,7 +66,7 @@ Configure x_axis, y_axis, and color_by optimally for this chart type with this d
 
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content for chart recommendation")
+                logger.warning("GPT returned empty content for chart recommendation")
                 return VisualizationResponse(recommendations=[], summary="Empty response from AI")
 
             # Handle potential markdown code blocks
@@ -78,7 +81,7 @@ Configure x_axis, y_axis, and color_by optimally for this chart type with this d
             return VisualizationResponse(**data)
 
         except Exception as e:
-            print(f"[ERROR] Chart recommendation failed: {e}")
+            logger.error(f"Chart recommendation failed: {e}")
             return VisualizationResponse(
                 recommendations=[],
                 summary=f"Failed to generate recommendations: {str(e)}"

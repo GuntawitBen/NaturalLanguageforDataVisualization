@@ -2,6 +2,7 @@
 OpenAI API client for SQL generation.
 """
 
+import logging
 from openai import OpenAI, RateLimitError
 import json
 import time
@@ -12,6 +13,8 @@ from typing import Optional, List, Dict, Any
 from .models import SchemaContext, Message, GPTSQLResponse
 from .prompts import build_system_prompt, build_user_prompt, FOLLOW_UP_SUGGESTIONS_PROMPT
 from .config import OPENAI_CONFIG, RATE_LIMIT_CONFIG
+
+logger = logging.getLogger(__name__)
 
 
 class TextToSQLOpenAIClient:
@@ -81,7 +84,7 @@ class TextToSQLOpenAIClient:
 
                 # If this is the last attempt, raise the error
                 if attempt >= max_retries:
-                    print(f"[WARNING] Rate limit exceeded after {max_retries} retries.")
+                    logger.warning(f"Rate limit exceeded after {max_retries} retries.")
                     raise
 
                 # Parse retry_after from error message
@@ -92,14 +95,14 @@ class TextToSQLOpenAIClient:
                 )
                 backoff = min(backoff, RATE_LIMIT_CONFIG["max_delay"])
 
-                print(f"[WARNING] Rate limit hit (attempt {attempt + 1}/{max_retries + 1}). "
+                logger.warning(f"Rate limit hit (attempt {attempt + 1}/{max_retries + 1}). "
                       f"Waiting {backoff:.1f}s before retry...")
 
                 time.sleep(backoff)
 
             except Exception as e:
                 last_error = e
-                print(f"[ERROR] OpenAI API call failed: {type(e).__name__}: {str(e)}")
+                logger.error(f"OpenAI API call failed: {type(e).__name__}: {str(e)}")
                 raise
 
         # Should never reach here, but just in case
@@ -118,7 +121,7 @@ class TextToSQLOpenAIClient:
         """
         # Guard against None or empty responses from GPT
         if not content or not content.strip():
-            print("[WARNING] GPT returned empty or None response")
+            logger.warning("GPT returned empty or None response")
             return GPTSQLResponse(
                 error="Received empty response from AI. Please try again."
             )
@@ -147,8 +150,8 @@ class TextToSQLOpenAIClient:
             )
 
         except json.JSONDecodeError as e:
-            print(f"[WARNING] Failed to parse GPT response as JSON: {e}")
-            print(f"[DEBUG] Raw content: {content[:500]}")
+            logger.warning(f"Failed to parse GPT response as JSON: {e}")
+            logger.debug(f"Raw content: {content[:500]}")
 
             # Try to extract SQL if present in non-JSON format
             sql_match = re.search(r'SELECT\s+.+?(?:;|$)', content, re.IGNORECASE | re.DOTALL)
@@ -203,19 +206,19 @@ class TextToSQLOpenAIClient:
             if response.usage:
                 prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
                 cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
-                print(f"[GPT] Token usage - Input: {response.usage.prompt_tokens}, "
+                logger.info(f"Token usage - Input: {response.usage.prompt_tokens}, "
                       f"Output: {response.usage.completion_tokens}, "
                       f"Cached: {cached_tokens}")
 
             # Parse response
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content for SQL generation")
+                logger.warning("GPT returned empty content for SQL generation")
                 return GPTSQLResponse(error="Received empty response from AI. Please try again.")
             return self._parse_gpt_response(content)
 
         except Exception as e:
-            print(f"[ERROR] Failed to generate SQL: {type(e).__name__}: {str(e)}")
+            logger.error(f"Failed to generate SQL: {type(e).__name__}: {str(e)}")
             return GPTSQLResponse(
                 error=f"Failed to generate SQL: {str(e)}"
             )
@@ -275,14 +278,14 @@ The intro_message should only describe the data. The recommendations will be dis
             if response.usage:
                 prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
                 cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
-                print(f"[GPT] Proactive intro token usage - Input: {response.usage.prompt_tokens}, "
+                logger.info(f"Proactive intro token usage - Input: {response.usage.prompt_tokens}, "
                       f"Output: {response.usage.completion_tokens}, "
                       f"Cached: {cached_tokens}")
 
             # Parse response
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content for proactive intro")
+                logger.warning("GPT returned empty content for proactive intro")
                 return "", []
             parsed = self._parse_gpt_response(content)
 
@@ -307,7 +310,7 @@ The intro_message should only describe the data. The recommendations will be dis
             return intro, recommendations
 
         except Exception as e:
-            print(f"[ERROR] Failed to generate proactive intro: {type(e).__name__}: {str(e)}")
+            logger.error(f"Failed to generate proactive intro: {type(e).__name__}: {str(e)}")
             return "", []
 
     def fix_sql_error(
@@ -353,12 +356,12 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
 
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content for SQL fix")
+                logger.warning("GPT returned empty content for SQL fix")
                 return GPTSQLResponse(error="Received empty response from AI. Please try again.")
             return self._parse_gpt_response(content)
 
         except Exception as e:
-            print(f"[ERROR] Failed to fix SQL: {type(e).__name__}: {str(e)}")
+            logger.error(f"Failed to fix SQL: {type(e).__name__}: {str(e)}")
             return GPTSQLResponse(
                 error=f"Failed to fix SQL: {str(e)}"
             )
@@ -419,14 +422,14 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
             if response.usage:
                 prompt_details = getattr(response.usage, 'prompt_tokens_details', None)
                 cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
-                print(f"[GPT] Follow-up suggestions token usage - Input: {response.usage.prompt_tokens}, "
+                logger.info(f"Follow-up suggestions token usage - Input: {response.usage.prompt_tokens}, "
                       f"Output: {response.usage.completion_tokens}, "
                       f"Cached: {cached_tokens}")
 
             # Parse response
             content = response.choices[0].message.content
             if not content:
-                print("[WARNING] GPT returned empty content for follow-up suggestions")
+                logger.warning("GPT returned empty content for follow-up suggestions")
                 return {"intro_message": "", "suggestions": []}
             content = content.strip()
 
@@ -445,15 +448,15 @@ Please fix the SQL query to resolve this error. Respond with JSON format:
                 if isinstance(s, dict) and "question" in s:
                     cleaned.append(s.get("question", ""))
 
-            print(f"[GPT] Generated {len(cleaned)} follow-up suggestions")
+            logger.info(f"Generated {len(cleaned)} follow-up suggestions")
             return {
                 "intro_message": intro_message,
                 "suggestions": cleaned
             }
 
         except json.JSONDecodeError as e:
-            print(f"[WARNING] Failed to parse follow-up suggestions JSON: {e}")
+            logger.warning(f"Failed to parse follow-up suggestions JSON: {e}")
             return {"intro_message": "", "suggestions": []}
         except Exception as e:
-            print(f"[ERROR] Failed to generate follow-up suggestions: {type(e).__name__}: {str(e)}")
+            logger.error(f"Failed to generate follow-up suggestions: {type(e).__name__}: {str(e)}")
             return {"intro_message": "", "suggestions": []}

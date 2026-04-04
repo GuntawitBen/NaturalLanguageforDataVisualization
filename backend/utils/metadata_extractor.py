@@ -3,10 +3,13 @@ Enhanced Metadata Extraction for CSV Datasets
 Extracts comprehensive metadata including statistical analysis
 """
 import json
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from sqlalchemy import text
 from database.db_init import get_db_engine
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # BASIC METADATA EXTRACTION
@@ -63,7 +66,7 @@ def extract_basic_metadata(table_name: str) -> Dict[str, Any]:
             }
 
     except Exception as e:
-        print(f"Error extracting basic metadata: {e}")
+        logger.error(f"Error extracting basic metadata: {e}")
         raise
 
 # ============================================================================
@@ -140,7 +143,7 @@ def extract_column_statistics(table_name: str, column_name: str, data_type: str)
                     if median_result and median_result[0] is not None:
                         stats["median"] = float(median_result[0])
                 except Exception as e:
-                    print(f"Warning: Could not calculate median for {column_name}: {e}")
+                    logger.warning(f"Could not calculate median for {column_name}: {e}")
                     stats["median"] = None
 
             elif 'varchar' in data_type.lower() or 'text' in data_type.lower() or 'char' in data_type.lower():
@@ -212,7 +215,7 @@ def extract_column_statistics(table_name: str, column_name: str, data_type: str)
         return stats
 
     except Exception as e:
-        print(f"Error extracting statistics for column {column_name}: {e}")
+        logger.error(f"Error extracting statistics for column {column_name}: {e}")
         # Return basic stats even if detailed stats fail
         return {
             "column_name": column_name,
@@ -363,7 +366,7 @@ def save_metadata_snapshot(dataset_id: str, metadata: Dict[str, Any]) -> bool:
         return True
 
     except Exception as e:
-        print(f"Error saving metadata snapshot: {e}")
+        logger.error(f"Error saving metadata snapshot: {e}")
         return False
 
 def get_metadata_history(dataset_id: str) -> List[Dict]:
@@ -389,7 +392,7 @@ def get_metadata_history(dataset_id: str) -> List[Dict]:
             ]
 
     except Exception as e:
-        print(f"Error getting metadata history: {e}")
+        logger.error(f"Error getting metadata history: {e}")
         return []
 
 # ============================================================================

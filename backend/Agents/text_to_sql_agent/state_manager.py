@@ -2,6 +2,7 @@
 Session and state management for the Text-to-SQL agent.
 """
 
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Any, Union
@@ -19,6 +20,8 @@ from database.db_utils import (
 )
 from database.db_init import get_db_engine
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 
 class SessionManager:
@@ -68,7 +71,7 @@ class SessionManager:
         with self._lock:
             self._sessions[session_id] = session
 
-        print(f"[SESSION] Created session {session_id} for dataset {dataset_id} (user: {user_id}) - not persisted yet")
+        logger.info(f"Created session {session_id} for dataset {dataset_id} (user: {user_id}) - not persisted yet")
         return session
 
     def get_session(self, session_id: str) -> Optional[SessionState]:
@@ -90,7 +93,7 @@ class SessionManager:
             # Check if session has expired
             timeout = timedelta(seconds=SESSION_CONFIG["session_timeout_seconds"])
             if datetime.now() - session.last_activity > timeout:
-                print(f"[SESSION] Session {session_id} has expired")
+                logger.info(f"Session {session_id} has expired")
                 del self._sessions[session_id]
                 return None
 
@@ -160,9 +163,9 @@ class SessionManager:
                     db_session_id = create_conversation(user_id, session.dataset_id, conversation_id=session_id)
                     if db_session_id:
                         session._conversation_created = True
-                        print(f"[SESSION] Created conversation in DB: {db_session_id}")
+                        logger.info(f"Created conversation in DB: {db_session_id}")
                     else:
-                        print(f"[SESSION] Warning: Failed to persist conversation")
+                        logger.warning("Failed to persist conversation")
 
                 db_add_message(
                     conversation_id=session_id,
@@ -214,7 +217,7 @@ class SessionManager:
         with self._lock:
             if session_id in self._sessions:
                 del self._sessions[session_id]
-                print(f"[SESSION] Deleted session {session_id}")
+                logger.info(f"Deleted session {session_id}")
                 return True
             return False
 
@@ -240,7 +243,7 @@ class SessionManager:
                 expired_count += 1
 
         if expired_count > 0:
-            print(f"[SESSION] Cleaned up {expired_count} expired sessions")
+            logger.info(f"Cleaned up {expired_count} expired sessions")
 
         return expired_count
 
@@ -307,7 +310,7 @@ class SessionManager:
         with self._lock:
             self._sessions[session_id] = session
 
-        print(f"[SESSION] Restored session {session_id} with {len(messages)} messages")
+        logger.info(f"Restored session {session_id} with {len(messages)} messages")
         return session
 
 
@@ -356,7 +359,7 @@ def build_schema_context(dataset_id: str) -> Optional[SchemaContext]:
 
                     sample_values = [str(row[0]) for row in result if row[0]]
             except Exception as e:
-                print(f"[WARNING] Failed to get sample values for {col_name}: {e}")
+                logger.warning(f"Failed to get sample values for {col_name}: {e}")
 
         columns.append(ColumnInfo(
             name=col_name,

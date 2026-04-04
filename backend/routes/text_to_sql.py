@@ -2,9 +2,12 @@
 Text-to-SQL Agent API Routes
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from Auth.Auth_utils import get_current_user
 from Agents.text_to_sql_agent import (
@@ -93,9 +96,7 @@ async def start_session(
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        print(f"[ERROR] Failed to start text-to-SQL session: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to start text-to-SQL session: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -140,7 +141,7 @@ async def chat(
             # Guardrails module not available, proceed without check
             pass
         except Exception as guard_err:
-            print(f"[WARNING] Guardrails check failed (proceeding): {guard_err}")
+            logger.warning(f"Guardrails check failed (proceeding): {guard_err}")
 
         response = text_to_sql_agent.chat(
             session_id=request.session_id,
@@ -152,9 +153,7 @@ async def chat(
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        print(f"[ERROR] Failed to process chat message: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to process chat message: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -197,9 +196,7 @@ async def get_follow_up_suggestions(
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        print(f"[ERROR] Failed to generate follow-up suggestions: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to generate follow-up suggestions: {str(e)}", exc_info=True)
 
         # Return empty on error (non-blocking)
         return FollowUpResponse(intro_message="", suggestions=[])
@@ -228,9 +225,7 @@ async def get_session(
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        print(f"[ERROR] Failed to get session state: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to get session state: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -271,9 +266,7 @@ async def end_session(
         raise
 
     except Exception as e:
-        print(f"[ERROR] Failed to end session: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to end session: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -336,9 +329,7 @@ async def get_history(
         return HistoryListResponse(conversations=history_items)
 
     except Exception as e:
-        print(f"[ERROR] Failed to get history: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to get history: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -401,9 +392,7 @@ async def get_history_detail(
         raise
 
     except Exception as e:
-        print(f"[ERROR] Failed to get history detail: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to get history detail: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -450,9 +439,7 @@ async def resume_session(
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        print(f"[ERROR] Failed to resume session: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to resume session: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -501,9 +488,7 @@ async def delete_history_session(
         raise
 
     except Exception as e:
-        print(f"[ERROR] Failed to delete session: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to delete session: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,

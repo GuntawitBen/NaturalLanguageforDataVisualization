@@ -1,12 +1,15 @@
 """
 Database initialization and connection management for MySQL
 """
+import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 from sqlalchemy.pool import QueuePool
 import os
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Schema path
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
@@ -64,7 +67,7 @@ def get_db_engine(retry_count: int = 3, retry_delay: float = 2.0):
         # Add SSL configuration if requested
         if os.getenv('MYSQL_SSL_MODE') == 'REQUIRED':
             connect_args['ssl'] = {'ssl_mode': 'REQUIRED'}
-            print("[INFO] Enabling SSL for database connection")
+            logger.info("Enabling SSL for database connection")
 
         _engine = create_engine(
             mysql_url,
@@ -74,7 +77,7 @@ def get_db_engine(retry_count: int = 3, retry_delay: float = 2.0):
             pool_recycle=3600,
             connect_args=connect_args
         )
-        print(f"[OK] Created MySQL connection pool")
+        logger.info("Created MySQL connection pool")
 
     return _engine
 
@@ -98,27 +101,27 @@ def test_db_connection(retry_count: int = 3, retry_delay: float = 2.0) -> bool:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             set_db_status(True, None)
-            print(f"[OK] Database connection verified")
+            logger.info("Database connection verified")
             return True
         except OperationalError as e:
             delay = retry_delay * (2 ** attempt)
             error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
 
             if attempt < retry_count - 1:
-                print(f"[WARNING] Database connection attempt {attempt + 1}/{retry_count} failed: {error_msg}")
-                print(f"[INFO] Retrying in {delay:.1f} seconds...")
+                logger.warning(f"Database connection attempt {attempt + 1}/{retry_count} failed: {error_msg}")
+                logger.info(f"Retrying in {delay:.1f} seconds...")
                 time.sleep(delay)
             else:
                 set_db_status(False, f"Connection failed after {retry_count} attempts: {error_msg}")
-                print(f"[ERROR] Database connection failed after {retry_count} attempts: {error_msg}")
+                logger.error(f"Database connection failed after {retry_count} attempts: {error_msg}")
                 return False
         except SQLAlchemyError as e:
             set_db_status(False, f"Database error: {str(e)}")
-            print(f"[ERROR] Database error: {e}")
+            logger.error(f"Database error: {e}")
             return False
         except Exception as e:
             set_db_status(False, f"Unexpected error: {str(e)}")
-            print(f"[ERROR] Unexpected database error: {e}")
+            logger.error(f"Unexpected database error: {e}")
             return False
 
     return False
@@ -168,15 +171,15 @@ def init_database():
             for i, statement in enumerate(statements):
                 if statement:
                     try:
-                        print(f"[DEBUG] Executing statement {i+1}/{len(statements)}")
+                        logger.debug(f"Executing statement {i+1}/{len(statements)}")
                         conn.execute(text(statement))
                     except Exception as e:
-                        print(f"[ERROR] Failed statement: {statement[:150]}...")
+                        logger.error(f"Failed statement: {statement[:150]}...")
                         raise
 
             conn.commit()
 
-        print("[OK] Database schema initialized successfully")
+        logger.info("Database schema initialized successfully")
 
         # Verify tables were created
         with engine.connect() as conn:
@@ -186,12 +189,12 @@ def init_database():
                 WHERE table_schema = DATABASE()
             """)).fetchall()
 
-            print(f"[INFO] Created tables: {[t[0] for t in tables]}")
+            logger.info(f"Created tables: {[t[0] for t in tables]}")
 
         return True
 
     except Exception as e:
-        print(f"[ERROR] Error initializing database: {e}")
+        logger.error(f"Error initializing database: {e}")
         raise
 
 def close_connection():
@@ -200,7 +203,7 @@ def close_connection():
     if _engine:
         _engine.dispose()
         _engine = None
-        print("[OK] Database connection pool closed")
+        logger.info("Database connection pool closed")
 
 def reset_database():
     """
@@ -223,7 +226,7 @@ def reset_database():
         # Drop all tables
         for table in tables:
             table_name = table[0]
-            print(f"Dropping table: {table_name}")
+            logger.info(f"Dropping table: {table_name}")
             conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
 
         # Re-enable foreign key checks
@@ -232,11 +235,12 @@ def reset_database():
 
     # Reinitialize
     init_database()
-    print("[OK] Database reset complete")
+    logger.info("Database reset complete")
 
 if __name__ == "__main__":
     # Initialize database when run directly
     from dotenv import load_dotenv
     load_dotenv()
-    print("Initializing database...")
+    logging.basicConfig(level=logging.INFO)
+    logger.info("Initializing database...")
     init_database()

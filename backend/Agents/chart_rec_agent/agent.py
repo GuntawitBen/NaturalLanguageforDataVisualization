@@ -2,9 +2,12 @@
 Main orchestrator for the Chart Recommendation agent.
 """
 
+import logging
 from typing import List, Dict, Any, Optional
 from .models import VisualizationResponse
 from .openai_client import ChartRecOpenAIClient
+
+logger = logging.getLogger(__name__)
 
 
 class ChartRecAgent:
@@ -34,7 +37,7 @@ class ChartRecAgent:
         Returns:
             VisualizationResponse with chart recommendations
         """
-        print(f"[CHART-REC] Analyzing results for query: {sql_query[:50]}...")
+        logger.info(f"Analyzing results for query: {sql_query[:50]}...")
 
         return self.openai_client.recommend_charts(
             user_question=user_question,

@@ -1,5 +1,4 @@
 #uvicorn main:app --reload
-#sup bitch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -7,72 +6,63 @@ from Auth.Signin import router as signin_router
 from Auth.Signup import router as signup_router
 import os
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Try to import dataset routes with explicit error handling
 try:
     from routes.datasets import router as datasets_router
-    print("[OK] Dataset router imported successfully")
+    logger.info("Dataset router imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import dataset router: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import dataset router: {e}", exc_info=True)
     datasets_router = None
 
 try:
     from routes.metadata import router as metadata_router
-    print("[OK] Metadata router imported successfully")
+    logger.info("Metadata router imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import metadata router: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import metadata router: {e}", exc_info=True)
     metadata_router = None
 
 try:
     from routes.ownership import router as ownership_router
-    print("[OK] Ownership router imported successfully")
+    logger.info("Ownership router imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import ownership router: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import ownership router: {e}", exc_info=True)
     ownership_router = None
 
 try:
     from routes.cleaning import router as cleaning_router
-    print("[OK] Cleaning router imported successfully")
+    logger.info("Cleaning router imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import Cleaning router: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import Cleaning router: {e}", exc_info=True)
     cleaning_router = None
 
 try:
     from routes.text_to_sql import router as text_to_sql_router
-    print("[OK] Text-to-SQL router imported successfully")
+    logger.info("Text-to-SQL router imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import Text-to-SQL router: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import Text-to-SQL router: {e}", exc_info=True)
     text_to_sql_router = None
 
 try:
     from database import init_database
     from database.db_init import test_db_connection, get_db_status, get_db_engine, DatabaseConnectionError
-    print("[OK] Database module imported successfully")
+    logger.info("Database module imported successfully")
 except Exception as e:
-    print(f"[ERROR] Failed to import database module: {e}")
-    import traceback
-    traceback.print_exc()
+    logger.error(f"Failed to import database module: {e}", exc_info=True)
     init_database = None
     test_db_connection = None
     get_db_status = lambda: (False, "Database module failed to import")
 
 load_dotenv(override=False)
-print("Environment Variables Check:")
-print(f"SECRET_KEY: {'Loaded' if os.getenv('SECRET_KEY') else 'NOT FOUND'}")
-print(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT FOUND'}")
-print(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
+logger.info("Environment Variables Check:")
+logger.info(f"SECRET_KEY: {'Loaded' if os.getenv('SECRET_KEY') else 'NOT FOUND'}")
+logger.info(f"GOOGLE_CLIENT_ID: {'Loaded' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT FOUND'}")
+logger.info(f"GOOGLE_CLIENT_SECRET: {'Loaded' if os.getenv('GOOGLE_CLIENT_SECRET') else 'NOT FOUND'}")
 
 # Initialize database on startup (check MySQL connection and tables)
 def check_mysql_connection() -> bool:
@@ -84,18 +74,18 @@ def check_mysql_connection() -> bool:
     from sqlalchemy import text
 
     if test_db_connection is None:
-        print("\n[ERROR] Database module not available")
+        logger.error("Database module not available")
         return False
 
     # Test connection with retry logic
     if not test_db_connection(retry_count=3, retry_delay=2.0):
         connected, error_msg = get_db_status()
-        print(f"\n{'='*60}")
-        print("[WARNING] Application starting WITHOUT database connection")
-        print(f"[WARNING] Error: {error_msg}")
-        print("[INFO] Database-dependent features will be unavailable")
-        print("[INFO] Make sure MySQL is running: docker-compose up -d")
-        print(f"{'='*60}\n")
+        logger.warning("=" * 60)
+        logger.warning("Application starting WITHOUT database connection")
+        logger.warning(f"Error: {error_msg}")
+        logger.info("Database-dependent features will be unavailable")
+        logger.info("Make sure MySQL is running: docker-compose up -d")
+        logger.warning("=" * 60)
         return False
 
     # Connection successful, check if tables need initialization
@@ -107,15 +97,15 @@ def check_mysql_connection() -> bool:
                 "WHERE table_schema = DATABASE() AND table_name = 'users'"
             ))
             if result.scalar() == 0:
-                print("\n[INFO] Database tables not found. Initializing for first time...")
+                logger.info("Database tables not found. Initializing for first time...")
                 init_database()
-                print("[OK] Database initialized successfully\n")
+                logger.info("Database initialized successfully")
             else:
-                print("\n[INFO] Database tables already exist. Skipping initialization.\n")
+                logger.info("Database tables already exist. Skipping initialization.")
         return True
     except Exception as e:
-        print(f"\n[ERROR] Failed to initialize database tables: {e}")
-        print("[INFO] Database connection works but schema initialization failed\n")
+        logger.error(f"Failed to initialize database tables: {e}")
+        logger.info("Database connection works but schema initialization failed")
         return False
 
 # Run connection check (non-blocking - app will start even if DB is down)
@@ -139,25 +129,25 @@ async def cleanup_task():
                 session_manager.cleanup_orphaned_backups(max_age_hours=24)
 
             except Exception as e:
-                print(f"[WARNING] Cleanup task failed: {e}")
+                logger.warning(f"Cleanup task failed: {e}")
 
         except asyncio.CancelledError:
-            print("[INFO] Cleanup task cancelled")
+            logger.info("Cleanup task cancelled")
             break
         except Exception as e:
-            print(f"[ERROR] Unexpected error in cleanup task: {e}")
+            logger.error(f"Unexpected error in cleanup task: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown"""
     # Startup
-    print("[INFO] Starting background cleanup task...")
+    logger.info("Starting background cleanup task...")
     cleanup_task_handle = asyncio.create_task(cleanup_task())
 
     yield
 
     # Shutdown
-    print("[INFO] Stopping background cleanup task...")
+    logger.info("Stopping background cleanup task...")
     cleanup_task_handle.cancel()
     try:
         await cleanup_task_handle
@@ -183,13 +173,11 @@ app.add_middleware(
 
 # CORS SECOND
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+PRODUCTION_FRONTEND_URL = os.getenv('PRODUCTION_FRONTEND_URL', '')
+cors_origins = [origin for origin in [FRONTEND_URL, PRODUCTION_FRONTEND_URL, PRODUCTION_FRONTEND_URL.rstrip('/')] if origin]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        FRONTEND_URL,
-        "https://nlviz-frontend-s2jig.ondigitalocean.app",
-        "https://nlviz-frontend-s2jig.ondigitalocean.app/"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -290,30 +278,30 @@ app.include_router(signup_router)
 
 if datasets_router is not None:
     app.include_router(datasets_router)
-    print("[OK] Dataset router included")
+    logger.info("Dataset router included")
 else:
-    print("[WARNING] Dataset router not included (import failed)")
+    logger.warning("Dataset router not included (import failed)")
 
 if metadata_router is not None:
     app.include_router(metadata_router)
-    print("[OK] Metadata router included")
+    logger.info("Metadata router included")
 else:
-    print("[WARNING] Metadata router not included (import failed)")
+    logger.warning("Metadata router not included (import failed)")
 
 if ownership_router is not None:
     app.include_router(ownership_router)
-    print("[OK] Ownership router included")
+    logger.info("Ownership router included")
 else:
-    print("[WARNING] Ownership router not included (import failed)")
+    logger.warning("Ownership router not included (import failed)")
 
 if cleaning_router is not None:
     app.include_router(cleaning_router)
-    print("[OK] Cleaning router included")
+    logger.info("Cleaning router included")
 else:
-    print("[WARNING] Cleaning router not included (import failed)")
+    logger.warning("Cleaning router not included (import failed)")
 
 if text_to_sql_router is not None:
     app.include_router(text_to_sql_router)
-    print("[OK] Text-to-SQL router included")
+    logger.info("Text-to-SQL router included")
 else:
-    print("[WARNING] Text-to-SQL router not included (import failed)")
+    logger.warning("Text-to-SQL router not included (import failed)")

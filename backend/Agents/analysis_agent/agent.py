@@ -3,11 +3,14 @@ Analysis Agent orchestrator.
 Dispatches statistical analysis requests to executor functions.
 """
 
+import logging
 from typing import Optional
 import pandas as pd
 
 from .models import AnalysisRequest, AnalysisResult
 from .executor import factor_impact, correlation_between, group_comparison
+
+logger = logging.getLogger(__name__)
 
 
 class AnalysisAgent:
@@ -33,7 +36,7 @@ class AnalysisAgent:
         request = AnalysisRequest(**analysis_request)
         analysis_type = request.analysis_type
 
-        print(f"[ANALYSIS] Running {analysis_type} analysis")
+        logger.info(f"Running {analysis_type} analysis")
 
         if analysis_type == "factor_impact":
             if not request.target_column:

@@ -1,6 +1,7 @@
 """
 Database utility functions for managing datasets, conversations, and queries
 """
+import logging
 import uuid
 import json
 import pandas as pd
@@ -9,6 +10,8 @@ from decimal import Decimal
 from typing import List, Dict, Optional, Any
 from sqlalchemy import text
 from database.db_init import get_db_engine, get_db_connection
+
+logger = logging.getLogger(__name__)
 
 
 class CustomJSONEncoder(json.JSONEncoder):
@@ -55,7 +58,7 @@ def sync_user_from_firebase(user_id: str, email: str, name: str, picture: str = 
             conn.commit()
         return True
     except Exception as e:
-        print(f"Error syncing user: {e}")
+        logger.error(f"Error syncing user: {e}")
         return False
 
 # ============================================================================
@@ -123,7 +126,7 @@ def create_dataset(
                     elif dtype == 'datetime64[ns]':
                         df[col] = pd.to_datetime(df[col], errors='coerce')
                 except Exception as conv_err:
-                    print(f"[WARNING] Column type conversion failed for '{col}' -> {dtype}: {conv_err}")
+                    logger.warning(f"Column type conversion failed for '{col}' -> {dtype}: {conv_err}")
 
         # 2. Create dynamic table using pandas to_sql
         df.to_sql(
@@ -193,8 +196,8 @@ def create_dataset(
 
             conn.commit()
 
-        print(f"[OK] Dataset created: {dataset_id} ({table_name})")
-        print(f"     Rows: {row_count:,} | Columns: {column_count} | Size: {file_size_bytes:,} bytes")
+        logger.info(f"Dataset created: {dataset_id} ({table_name})")
+        logger.info(f"Rows: {row_count:,} | Columns: {column_count} | Size: {file_size_bytes:,} bytes")
 
         # 9. Save metadata snapshot if stats were extracted
         if metadata_stats:
@@ -204,7 +207,7 @@ def create_dataset(
         return dataset_id
 
     except Exception as e:
-        print(f"[ERROR] Error creating dataset: {e}")
+        logger.error(f"Error creating dataset: {e}")
         # Cleanup: drop table if created
         try:
             with engine.connect() as conn:
@@ -239,7 +242,7 @@ def get_dataset(dataset_id: str) -> Optional[Dict]:
             return dataset
 
     except Exception as e:
-        print(f"Error getting dataset: {e}")
+        logger.error(f"Error getting dataset: {e}")
         return None
 
 def get_dataset_dataframe(dataset_id: str) -> Optional[pd.DataFrame]:
@@ -253,7 +256,7 @@ def get_dataset_dataframe(dataset_id: str) -> Optional[pd.DataFrame]:
         table_name = dataset['table_name']
         return pd.read_sql(f"SELECT * FROM `{table_name}`", engine)
     except Exception as e:
-        print(f"Error loading dataset as DataFrame: {e}")
+        logger.error(f"Error loading dataset as DataFrame: {e}")
         return None
 
 
@@ -289,7 +292,7 @@ def get_user_datasets(user_id: str, include_deleted: bool = False) -> List[Dict]
             return datasets
 
     except Exception as e:
-        print(f"Error getting user datasets: {e}")
+        logger.error(f"Error getting user datasets: {e}")
         return []
 
 def update_dataset_description(dataset_id: str, description: str) -> bool:
@@ -304,7 +307,7 @@ def update_dataset_description(dataset_id: str, description: str) -> bool:
             conn.commit()
             return True
     except Exception as e:
-        print(f"Error updating dataset description: {e}")
+        logger.error(f"Error updating dataset description: {e}")
         return False
 
 def delete_dataset(dataset_id: str, hard_delete: bool = False) -> bool:
@@ -337,7 +340,7 @@ def delete_dataset(dataset_id: str, hard_delete: bool = False) -> bool:
         return True
 
     except Exception as e:
-        print(f"Error deleting dataset: {e}")
+        logger.error(f"Error deleting dataset: {e}")
         return False
 
 def query_dataset(dataset_id: str, sql_query: str) -> Dict[str, Any]:
@@ -418,7 +421,7 @@ def create_conversation(user_id: str, dataset_id: str = None, title: str = None,
         return conversation_id
 
     except Exception as e:
-        print(f"Error creating conversation: {e}")
+        logger.error(f"Error creating conversation: {e}")
         return None
 
 def add_message(
@@ -472,7 +475,7 @@ def add_message(
         return message_id
 
     except Exception as e:
-        print(f"Error adding message: {e}")
+        logger.error(f"Error adding message: {e}")
         return None
 
 def get_conversation_messages(conversation_id: str) -> List[Dict]:
@@ -510,7 +513,7 @@ def get_conversation_messages(conversation_id: str) -> List[Dict]:
             return messages
 
     except Exception as e:
-        print(f"Error getting messages: {e}")
+        logger.error(f"Error getting messages: {e}")
         return []
 
 def get_user_conversations(user_id: str, include_archived: bool = False, limit: int = 50, dataset_id: str = None) -> List[Dict]:
@@ -558,7 +561,7 @@ def get_user_conversations(user_id: str, include_archived: bool = False, limit: 
             return [dict(zip(columns, row)) for row in results]
 
     except Exception as e:
-        print(f"Error getting conversations: {e}")
+        logger.error(f"Error getting conversations: {e}")
         return []
 
 
@@ -582,7 +585,7 @@ def get_conversation(conversation_id: str) -> Optional[Dict]:
             return dict(zip(columns, result))
 
     except Exception as e:
-        print(f"Error getting conversation: {e}")
+        logger.error(f"Error getting conversation: {e}")
         return None
 
 
@@ -599,7 +602,7 @@ def update_conversation_title(conversation_id: str, title: str) -> bool:
             conn.commit()
         return True
     except Exception as e:
-        print(f"Error updating conversation title: {e}")
+        logger.error(f"Error updating conversation title: {e}")
         return False
 
 
@@ -616,7 +619,7 @@ def touch_conversation(conversation_id: str) -> bool:
             conn.commit()
         return True
     except Exception as e:
-        print(f"Error touching conversation: {e}")
+        logger.error(f"Error touching conversation: {e}")
         return False
 
 
@@ -654,7 +657,7 @@ def delete_conversation(conversation_id: str, hard_delete: bool = False) -> bool
             conn.commit()
         return True
     except Exception as e:
-        print(f"Error deleting conversation: {e}")
+        logger.error(f"Error deleting conversation: {e}")
         return False
 
 
@@ -705,7 +708,7 @@ def log_query(
         return query_id
 
     except Exception as e:
-        print(f"Error logging query: {e}")
+        logger.error(f"Error logging query: {e}")
         return None
 
 # ============================================================================
@@ -753,7 +756,7 @@ def save_visualization(
         return viz_id
 
     except Exception as e:
-        print(f"Error saving visualization: {e}")
+        logger.error(f"Error saving visualization: {e}")
         return None
 
 def update_visualization(
@@ -781,7 +784,7 @@ def update_visualization(
             return result.rowcount > 0
 
     except Exception as e:
-        print(f"Error updating visualization: {e}")
+        logger.error(f"Error updating visualization: {e}")
         return False
 
 def get_user_visualizations(user_id: str) -> List[Dict]:
@@ -811,7 +814,7 @@ def get_user_visualizations(user_id: str) -> List[Dict]:
             return visualizations
 
     except Exception as e:
-        print(f"Error getting visualizations: {e}")
+        logger.error(f"Error getting visualizations: {e}")
         return []
 
 
@@ -843,7 +846,7 @@ def get_dataset_visualizations(dataset_id: str, user_id: str) -> List[Dict]:
             return visualizations
 
     except Exception as e:
-        print(f"Error getting dataset visualizations: {e}")
+        logger.error(f"Error getting dataset visualizations: {e}")
         return []
 
 
@@ -861,5 +864,5 @@ def delete_visualization(visualization_id: str, user_id: str) -> bool:
             return result.rowcount > 0
 
     except Exception as e:
-        print(f"Error deleting visualization: {e}")
+        logger.error(f"Error deleting visualization: {e}")
         return False

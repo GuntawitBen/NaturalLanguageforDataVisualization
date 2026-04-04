@@ -224,14 +224,14 @@ Answer:"""
         """Async validation using AsyncOpenAI client."""
         client = self._get_client()
         if client is None:
-            print("[GUARDRAILS] DataContentLLMValidator: No OpenAI client (API key missing?)")
+            logger.info("Guardrails: DataContentLLMValidator - No OpenAI client (API key missing?)")
             return PassResult()
 
         try:
             # Truncate to keep cost/latency reasonable
             truncated = value[:4000]
             model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-            print(f"[GUARDRAILS] DataContentLLMValidator: Calling {model}...")
+            logger.info(f"Guardrails: DataContentLLMValidator - Calling {model}...")
             response = await client.chat.completions.create(
                 model=model,
                 messages=[
@@ -249,7 +249,7 @@ Answer:"""
                 timeout=10
             )
             answer = response.choices[0].message.content.strip().lower()
-            print(f"[GUARDRAILS] DataContentLLMValidator: LLM answered '{answer}'")
+            logger.info(f"Guardrails: DataContentLLMValidator - LLM answered '{answer}'")
 
             if answer.startswith("yes"):
                 return FailResult(error_message="LLM-based data content injection detected.")
@@ -257,8 +257,7 @@ Answer:"""
             return PassResult()
 
         except Exception as e:
-            logger.error(f"[GUARDRAILS] Data content LLM check error: {e}")
-            print(f"[GUARDRAILS] Data content LLM check error: {e}")
+            logger.error(f"Guardrails: Data content LLM check error: {e}")
             return PassResult()  # Fail-open
 
     def validate(self, value: str, metadata: dict = None) -> ValidationResult:
@@ -326,8 +325,7 @@ def _get_input_validator() -> PromptInjectionValidator:
     global _input_validator
     if _input_validator is None:
         _input_validator = PromptInjectionValidator()
-        logger.info("[OK] Prompt injection guard initialized")
-        print("[OK] Prompt injection guard initialized")
+        logger.info("Prompt injection guard initialized")
     return _input_validator
 
 
@@ -336,8 +334,7 @@ def _get_data_validator() -> IndirectInjectionValidator:
     global _data_validator
     if _data_validator is None:
         _data_validator = IndirectInjectionValidator()
-        logger.info("[OK] Indirect injection guard initialized")
-        print("[OK] Indirect injection guard initialized")
+        logger.info("Indirect injection guard initialized")
     return _data_validator
 
 
@@ -346,8 +343,7 @@ def _get_data_llm_validator() -> DataContentLLMValidator:
     global _data_llm_validator
     if _data_llm_validator is None:
         _data_llm_validator = DataContentLLMValidator()
-        logger.info("[OK] Data content LLM guard initialized")
-        print("[OK] Data content LLM guard initialized")
+        logger.info("Data content LLM guard initialized")
     return _data_llm_validator
 
 
@@ -356,8 +352,7 @@ def _get_sql_validator() -> SQLSafetyValidator:
     global _sql_validator
     if _sql_validator is None:
         _sql_validator = SQLSafetyValidator()
-        logger.info("[OK] SQL safety guard initialized")
-        print("[OK] SQL safety guard initialized")
+        logger.info("SQL safety guard initialized")
     return _sql_validator
 
 
@@ -392,7 +387,7 @@ async def check_input(message: str) -> GuardrailResult:
         if isinstance(result, PassResult):
             return GuardrailResult(is_safe=True, guard_type="prompt_injection")
 
-        print(f"[GUARDRAILS] Blocked prompt injection: {message[:80]}...")
+        logger.warning(f"Guardrails: Blocked prompt injection: {message[:80]}...")
         return GuardrailResult(
             is_safe=False,
             guard_type="prompt_injection",
@@ -400,8 +395,7 @@ async def check_input(message: str) -> GuardrailResult:
         )
 
     except Exception as e:
-        logger.error(f"[GUARDRAILS] Input check error (proceeding): {e}")
-        print(f"[GUARDRAILS] Input check error (proceeding): {e}")
+        logger.error(f"Guardrails: Input check error (proceeding): {e}")
         return GuardrailResult(is_safe=True, guard_type="prompt_injection")
 
 
@@ -427,45 +421,43 @@ async def check_data_content(content: str) -> GuardrailResult:
         "Please check your dataset for potentially harmful content."
     )
 
-    print(f"[GUARDRAILS] check_data_content called, content length: {len(content)}")
+    logger.info(f"Guardrails: check_data_content called, content length: {len(content)}")
 
     # --- Layer 1: Regex (fast, zero-cost) ---
     try:
         regex_validator = _get_data_validator()
         regex_result = regex_validator.validate(content)
-        print(f"[GUARDRAILS] Regex layer result: {type(regex_result).__name__}")
+        logger.info(f"Guardrails: Regex layer result: {type(regex_result).__name__}")
 
         if isinstance(regex_result, FailResult):
-            print(f"[GUARDRAILS] Blocked indirect injection in data content (regex layer)")
+            logger.warning("Guardrails: Blocked indirect injection in data content (regex layer)")
             return GuardrailResult(
                 is_safe=False,
                 guard_type="indirect_injection",
                 message=blocked_message,
             )
     except Exception as e:
-        logger.error(f"[GUARDRAILS] Regex data check error (proceeding): {e}")
-        print(f"[GUARDRAILS] Regex data check error (proceeding): {e}")
+        logger.error(f"Guardrails: Regex data check error (proceeding): {e}")
 
     # --- Layer 2: LLM (catches obfuscated/sophisticated attacks) ---
     try:
         llm_validator = _get_data_llm_validator()
         truncated = content[:4000]
-        print(f"[GUARDRAILS] Sending to LLM layer, truncated length: {len(truncated)}")
+        logger.info(f"Guardrails: Sending to LLM layer, truncated length: {len(truncated)}")
         llm_result = await llm_validator.async_validate(truncated)
-        print(f"[GUARDRAILS] LLM layer result: {type(llm_result).__name__}")
+        logger.info(f"Guardrails: LLM layer result: {type(llm_result).__name__}")
 
         if isinstance(llm_result, FailResult):
-            print(f"[GUARDRAILS] Blocked indirect injection in data content (LLM layer)")
+            logger.warning("Guardrails: Blocked indirect injection in data content (LLM layer)")
             return GuardrailResult(
                 is_safe=False,
                 guard_type="indirect_injection",
                 message=blocked_message,
             )
     except Exception as e:
-        logger.error(f"[GUARDRAILS] LLM data check error (proceeding): {e}")
-        print(f"[GUARDRAILS] LLM data check error (proceeding): {e}")
+        logger.error(f"Guardrails: LLM data check error (proceeding): {e}")
 
-    print(f"[GUARDRAILS] Data content passed both layers")
+    logger.info("Guardrails: Data content passed both layers")
     return GuardrailResult(is_safe=True, guard_type="indirect_injection")
 
 
@@ -490,7 +482,7 @@ async def check_sql(sql_query: str) -> GuardrailResult:
         if isinstance(result, PassResult):
             return GuardrailResult(is_safe=True, guard_type="sql_safety")
 
-        print(f"[GUARDRAILS] Blocked dangerous SQL: {sql_query[:80]}...")
+        logger.warning(f"Guardrails: Blocked dangerous SQL: {sql_query[:80]}...")
         return GuardrailResult(
             is_safe=False,
             guard_type="sql_safety",
@@ -499,6 +491,5 @@ async def check_sql(sql_query: str) -> GuardrailResult:
         )
 
     except Exception as e:
-        logger.error(f"[GUARDRAILS] SQL check error (proceeding): {e}")
-        print(f"[GUARDRAILS] SQL check error (proceeding): {e}")
+        logger.error(f"Guardrails: SQL check error (proceeding): {e}")
         return GuardrailResult(is_safe=True, guard_type="sql_safety")

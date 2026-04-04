@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
@@ -9,6 +10,8 @@ from pydantic import BaseModel
 from fastapi import Depends
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Sign In"])
 
@@ -56,7 +59,7 @@ async def google_callback(request: Request):
             session_token = generate_session_token()
             save_session_token(db, email, session_token)
 
-            print(f"User logged in: {name} ({email})")
+            logger.info(f"User logged in: {name} ({email})")
 
             # Redirect to main dashboard with session token
             return RedirectResponse(
@@ -65,7 +68,7 @@ async def google_callback(request: Request):
         else:
             raise HTTPException(status_code=400, detail="Failed to get user info from Google")
     except Exception as e:
-        print(f"Error during Google OAuth: {e}")
+        logger.error(f"Error during Google OAuth: {e}")
         return RedirectResponse(
             url=f"{FRONTEND_URL}/signin/?error=auth_failed"
         )

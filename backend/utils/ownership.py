@@ -2,11 +2,14 @@
 User Ownership Linking and Management
 Handles user-resource ownership verification, access control, and transfers
 """
+import logging
 from typing import Dict, List, Optional, Tuple
 from sqlalchemy import text
 from database.db_init import get_db_engine
 from database.db_utils import get_dataset, get_user_datasets
 import json
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # OWNERSHIP VERIFICATION
@@ -184,7 +187,7 @@ def get_user_resource_count(user_id: str) -> Dict[str, int]:
             return counts
 
     except Exception as e:
-        print(f"Error getting user resource count: {e}")
+        logger.error(f"Error getting user resource count: {e}")
         return {}
 
 def get_user_activity_summary(user_id: str, days: int = 30) -> Dict:
@@ -250,7 +253,7 @@ def get_user_activity_summary(user_id: str, days: int = 30) -> Dict:
             return summary
 
     except Exception as e:
-        print(f"Error getting user activity summary: {e}")
+        logger.error(f"Error getting user activity summary: {e}")
         return {}
 
 def list_user_resources(user_id: str, resource_type: str = 'all') -> Dict[str, List]:
@@ -349,7 +352,7 @@ def list_user_resources(user_id: str, resource_type: str = 'all') -> Dict[str, L
             return resources
 
     except Exception as e:
-        print(f"Error listing user resources: {e}")
+        logger.error(f"Error listing user resources: {e}")
         return {}
 
 # ============================================================================
@@ -446,7 +449,7 @@ def delete_all_user_data(user_id: str, hard_delete: bool = False) -> Dict[str, i
                     try:
                         conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
                     except Exception as e:
-                        print(f"Error dropping table {table_name}: {e}")
+                        logger.error(f"Error dropping table {table_name}: {e}")
 
                 # Delete metadata
                 result = conn.execute(text("""
@@ -494,7 +497,7 @@ def delete_all_user_data(user_id: str, hard_delete: bool = False) -> Dict[str, i
         return deleted
 
     except Exception as e:
-        print(f"Error deleting user data: {e}")
+        logger.error(f"Error deleting user data: {e}")
         return {}
 
 def get_orphaned_tables() -> List[str]:
@@ -526,7 +529,7 @@ def get_orphaned_tables() -> List[str]:
             return orphaned
 
     except Exception as e:
-        print(f"Error finding orphaned tables: {e}")
+        logger.error(f"Error finding orphaned tables: {e}")
         return []
 
 def cleanup_orphaned_tables() -> int:
@@ -546,9 +549,9 @@ def cleanup_orphaned_tables() -> int:
                 conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
                 conn.commit()
             cleaned += 1
-            print(f"[OK] Dropped orphaned table: {table_name}")
+            logger.info(f"Dropped orphaned table: {table_name}")
         except Exception as e:
-            print(f"[ERROR] Failed to drop table {table_name}: {e}")
+            logger.error(f"Failed to drop table {table_name}: {e}")
 
     return cleaned
 
@@ -593,7 +596,7 @@ def get_user_storage_breakdown(user_id: str) -> List[Dict]:
             ]
 
     except Exception as e:
-        print(f"Error getting storage breakdown: {e}")
+        logger.error(f"Error getting storage breakdown: {e}")
         return []
 
 def get_dataset_usage_stats(dataset_id: str) -> Dict:
@@ -642,5 +645,5 @@ def get_dataset_usage_stats(dataset_id: str) -> Dict:
             return stats
 
     except Exception as e:
-        print(f"Error getting dataset usage stats: {e}")
+        logger.error(f"Error getting dataset usage stats: {e}")
         return {}

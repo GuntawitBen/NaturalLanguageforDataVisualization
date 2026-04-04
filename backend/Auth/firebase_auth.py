@@ -2,11 +2,14 @@
 Firebase Authentication Middleware
 Verifies Firebase ID tokens for API authentication
 """
+import logging
 from fastapi import HTTPException, Header
 from typing import Optional
 from firebase_admin import auth as firebase_auth
 from Auth.firebase import db, save_user_to_firebase
 from database import sync_user_from_firebase
+
+logger = logging.getLogger(__name__)
 
 async def verify_firebase_token(authorization: Optional[str] = Header(None)) -> dict:
     """
@@ -102,7 +105,7 @@ async def verify_firebase_token(authorization: Optional[str] = Header(None)) -> 
             detail="Error fetching Firebase public keys"
         )
     except Exception as e:
-        print(f"[ERROR] Firebase token verification failed: {e}")
+        logger.error(f"Firebase token verification failed: {e}")
         raise HTTPException(
             status_code=401,
             detail=f"Authentication failed: {str(e)}"

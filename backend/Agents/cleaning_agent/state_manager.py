@@ -2,6 +2,7 @@
 Session state management for cleaning operations.
 """
 
+import logging
 import pandas as pd
 import uuid
 from typing import Dict, List, Optional
@@ -19,6 +20,8 @@ from .models import (
 from .config import SESSION_CONFIG
 from .operations import execute_operation
 from .detection import detect_all_problems
+
+logger = logging.getLogger(__name__)
 
 
 class SessionData:
@@ -271,7 +274,7 @@ class SessionManager:
 
             return True
         except Exception as e:
-            print(f"Error undoing operation: {e}")
+            logger.error(f"Error undoing operation: {e}")
             return False
 
     def update_problems_after_operation(self, session_id: str):
@@ -413,14 +416,14 @@ class SessionManager:
                         backup_file.unlink()
                         removed_count += 1
                 except Exception as e:
-                    print(f"[WARNING] Failed to remove backup file {backup_file}: {e}")
+                    logger.warning(f"Failed to remove backup file {backup_file}: {e}")
                     continue
 
             if removed_count > 0:
-                print(f"[INFO] Cleaned up {removed_count} orphaned/old backup files")
+                logger.info(f"Cleaned up {removed_count} orphaned/old backup files")
 
         except Exception as e:
-            print(f"[ERROR] Failed to cleanup orphaned backups: {e}")
+            logger.error(f"Failed to cleanup orphaned backups: {e}")
 
 
 # Global session manager instance

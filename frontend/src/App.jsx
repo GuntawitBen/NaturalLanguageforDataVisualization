@@ -70,7 +70,6 @@ function AppContent() {
 
         if (email && name && sessionToken && !isAuthenticated) {
             // User just logged in via Google OAuth
-            console.log('Processing Google OAuth callback...');
             login(email, name, sessionToken);
 
             // Clean up URL parameters

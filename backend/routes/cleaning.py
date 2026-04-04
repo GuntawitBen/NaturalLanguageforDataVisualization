@@ -1,9 +1,12 @@
 """
 Interactive Cleaning Agent API Routes
 """
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 import os
+
+logger = logging.getLogger(__name__)
 
 from Auth.Auth_utils import get_current_user
 from Agents.cleaning_agent import (
@@ -80,9 +83,7 @@ async def start_cleaning_session(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to start cleaning session: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to start cleaning session: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -129,9 +130,7 @@ async def apply_cleaning_operation(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to apply operation: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to apply operation: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -170,9 +169,7 @@ async def confirm_cleaning_operation(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to confirm operation: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to confirm operation: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -210,9 +207,7 @@ async def undo_last_operation(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to undo operation: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to undo operation: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -244,9 +239,7 @@ async def get_session_state(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to get session state: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to get session state: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -279,9 +272,7 @@ async def get_current_recommendation(
 
     except Exception as e:
         # Log error for debugging
-        print(f"[ERROR] Failed to get recommendation: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to get recommendation: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,
@@ -321,9 +312,7 @@ async def cleanup_backups(
         }
 
     except Exception as e:
-        print(f"[ERROR] Failed to run cleanup: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to run cleanup: {str(e)}", exc_info=True)
 
         raise HTTPException(
             status_code=500,

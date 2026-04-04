@@ -1,8 +1,11 @@
+import logging
 import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Header
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt"""
@@ -33,7 +36,7 @@ def save_session_token(db, email: str, token: str):
         })
         return True
     except Exception as e:
-        print(f"Error saving session token: {e}")
+        logger.error(f"Error saving session token: {e}")
         return False
 
 def verify_session_token(db, token: str) -> Optional[str]:
@@ -69,7 +72,7 @@ def verify_session_token(db, token: str) -> Optional[str]:
 
         return session_data.get('email')
     except Exception as e:
-        print(f"Error verifying session token: {e}")
+        logger.error(f"Error verifying session token: {e}")
         return None
 
 def delete_session_token(db, token: str):
@@ -79,7 +82,7 @@ def delete_session_token(db, token: str):
         session_ref.delete()
         return True
     except Exception as e:
-        print(f"Error deleting session token: {e}")
+        logger.error(f"Error deleting session token: {e}")
         return False
 
 async def get_current_user(authorization: Optional[str] = Header(None)):

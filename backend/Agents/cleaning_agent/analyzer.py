@@ -2,6 +2,7 @@
 Main CleaningAgent orchestrator class.
 """
 
+import logging
 import pandas as pd
 from typing import Optional, List, Dict, Any, Tuple
 
@@ -23,6 +24,8 @@ from .config import (
 )
 from .state_manager import session_manager
 
+logger = logging.getLogger(__name__)
+
 
 class CleaningAgent:
     """Main orchestrator for interactive data cleaning"""
@@ -43,10 +46,10 @@ class CleaningAgent:
             try:
                 from .openai_client import CleaningOpenAIClient
                 self.openai_client = CleaningOpenAIClient()
-                print("[INFO] OpenAI client initialized for recommendations")
+                logger.info("OpenAI client initialized for recommendations")
             except Exception as e:
-                print(f"[WARNING] Failed to initialize OpenAI client: {e}")
-                print("[INFO] GPT recommendations will be disabled")
+                logger.warning(f"Failed to initialize OpenAI client: {e}")
+                logger.info("GPT recommendations will be disabled")
                 self.openai_client = None
                 self.enable_gpt_recommendations = False
         else:
@@ -503,13 +506,13 @@ class CleaningAgent:
                         recommended_option_id=recommended_id,
                         reason=reason
                     )
-                    print(f"[GPT] Recommended: {recommended_id} - {reason}")
+                    logger.info(f"Recommended: {recommended_id} - {reason}")
                 else:
-                    print(f"[INFO] No GPT recommendation generated")
+                    logger.info("No GPT recommendation generated")
 
             except Exception as e:
                 # Fail silently - no recommendation shown
-                print(f"[WARNING] Failed to generate GPT recommendation: {e}")
+                logger.warning(f"Failed to generate GPT recommendation: {e}")
                 recommendation = None
 
         return options, recommendation
@@ -742,10 +745,10 @@ class CleaningAgent:
                         recommended_option_id=recommended_id,
                         reason=reason
                     )
-                    print(f"[GPT] Recommended: {recommended_id} - {reason}")
+                    logger.info(f"Recommended: {recommended_id} - {reason}")
 
             except Exception as e:
-                print(f"[WARNING] Failed to generate GPT recommendation for format: {e}")
+                logger.warning(f"Failed to generate GPT recommendation for format: {e}")
                 recommendation = None
 
         return options, recommendation
@@ -756,6 +759,6 @@ class CleaningAgent:
 try:
     cleaning_agent = CleaningAgent()
 except Exception as e:
-    print(f"[WARNING] Failed to initialize CleaningAgent with GPT recommendations: {e}")
-    print("[INFO] Initializing CleaningAgent without GPT recommendations")
+    logger.warning(f"Failed to initialize CleaningAgent with GPT recommendations: {e}")
+    logger.info("Initializing CleaningAgent without GPT recommendations")
     cleaning_agent = CleaningAgent(enable_gpt_recommendations=False)

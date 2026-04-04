@@ -3,10 +3,13 @@ Predefined pandas analysis functions for statistical analysis.
 Safe, no arbitrary code execution.
 """
 
+import logging
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Optional
 from .models import AnalysisResult
+
+logger = logging.getLogger(__name__)
 
 
 def _prepare_features(df: pd.DataFrame, target_col: str) -> tuple:
@@ -36,7 +39,7 @@ def _prepare_features(df: pd.DataFrame, target_col: str) -> tuple:
         # String/object columns with very high cardinality are likely IDs
         if not pd.api.types.is_numeric_dtype(working[col]) and ratio > 0.5:
             cols_to_drop.append(col)
-            print(f"[ANALYSIS] Dropping high-cardinality column '{col}' ({nunique}/{total} unique)")
+            logger.info(f"Dropping high-cardinality column '{col}' ({nunique}/{total} unique)")
 
     feature_cols = [c for c in feature_cols if c not in cols_to_drop]
     if not feature_cols:
@@ -90,7 +93,7 @@ def factor_impact(df: pd.DataFrame, target_col: str) -> AnalysisResult:
     try:
         X, y, feature_names = _prepare_features(df, target_col)
     except Exception as e:
-        print(f"[ANALYSIS] Feature preparation failed: {e}")
+        logger.error(f"Feature preparation failed: {e}")
         return AnalysisResult(
             data=[],
             columns=["Factor", "Importance"],
@@ -131,7 +134,7 @@ def factor_impact(df: pd.DataFrame, target_col: str) -> AnalysisResult:
         importances = model.feature_importances_
 
     except Exception as e:
-        print(f"[ANALYSIS] Random Forest failed: {e}")
+        logger.error(f"Random Forest failed: {e}")
         return AnalysisResult(
             data=[],
             columns=["Factor", "Importance"],

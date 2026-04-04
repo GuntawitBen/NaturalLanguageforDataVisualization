@@ -1,9 +1,12 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from firebase_admin import firestore
 import re
 from Auth.firebase import db, get_user_from_firebase
 from Auth.Auth_utils import hash_password
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Sign Up"])
 
@@ -49,17 +52,17 @@ async def register(req: RegisterRequest):
             'created_at': firestore.SERVER_TIMESTAMP,
             'last_login': firestore.SERVER_TIMESTAMP
         })
-        
-        print(f"User registered: {req.name} ({req.email})")
-        
+
+        logger.info(f"User registered: {req.name} ({req.email})")
+
         return {
             "message": "User registered successfully",
             "email": req.email,
             "name": req.name
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Registration error: {e}")
+        logger.error(f"Registration error: {e}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")

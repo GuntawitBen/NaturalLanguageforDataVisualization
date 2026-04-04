@@ -2,6 +2,7 @@
 Dataset management API endpoints
 Handles CSV upload, dataset queries, and dataset management
 """
+import logging
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse
 from typing import List, Optional
@@ -12,6 +13,8 @@ import shutil
 from datetime import datetime
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from Auth.firebase_auth import verify_firebase_token, get_firebase_user_email
 from Auth.Auth_utils import get_current_user
@@ -95,7 +98,7 @@ async def scan_csv_for_injection(file_path: str) -> None:
     except HTTPException:
         raise
     except Exception as guard_err:
-        print(f"[WARNING] Data content check failed (proceeding): {guard_err}")
+        logger.warning(f"Data content check failed (proceeding): {guard_err}")
 
 
 def validate_upload_file(file: UploadFile) -> bool:
@@ -185,9 +188,9 @@ async def upload_csv(
 
         # Log warnings if any
         if validation_result["warnings"]:
-            print(f"[WARNING] CSV validation warnings for {file.filename}:")
+            logger.warning(f"CSV validation warnings for {file.filename}:")
             for warning in validation_result["warnings"]:
-                print(f"  - {warning}")
+                logger.warning(f"  - {warning}")
 
         # --- Indirect Injection Guard (scan CSV content) ---
         await scan_csv_for_injection(file_path)
