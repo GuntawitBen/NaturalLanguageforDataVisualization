@@ -61,7 +61,7 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 ### Frontend
 
 - React 19 with Vite 7
-- Tailwind CSS 3 (glassmorphism-styled UI)
+- Tailwind CSS 4 (glassmorphism-styled UI)
 - D3.js for chart rendering
 - TanStack React Table for data grids
 - React Grid Layout for dashboards
@@ -122,6 +122,7 @@ NaturalLanguageforDataVisualization/
 │   │   │   ├── Datasets.jsx       # Dataset list
 │   │   │   ├── DatasetDetails.jsx # Query interface and visualizations
 │   │   │   ├── DataCleaning.jsx   # Cleaning workflow
+│   │   │   ├── DatabaseError.jsx  # DB connection error page
 │   │   │   └── History.jsx        # Past conversations
 │   │   └── components/            # CSVUpload, ChartRenderer, DataTable, etc.
 │   ├── package.json
