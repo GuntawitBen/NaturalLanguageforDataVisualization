@@ -1,18 +1,18 @@
 # Phebe
 
-A full-stack application that lets users explore datasets through natural language. Upload a CSV, ask questions in plain English, and get back SQL-powered answers rendered as interactive charts : no query writing required.
+A full-stack application that lets users explore datasets through natural language. Upload a CSV, ask questions in plain English, and get back SQL-powered answers rendered as interactive charts: no query writing required.
 
 Phebe also includes an interactive data cleaning agent that detects quality issues in your data and walks you through fixing them before analysis.
 
 ## Features
 
-- **Natural Language Querying** : Ask questions about your data in English. An OpenAI-powered agent translates them into SQL, executes the query, and returns results with a recommended visualization.
-- **Interactive Data Cleaning** : An AI agent scans uploaded datasets for problems (missing values, inconsistent types, outliers, duplicates, invalid formats) and suggests fixes you can apply, preview, or undo.
-- **CSV Upload with Validation** : Upload CSV files with automatic encoding detection, header preview, and a two-stage confirmation workflow before data is committed.
-- **Dashboard & Visualizations** : Save charts to a per-dataset dashboard built on React Grid Layout. Supports bar, line, pie, scatter, area, and histogram charts rendered with D3.js.
-- **Conversation History** : Every query session is stored so you can revisit past questions, resume conversations, and track how your analysis evolved.
-- **PDF Export** : Export charts and query results to PDF directly from the browser.
-- **Authentication** : Google OAuth and email/password login via Firebase.
+- **Natural Language Querying**: Ask questions about your data in English. An OpenAI-powered agent translates them into SQL, executes the query, and returns results with a recommended visualization.
+- **Interactive Data Cleaning**: An AI agent scans uploaded datasets for problems (missing values, inconsistent types, outliers, duplicates, invalid formats) and suggests fixes you can apply, preview, or undo.
+- **CSV Upload with Validation**: Upload CSV files with automatic encoding detection, header preview, and a two-stage confirmation workflow before data is committed.
+- **Dashboard & Visualizations**: Save charts to a per-dataset dashboard built on React Grid Layout. Supports bar, line, pie, scatter, area, and histogram charts rendered with D3.js.
+- **Conversation History**: Every query session is stored so you can revisit past questions, resume conversations, and track how your analysis evolved.
+- **PDF Export**: Export charts and query results to PDF directly from the browser.
+- **Authentication**: Google OAuth and email/password login via Firebase.
 
 ## Screenshots
 
@@ -79,7 +79,7 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 
 ## Project Structure
 
-```
+```text
 NaturalLanguageforDataVisualization/
 ├── backend/
 │   ├── main.py                    # App initialization and route mounting
@@ -152,7 +152,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app :reload
+uvicorn main:app --reload
 ```
 
 **Frontend:**
@@ -168,7 +168,7 @@ npm run dev
 Create a `.env` file in the project root (see `.env.example` for the full list). The key variables are:
 
 | Variable | Description |
-|---|---|
+| --- | --- |
 | `OPENAI_API_KEY` | OpenAI API key for text-to-SQL and cleaning agents |
 | `OPENAI_MODEL` | Model to use (default: `gpt-4o-mini`) |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
@@ -188,36 +188,36 @@ Create a `.env` file in the project root (see `.env.example` for the full list).
 
 All protected endpoints require a valid session token obtained through the auth flow.
 
-**Authentication** (`/auth`) : Google OAuth login, email/password login, session management.
+- **Authentication** (`/auth`): Google OAuth login, email/password login, session management.
 
-**Datasets** (`/datasets`) : Upload CSVs, list and delete datasets, execute SQL queries against uploaded data, manage saved dashboard visualizations.
+- **Datasets** (`/datasets`): Upload CSVs, list and delete datasets, execute SQL queries against uploaded data, manage saved dashboard visualizations.
 
-**Text-to-SQL Agent** (`/agents/text-to-sql`) : Start chat sessions tied to a dataset, send natural language questions, get SQL + results + chart recommendations, browse and resume conversation history.
+- **Text-to-SQL Agent** (`/agents/text-to-sql`): Start chat sessions tied to a dataset, send natural language questions, get SQL + results + chart recommendations, browse and resume conversation history.
 
-**Data Cleaning Agent** (`/agents/cleaning`) : Start cleaning sessions, receive AI-generated recommendations, apply or undo operations, inspect session state.
+- **Data Cleaning Agent** (`/agents/cleaning`): Start cleaning sessions, receive AI-generated recommendations, apply or undo operations, inspect session state.
 
-**Metadata** (`/metadata`) : Retrieve dataset-level and column-level statistics.
+- **Metadata** (`/metadata`): Retrieve dataset-level and column-level statistics.
 
-**Ownership** (`/ownership`) : View resource counts, activity logs, storage usage, and transfer dataset ownership.
+- **Ownership** (`/ownership`): View resource counts, activity logs, storage usage, and transfer dataset ownership.
 
 Full interactive documentation is available at `/docs` when the backend is running.
 
 ## How It Works
 
-1. **Upload** : A user uploads a CSV file. The backend validates it, detects encoding and headers, and creates a dedicated MySQL table (`user_data_{dataset_id}`) to hold the data.
+1. **Upload**: A user uploads a CSV file. The backend validates it, detects encoding and headers, and creates a dedicated MySQL table (`user_data_{dataset_id}`) to hold the data.
 
-2. **Ask** : The user types a question like "What were the top 5 products by revenue last quarter?" The text-to-SQL agent sends the dataset schema to OpenAI, receives a generated SQL query, validates it for safety (complexity limits, forbidden operations, injection checks), and executes it.
+2. **Ask**: The user types a question like "What were the top 5 products by revenue last quarter?" The text-to-SQL agent sends the dataset schema to OpenAI, receives a generated SQL query, validates it for safety (complexity limits, forbidden operations, injection checks), and executes it.
 
-3. **Visualize** : The agent recommends a chart type based on the query results. The frontend renders the chart with D3.js. Users can save charts to a persistent dashboard.
+3. **Visualize**: The agent recommends a chart type based on the query results. The frontend renders the chart with D3.js. Users can save charts to a persistent dashboard.
 
-4. **Clean** : Before or after querying, users can run the cleaning agent. It scans the dataset for quality issues and suggests operations like filling missing values, removing duplicates, or standardizing formats. Each operation can be previewed and undone.
+4. **Clean**: Before or after querying, users can run the cleaning agent. It scans the dataset for quality issues and suggests operations like filling missing values, removing duplicates, or standardizing formats. Each operation can be previewed and undone.
 
 ## Available Scripts
 
 ### Frontend
 
 | Command | Description |
-|---|---|
+| --- | --- |
 | `npm run dev` | Start development server with hot reload |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build locally |
