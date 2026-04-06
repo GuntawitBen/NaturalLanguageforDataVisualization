@@ -17,34 +17,44 @@ Phebe also includes an interactive data cleaning agent that detects quality issu
 ## Screenshots
 
 ### Home Page
-![Home Page](./docs/images/homePage.png)
+
+![Home Page](docs/images/homePage.png)
 
 ### Login Page
-![Login Page](./docs/images/loginPage.png)
+
+![Login Page](docs/images/loginPage.png)
 
 ### Register Page
-![Register Page](./docs/images/registerPage.png)
+
+![Register Page](docs/images/registerPage.png)
 
 ### Datasets Page
-![Datasets Page](./docs/images/datasetsPage.png)
+
+![Datasets Page](docs/images/datasetsPage.png)
 
 ### Dataset Details
-![Dataset Details](./docs/images/datasetDetails.png)
+
+![Dataset Details](docs/images/datasetDetails.png)
 
 ### Dashboard
-![Dashboard](./docs/images/dashboardPage.png)
+
+![Dashboard](docs/images/dashboardPage.png)
 
 ### Uploading a Dataset
-![Uploading a Dataset](./docs/images/uploadingPage.png)
+
+![Uploading a Dataset](docs/images/uploadingPage.png)
 
 ### Conversation Page
-![Conversation Page](./docs/images/conversationPage.png)
+
+![Conversation Page](docs/images/conversationPage.png)
 
 ### Correlation Analysis
-![Correlation Analysis](./docs/images/correlationPage.png)
+
+![Correlation Analysis](docs/images/correlationPage.png)
 
 ### Data Cleaning
-![Data Cleaning](./docs/images/cleaningPage.png)
+
+![Data Cleaning](docs/images/cleaningPage.png)
 
 ## Tech Stack
 
@@ -221,4 +231,4 @@ Full interactive documentation is available at `/docs` when the backend is runni
 | `npm run dev` | Start development server with hot reload |
 | `npm run build` | Build for production |
 | `npm run preview` | Preview production build locally |
-| `npm run lint` | Run ESLint |                                                                                                                                                                                                                                                                                                        
+| `npm run lint` | Run ESLint |
